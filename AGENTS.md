@@ -36,3 +36,6 @@ use the editor.
 - Overrides, outcomes, case_events, comments and fact_sources are append-only (insert/select RLS only).
 - Roles live in `user_roles`; the top-bar role switcher is a demo view toggle only, not a permission.
 - Design tokens live in src/styles.css; colour is reserved for states where a human must act.
+- Reviewer workstream grouping is a pure presentation helper using persisted decisions, policy checklist and second-check logic; it never changes recommendations or selects new QA samples.
+- Case navigation may carry per-case group labels, resolved by the shared helper so the case-detail page stays unchanged.
+- Handling-time reporting reads recorded confirmation and override durations through a shared query; it is separate from estimated workstream effort.

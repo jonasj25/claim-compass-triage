@@ -9,6 +9,7 @@ import { secondCheckReason } from "@/lib/second-check";
 import { decide, RECOMMENDATION_LABELS, type Policy, type Recommendation } from "@/lib/triage";
 import { Card, Kpi, PageHeader, StatusDot } from "@/components/triage/ui";
 import { HBars, REC_COLOR, SERIES, StackedShare } from "@/components/triage/charts";
+import { handlingQuery, fmtSecs } from "@/lib/handling-time";
 
 export const Route = createFileRoute("/_authenticated/overview")({
   head: () => ({
@@ -19,6 +20,10 @@ export const Route = createFileRoute("/_authenticated/overview")({
         content:
           "Queues, automation rate, why claims need a person, reviewer load and the effect of policy changes.",
       },
+      { property: "og:title", content: "Workload & flow — Clearpath" },
+      { property: "og:description", content: "Live claim queues, reviewer workload and handling time." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: Overview,
@@ -41,6 +46,7 @@ const dayKey = (iso: string) => iso.slice(0, 10);
 function Overview() {
   const { data: cases = [], isLoading } = useQuery(casesQuery);
   const { data: policy } = useQuery(activePolicyQuery);
+  const handling = useQuery(handlingQuery);
   const s = useMemo(() => (policy ? stats(cases, policy) : null), [cases, policy]);
 
   if (isLoading || !s || !policy) return <p className="label-mono">Loading</p>;
@@ -78,6 +84,11 @@ function Overview() {
           value={s.overdue}
           tone={s.overdue ? "action" : undefined}
           sub="past 24h SLA"
+        />
+        <Kpi
+          label="Avg handling time"
+          value={handling.isError ? "Unavailable" : handling.data?.avg != null ? fmtSecs(handling.data.avg) : "–"}
+          sub={handling.isError ? "Could not load handling times" : handling.data?.n ? `${handling.data.n} decisions today` : "No decisions yet today"}
         />
       </div>
 
