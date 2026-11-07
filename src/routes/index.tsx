@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { Logo } from "@/components/triage/Logo";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { ensureDemoUsers, DEMO_USERS, DEMO_PASSWORD } from "@/lib/demo-users.functions";
@@ -67,7 +68,7 @@ function SignIn() {
     <div className="flex min-h-screen items-center justify-center px-6">
       <div className="w-full max-w-[400px]">
         <div className="mb-10 flex items-center gap-2.5">
-          <span className="logo-mark size-7 rounded-[8px]" />
+          <Logo />
           <span className="flex flex-col leading-none">
             <span className="text-[15px] font-semibold tracking-tight">Clearpath</span>
             <span className="label-mono mt-1 text-[9.5px]">Motor claims</span>

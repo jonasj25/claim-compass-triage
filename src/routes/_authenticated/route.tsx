@@ -1,4 +1,5 @@
 import { createFileRoute, Link, Outlet, redirect, useNavigate, useRouterState } from "@tanstack/react-router";
+import { Logo } from "@/components/triage/Logo";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { Bell, Download, LogOut, Play, Upload } from "lucide-react";
@@ -94,7 +95,7 @@ function TopBar() {
     <header className="topbar-glass sticky top-0 z-30 border-b border-white/70">
       <div className="mx-auto grid h-14 max-w-[1360px] grid-cols-[1fr_auto_1fr] items-center px-8">
         <Link to={ROLE_HOME[role]} className="flex items-center gap-2.5">
-          <span className="logo-mark size-7 rounded-[8px]" />
+          <Logo />
           <span className="flex flex-col leading-none">
             <span className="text-[15px] font-semibold tracking-tight">Clearpath</span>
             <span className="label-mono mt-1 text-[9.5px]">Motor claims</span>

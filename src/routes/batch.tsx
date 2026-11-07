@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { Logo } from "@/components/triage/Logo";
 import { useMemo, useState } from "react";
 import { Download, Lock } from "lucide-react";
 import { parseClaimsCsv, type ParsedClaim } from "@/lib/csv";
@@ -81,7 +82,7 @@ function BatchPage() {
     <div className="mx-auto max-w-6xl px-6 py-12">
       <div className="mb-10 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <span className="logo-mark size-7 rounded-[8px]" />
+          <Logo />
           <span className="flex flex-col leading-none">
             <span className="text-[15px] font-semibold tracking-tight">Clearpath</span>
             <span className="label-mono mt-1 text-[9.5px]">Motor claims</span>
