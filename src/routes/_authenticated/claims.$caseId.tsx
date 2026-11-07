@@ -298,7 +298,7 @@ function CaseDetail() {
   } else if (qa || queue === "on_you") {
     stepTitle = nearLimit ? "Second check: close to the limit" : qa ? "Random QA sample" : "Check this case";
     stepText = nearLimit
-      ? `${nearLimit} Check the quote and evidence; confirm if routine is right, or correct it.`
+      ? `${nearLimit} Check the quote and evidence; confirm if auto-processing is right, or correct it.`
       : qa
       ? "This claim was processed automatically. It was picked at random so a person can check the rules still work. Confirm if the decision is right, or correct it."
       : "This case is waiting for you. Confirm the recommendation or correct it.";
@@ -334,7 +334,7 @@ function CaseDetail() {
     );
   } else {
     stepTitle = "Processed automatically";
-    stepText = "All checks passed, so this claim went into the normal process. Nothing to do – history only. Routine is not a payment approval.";
+    stepText = "All checks passed, so this claim went into the normal process. Nothing to do – history only. Auto-processed is not a payment approval.";
     actions = overrideBtn("Pull into review", "human_review");
   }
 

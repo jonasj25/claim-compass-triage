@@ -142,7 +142,7 @@ function ImpactPage() {
           sub={`was ${pct(impact.automationBefore)} · ${pts(impact.automationBefore, impact.automationAfter)}`}
         />
         <Kpi
-          label="Fully automatic (routine)"
+          label="Fully automatic (auto-processed)"
           value={pct(impact.routineAfter)}
           sub={`was ${pct(impact.routineBefore)} · ${pts(impact.routineBefore, impact.routineAfter)}`}
         />
@@ -170,8 +170,8 @@ function ImpactPage() {
             b={candidate.version}
           />
           <p className="mt-4 text-[12px] text-text-3">
-            “Handled without a reviewer” counts routine claims and automatic requests for
-            information. A stricter policy sends more claims to people on purpose: a wrong routine
+            “Handled without a reviewer” counts auto-processed claims and automatic requests for
+            information. A stricter policy sends more claims to people on purpose: a wrong auto-processing
             decision costs far more than an extra review.
           </p>
         </Card>
@@ -298,7 +298,7 @@ function QualityCard({
   const q = impact.quality;
   const rows: [string, (x: Quality) => string, boolean][] = [
     ["Correct next step", (x) => `${x.correct}/${x.n}`, true],
-    ["Wrong routine (costly)", (x) => String(x.wrongRoutine), false],
+    ["Wrong auto-processing (costly)", (x) => String(x.wrongRoutine), false],
     ["Unnecessary review", (x) => String(x.unnecessaryReview), false],
   ];
   return (

@@ -137,11 +137,11 @@ function BatchPage() {
           <div className="mt-8 grid gap-3 sm:grid-cols-4">
             <Kpi label="Claims" value={rows.length} sub={`${stats.closed} closed · frozen`} />
             <Kpi
-              label="Routine · Info · Review (v1)"
+              label="Auto-processed · Info · Review (v1)"
               value={`${stats.v1.routine_processing} · ${stats.v1.request_information} · ${stats.v1.human_review}`}
             />
             <Kpi
-              label="Routine · Info · Review (v2)"
+              label="Auto-processed · Info · Review (v2)"
               value={`${stats.v2.routine_processing} · ${stats.v2.request_information} · ${stats.v2.human_review}`}
             />
             <Kpi

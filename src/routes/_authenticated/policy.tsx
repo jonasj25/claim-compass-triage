@@ -103,7 +103,7 @@ function reviewConditions(p: Policy): Cond[] {
     out.push({
       icon: Euro,
       short: `Quote over ${fmtEur(hr.quote_limit_eur)}`,
-      full: `The repair quote is above ${fmtEur(hr.quote_limit_eur)}; exactly ${fmtEur(hr.quote_limit_eur)} is still routine`,
+      full: `The repair quote is above ${fmtEur(hr.quote_limit_eur)}; exactly ${fmtEur(hr.quote_limit_eur)} is still auto-processed`,
     });
   for (const t of hr.review_repair_types)
     out.push({
@@ -127,7 +127,7 @@ function summary(p: Policy): string {
   const docs = p.required_documents.map((d) => (DOC[d]?.short ?? fieldName(d)).toLowerCase());
   return `A claim goes to a person if ${join(person)}. Otherwise we ask the customer for anything unknown or missing${
     docs.length ? `, like the ${join(docs)}` : ""
-  }. Everything else is processed routinely.`;
+  }. Everything else is auto-processed.`;
 }
 
 function Chip({ c }: { c: Cond }) {
@@ -252,8 +252,8 @@ function PolicyPage() {
           </p>
           {band && (
             <p className="mt-2 text-[13px] text-text-2">
-              Quotes within {fmtEur(SECOND_CHECK.MARGIN_EUR)} of the limit ({fmtEur(band.from)} to {fmtEur(band.to)}) still
-              go routine, but a person double-checks them.
+              Quotes within {fmtEur(SECOND_CHECK.MARGIN_EUR)} of the limit ({fmtEur(band.from)} to {fmtEur(band.to)}) are still
+              auto-processed, but a person double-checks them.
             </p>
           )}
         </Row>

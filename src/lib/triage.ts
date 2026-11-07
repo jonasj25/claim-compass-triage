@@ -81,7 +81,7 @@ export const FIELD_LABELS: Record<string, string> = {
 };
 
 export const RECOMMENDATION_LABELS: Record<Recommendation, string> = {
-  routine_processing: "Routine",
+  routine_processing: "Auto-processed",
   request_information: "Request info",
   human_review: "Human review",
 };

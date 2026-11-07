@@ -59,5 +59,6 @@ export function humanize(text: string | null | undefined): string {
     .replace(/claim_type '([^']+)'/g, (_, c: string) => `claim type "${claimTypeLabel(c)}"`)
     .replace(/repair_type '([^']+)'/g, (_, c: string) => `repair "${repairTypeLabel(c)}"`)
     .replace(/"([a-z]+(?:_[a-z0-9]+)+)"/g, (_, c: string) => `"${valueLabel(c)}"`)
+    .replace(/\bRoutine processing\b/g, "Auto-processed")
     .replace(/\b(motor_own_damage|ev_high_voltage_battery|online_form|csv_import|waiting_customer|auto_processed)\b/g, (c) => CODE_LABEL[c] ?? sentence(c));
 }

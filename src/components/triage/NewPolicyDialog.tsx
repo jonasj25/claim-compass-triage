@@ -113,7 +113,7 @@ export function NewPolicyDialog({ base, existingIds }: { base: Policy; existingI
   if (!noLimit && (Number.isNaN(limitNum) || (limitNum ?? 0) < 0))
     errors.push("Quote limit must be a positive number, or tick “No limit”.");
   if (!hr.allowed_claim_types.length)
-    errors.push("Allow at least one claim type for routine handling.");
+    errors.push("Allow at least one claim type for auto-processing.");
   if (!changes.length && !errors.length) errors.push("No rule changes yet.");
 
   const save = async () => {
@@ -178,7 +178,7 @@ export function NewPolicyDialog({ base, existingIds }: { base: Policy; existingI
                   id="pv-desc"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  placeholder="e.g. Lower routine limit; EV battery work needs a specialist"
+                  placeholder="e.g. Lower auto-processing limit; EV battery work needs a specialist"
                 />
               </div>
             </div>
@@ -236,7 +236,7 @@ export function NewPolicyDialog({ base, existingIds }: { base: Policy; existingI
             </Section>
 
             <Section
-              title="Claim types that can be handled routinely"
+              title="Claim types that can be auto-processed"
               hint="Any other claim type goes to a person."
             >
               {[...new Set([...KNOWN_CLAIM_TYPES, ...hr.allowed_claim_types])].map((t) => (
@@ -252,7 +252,7 @@ export function NewPolicyDialog({ base, existingIds }: { base: Policy; existingI
               ))}
             </Section>
 
-            <Section title="Documents required before routine processing">
+            <Section title="Documents required before auto-processing">
               {[...new Set([...KNOWN_DOCUMENTS, ...draft.required_documents])].map((d) => (
                 <CheckRow
                   key={d}

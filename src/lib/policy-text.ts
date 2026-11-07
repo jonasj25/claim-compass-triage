@@ -100,7 +100,7 @@ export function describeRules(p: Policy): RuleStep[] {
     {
       code: "R3",
       outcome: "routine_processing",
-      title: "Otherwise, routine processing",
+      title: "Otherwise, auto-processed",
       conditions: ["the claim enters the normal process"],
       note: "This is not a payment approval.",
     },

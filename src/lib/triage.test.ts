@@ -40,7 +40,7 @@ describe("triage engine v1", () => {
   it("single trigger counterfactual", () => {
     const c = claims.find((x) => x.case_id === "DEV-009")!;
     expect(decide(c, POLICY_V1).counterfactual).toBe(
-      "Without the evidence conflict this would be Routine.",
+      "Without the evidence conflict this would be Auto-processed.",
     );
   });
 });

@@ -148,7 +148,7 @@ function Dashboard() {
           icon={Zap}
           label="Auto-processed"
           value={auto.length}
-          sub="Routine, not a payment approval."
+          sub="Not a payment approval."
           onClick={() => setTab("auto_processed")}
           active={current.key === "auto_processed"}
         />

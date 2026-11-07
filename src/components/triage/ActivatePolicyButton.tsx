@@ -90,7 +90,7 @@ export function ActivatePolicyButton({
                 <li>{plan.closedUntouched} closed claims keep their decision.</li>
                 {plan.secondChecks.length > 0 && (
                   <li>
-                    {plan.secondChecks.length} routine claims close to the new limit get a second
+                    {plan.secondChecks.length} auto-processed claims close to the new limit get a second
                     check.
                   </li>
                 )}
@@ -100,7 +100,7 @@ export function ActivatePolicyButton({
               </ul>
               {worseRoutine && (
                 <p className="text-action">
-                  Warning: on labelled claims, {candidate.version} makes more wrong routine
+                  Warning: on labelled claims, {candidate.version} makes more wrong auto-processing
                   decisions than {active.version} ({q!.after.wrongRoutine} vs{" "}
                   {q!.before.wrongRoutine}).
                 </p>
