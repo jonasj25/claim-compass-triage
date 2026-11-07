@@ -1,8 +1,9 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
-import { ArrowLeft, Bot, Check, ChevronRight, Clock, FileQuestion, Mail, Phone, Plus, Search, User, X } from "lucide-react";
+import { ArrowLeft, Bot, Check, ChevronRight, Clock, FileQuestion, Mail, Phone, PhoneOff, Plus, Search, User, X } from "lucide-react";
 import { Logo } from "@/components/triage/Logo";
-import { MiaCall } from "@/components/triage/MiaCall";
+import { MiaCall, useRingtone } from "@/components/triage/MiaCall";
+import { endClaimCall } from "@/lib/report.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -143,14 +144,15 @@ function StatusPage() {
             {error && <p className="mt-4 text-[14px] text-action">{error}</p>}
 
             {calling && (
-              <button
-                onClick={() => void navigate({ search: { plate: search.plate, case: calling.case_id } })}
-                className="mt-6 flex w-full animate-pulse items-center gap-3 rounded-[14px] bg-ok px-5 py-4 text-left text-white shadow-lg"
-              >
-                <Phone className="size-5" />
-                <span className="flex-1 text-[15px] font-semibold">Clearpath is calling you about {calling.case_id}</span>
-                <span className="rounded-full bg-white px-4 py-1.5 text-[13px] font-semibold text-ok">Answer</span>
-              </button>
+              <CallBanner
+                key={calling.case_id}
+                caseId={calling.case_id}
+                onRespond={() => void navigate({ search: { plate: search.plate, case: calling.case_id } })}
+                onDecline={async () => {
+                  await endClaimCall({ data: { case_id: calling.case_id, plate: search.plate, outcome: "declined" } }).catch(() => undefined);
+                  void load(search.plate ?? "", true);
+                }}
+              />
             )}
 
             {list && (
@@ -199,6 +201,25 @@ function StatusPage() {
           </>
         )}
       </main>
+    </div>
+  );
+}
+
+function CallBanner({ caseId, onRespond, onDecline }: { caseId: string; onRespond: () => void; onDecline: () => void }) {
+  const muted = useRingtone(true);
+  return (
+    <div className="mt-6 rounded-[14px] bg-ok px-5 py-4 text-white shadow-lg">
+      <div className="flex flex-wrap items-center gap-3">
+        <Phone className="size-5 animate-pulse" />
+        <span className="flex-1 text-[15px] font-semibold">Clearpath is calling you about {caseId}</span>
+        <button onClick={onDecline} className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-4 py-1.5 text-[13px] font-semibold ring-1 ring-white/40 hover:bg-white/25">
+          <PhoneOff className="size-3.5" /> Decline
+        </button>
+        <button onClick={onRespond} className="inline-flex items-center gap-1.5 rounded-full bg-white px-4 py-1.5 text-[13px] font-semibold text-ok hover:bg-white/90">
+          <Phone className="size-3.5" /> Respond
+        </button>
+      </div>
+      {muted && <p className="mt-1.5 pl-8 text-[12px] text-white/80">Tap anywhere on the page to hear the ringtone.</p>}
     </div>
   );
 }

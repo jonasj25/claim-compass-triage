@@ -23,38 +23,15 @@ function nextAsk(field: string, a: Partial<ReportAnswers>) {
   return QUESTIONS.find((q) => q.key === key)?.ask ?? CUSTOMER_MISSING[field] ?? field;
 }
 
-export function MiaCall({
-  caseId,
-  firstName,
-  items,
-  requestedAt,
-  who,
-  onFinished,
-}: {
-  caseId: string;
-  firstName: string | null;
-  /** Claim fields Mia should collect */
-  items: string[];
-  requestedAt: string;
-  who: { email?: string; plate?: string };
-  onFinished: (message: string | null) => void;
-}) {
-  const [inCall, setInCall] = useState(false);
-  const [phase, setPhase] = useState<Phase>("idle");
-  const [lines, setLines] = useState<Line[]>([]);
-  const session = useRef<any>(null); // eslint-disable-line @typescript-eslint/no-explicit-any
-  const partial = useRef<Partial<ReportAnswers>>({});
-  const linesRef = useRef<Line[]>([]);
-  const phaseRef = useRef(phase);
-  phaseRef.current = phase;
-  const fields = items.filter((f) => FIELD_QUESTIONS[f]);
-
+/** Two-tone ring plus flashing tab title while `active`. Returns true while the browser still blocks sound
+ *  (it is unlocked by the first tap or key press on the page). */
+export function useRingtone(active: boolean, key: string = "") {
   // Browsers only allow sound after the user has clicked on the page once
   const [muted, setMuted] = useState(false);
 
   // Two-tone ring while waiting; flashes the tab title as well
   useEffect(() => {
-    if (inCall) return;
+    if (!active) return;
     const title = document.title;
     const flash = window.setInterval(() => {
       document.title = document.title === title ? "📞 Clearpath is calling…" : title;
@@ -99,7 +76,38 @@ export function MiaCall({
       /* sound is optional */
     }
     return () => stop();
-  }, [inCall, requestedAt]);
+  }, [active, key]);
+  return muted;
+
+}
+
+export function MiaCall({
+  caseId,
+  firstName,
+  items,
+  requestedAt,
+  who,
+  onFinished,
+}: {
+  caseId: string;
+  firstName: string | null;
+  /** Claim fields Mia should collect */
+  items: string[];
+  requestedAt: string;
+  who: { email?: string; plate?: string };
+  onFinished: (message: string | null) => void;
+}) {
+  const [inCall, setInCall] = useState(false);
+  const [phase, setPhase] = useState<Phase>("idle");
+  const [lines, setLines] = useState<Line[]>([]);
+  const session = useRef<any>(null); // eslint-disable-line @typescript-eslint/no-explicit-any
+  const partial = useRef<Partial<ReportAnswers>>({});
+  const linesRef = useRef<Line[]>([]);
+  const phaseRef = useRef(phase);
+  phaseRef.current = phase;
+  const fields = items.filter((f) => FIELD_QUESTIONS[f]);
+
+  const muted = useRingtone(!inCall, requestedAt);
 
   const level = () => {
     const s = session.current;
