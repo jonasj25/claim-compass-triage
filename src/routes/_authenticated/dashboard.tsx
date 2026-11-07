@@ -12,6 +12,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Progress } from "@/components/ui/progress";
 import { Chip } from "@/components/triage/ui";
 import { saveCaseNav } from "@/lib/case-nav";
+import { secondCheckReason } from "@/lib/second-check";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
@@ -94,7 +95,7 @@ function Dashboard() {
   const autonomous = data.filter((row) => !isClosed(row.claim.case_status) && row.claim.case_status?.toLowerCase() !== "done" && !workIds.has(row.claim.case_id));
   const waiting = autonomous.filter((row) => row.workflow?.queue === "waiting_customer").length;
   const auto = autonomous.filter((row) => row.workflow?.queue === "auto_processed" && !row.workflow.qa_sample &&
-    !row.decision?.needs_recheck && !ordered.some((item) => item.row.claim.case_id === row.claim.case_id)).length;
+    !row.decision?.needs_recheck && row.decision && !secondCheckReason(row.claim, policy, row.decision.recommendation)).length;
   const hour = now.getHours();
   const greet = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
 
@@ -137,9 +138,9 @@ function Dashboard() {
                     <Link key={id} to="/claims/$caseId" params={{ caseId: id }} data-work-case={id}
                       ref={(element) => { if (element) links.current.set(id, element); else links.current.delete(id); }}
                       onFocus={() => setSelected(id)} onClick={() => remember(item)}
-                      className={cn("card-quiet grid items-center gap-x-4 gap-y-2 p-4 text-sm outline-none hover:border-line focus-visible:ring-2 focus-visible:ring-ring md:grid-cols-[100px_minmax(0,1fr)_90px_45px]", item.overdue && "border-action-border bg-action-tint", selected === id && "ring-1 ring-ring")}>
+                      className={cn("card-quiet grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2 p-4 text-sm outline-none hover:border-line focus-visible:ring-2 focus-visible:ring-ring md:grid-cols-[100px_minmax(0,1fr)_90px_45px]", item.overdue && "border-action-border bg-action-tint", selected === id && "ring-1 ring-ring")}>
                       <span className="font-mono text-xs">{id}</span>
-                      <span className="min-w-0 md:row-span-2">
+                      <span className="col-span-2 row-start-2 min-w-0 md:col-span-1 md:col-start-2 md:row-span-2 md:row-start-1">
                         <span className="block truncate font-medium">{row.claim.claim_summary || "Claim summary unknown"}</span>
                         <span className={cn("mt-1 block text-xs leading-relaxed", item.nearLimit ? "text-wait" : "text-text-2")}>{item.why}</span>
                         <span className="mt-2 flex flex-wrap items-center gap-1.5">
@@ -150,9 +151,9 @@ function Dashboard() {
                           {row.intake?.channel === "phone" && <Chip className="tracking-normal">Phone</Chip>}
                         </span>
                       </span>
-                      <span className="num font-mono text-xs md:text-right">{row.claim.quote_eur === null ? "unknown" : money(row.claim.quote_eur)}</span>
-                      <span className={cn("font-mono text-xs md:text-right", item.overdue ? "text-action" : "text-text-2")}>{age(row.claim.received_at, now)}</span>
-                      <span className="text-xs text-text-2 md:col-start-1">{row.decision?.recommendation === "routine_processing" ? "Routine" : "Human review"}</span>
+                      <span className="num col-start-2 row-start-1 font-mono text-xs text-right md:col-start-3">{row.claim.quote_eur === null ? "unknown" : money(row.claim.quote_eur)}</span>
+                      <span className={cn("col-start-2 row-start-3 font-mono text-xs text-right md:col-start-4 md:row-start-1", item.overdue ? "text-action" : "text-text-2")}>{age(row.claim.received_at, now)}</span>
+                      <span className="row-start-3 text-xs text-text-2 md:col-start-1 md:row-start-2">{row.decision?.recommendation === "routine_processing" ? "Routine" : "Human review"}</span>
                     </Link>
                   );
                 })}
