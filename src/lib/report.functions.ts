@@ -30,6 +30,11 @@ export interface ReportResult {
 }
 
 const clip = (v: unknown, n: number) => String(v ?? "").trim().slice(0, n);
+const keyOf = (p: unknown) => String(p ?? "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+/** A customer claim, recognised by the email from the report or by the number plate. */
+const isOwner = (raw: Record<string, unknown>, email?: string, plate?: string) =>
+  raw.source === "customer_report" &&
+  ((!!email && String(raw.customer_email ?? "").toLowerCase() === email.toLowerCase()) || (!!keyOf(plate) && keyOf(raw.plate) === keyOf(plate)));
 
 function clean(input: ReportInput): ReportInput {
   if (!input || typeof input !== "object" || !input.answers) throw new Error("Missing answers");
@@ -202,7 +207,9 @@ export const submitClaimReport = createServerFn({ method: "POST" })
 
 export interface AddInfoInput {
   case_id: string;
-  email: string;
+  /** The customer is recognised by their email (confirmation page) or their number plate (status page) */
+  email?: string;
+  plate?: string;
   answers: Partial<ReportAnswers>;
   files?: { incident_report?: string; quote?: string };
   /** "call" when the answers came from Mia's follow-up call */
@@ -216,12 +223,13 @@ export interface AddInfoInput {
  */
 export const addClaimInfo = createServerFn({ method: "POST" })
   .inputValidator((d: AddInfoInput) => {
-    if (!d?.case_id || !d?.email) throw new Error("Missing reference");
+    if (!d?.case_id || (!d?.email && !d?.plate)) throw new Error("Missing reference");
     const answers: Partial<ReportAnswers> = {};
     for (const k of Object.keys(EMPTY_ANSWERS) as AnswerKey[]) if (d.answers?.[k] !== undefined) answers[k] = clip(d.answers[k], 120) as never;
     return {
       case_id: clip(d.case_id, 40),
       email: clip(d.email, 120).toLowerCase(),
+      plate: clip(d.plate, 20),
       answers,
       files: d.files ?? {},
       via: d.via === "call" ? ("call" as const) : ("portal" as const),
@@ -236,7 +244,7 @@ export const addClaimInfo = createServerFn({ method: "POST" })
     const cur = await db.from("claims").select("*").eq("case_id", data.case_id).single();
     if (cur.error || !cur.data) throw new Error("Claim not found");
     const raw = (cur.data.raw ?? {}) as Record<string, unknown>;
-    if (raw.source !== "customer_report" || String(raw.customer_email ?? "").toLowerCase() !== data.email) throw new Error("Claim not found");
+    if (!isOwner(raw, data.email, data.plate)) throw new Error("Claim not found");
     if (String(cur.data.case_status ?? "").toLowerCase() === "closed") throw new Error("This claim is already closed");
 
     const pol = await db.from("policy_versions").select("config").eq("status", "active").order("created_at", { ascending: false }).limit(1).single();
@@ -321,11 +329,10 @@ export interface ClaimStatus {
   row: Record<string, unknown>;
 }
 
-async function ownClaim(db: any, case_id: string, email: string) {
+async function ownClaim(db: any, case_id: string, email: string, plate = "") {
   const cur = await db.from("claims").select("*").eq("case_id", case_id).single();
   const raw = ((cur.data?.raw ?? {}) as Record<string, unknown>) || {};
-  if (cur.error || !cur.data || raw.source !== "customer_report" || String(raw.customer_email ?? "").toLowerCase() !== email.toLowerCase())
-    throw new Error("Claim not found");
+  if (cur.error || !cur.data || !isOwner(raw, email, plate)) throw new Error("Claim not found");
   return cur.data as Record<string, unknown>;
 }
 
@@ -361,14 +368,15 @@ export const getClaimStatus = createServerFn({ method: "POST" })
 
 /** The customer declined or hung up before anything was recorded. */
 export const endClaimCall = createServerFn({ method: "POST" })
-  .inputValidator((d: { case_id: string; email: string; outcome: "declined" | "no_answer_given" }) => ({
+  .inputValidator((d: { case_id: string; email?: string; plate?: string; outcome: "declined" | "no_answer_given" }) => ({
     case_id: clip(d?.case_id, 40),
     email: clip(d?.email, 120),
+    plate: clip(d?.plate, 20),
     outcome: d?.outcome === "declined" ? ("declined" as const) : ("no_answer_given" as const),
   }))
   .handler(async ({ data }) => {
     const { supabaseAdmin: db } = await import("@/integrations/supabase/client.server");
-    await ownClaim(db, data.case_id, data.email);
+    await ownClaim(db, data.case_id, data.email, data.plate);
     const r = await db.from("case_events").insert({ case_id: data.case_id, type: "call_ended", actor: "Customer", payload: { outcome: data.outcome } });
     if (r.error) throw new Error(r.error.message);
     return { ok: true };

@@ -381,7 +381,12 @@ function CaseDetail() {
       "Calling the customer… their claim page is ringing",
     );
   const portalEmail = String(((data?.claim as Row | undefined)?.raw as Row | undefined)?.customer_email ?? "");
-  const portalUrl = portalEmail ? `/claim/${caseId}?e=${encodeURIComponent(portalEmail)}` : null;
+  const portalPlate = String(data?.intake?.plate ?? "");
+  const portalUrl = portalPlate
+    ? `/status?plate=${encodeURIComponent(portalPlate)}&case=${encodeURIComponent(caseId)}`
+    : portalEmail
+      ? `/claim/${caseId}?e=${encodeURIComponent(portalEmail)}`
+      : null;
 
   const saveOverride = async (next: Recommendation, reasonCode: string, reasonText: string) => {
     await run(async () => {

@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { ArrowLeft, ArrowRight, Check, FileText, Keyboard, Lock, Mic, Paperclip, Send, Volume2, VolumeX } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, FileText, Keyboard, Lock, Mic, Paperclip, Search, Send, Volume2, VolumeX } from "lucide-react";
 import { Logo } from "@/components/triage/Logo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -117,12 +117,15 @@ function ReportPage() {
           </span>
         </Link>
         <span className="flex items-center gap-4 text-[12.5px] text-text-2">
-          <Link to="/status" className="hover:text-foreground">
-            Check claim status
-          </Link>
-          <span className="flex items-center gap-1.5">
+          <span className="hidden items-center gap-1.5 sm:flex">
             <Lock className="size-3.5" /> Your answers are sent securely
           </span>
+          <Link
+            to="/status"
+            className="inline-flex h-10 items-center gap-2 rounded-full bg-foreground px-5 text-[14px] font-medium text-background transition hover:opacity-90"
+          >
+            <Search className="size-4" /> Check claim status
+          </Link>
         </span>
       </header>
 
@@ -198,7 +201,7 @@ function ReportPage() {
             </div>
           </div>
         )}
-        {mode === "done" && result && <Done result={result} setResult={setResult} name={answers.name} email={answers.email} />}
+        {mode === "done" && result && <Done result={result} setResult={setResult} name={answers.name} email={answers.email} plate={answers.plate ?? ""} />}
       </main>
     </div>
   );
@@ -228,9 +231,20 @@ function Landing({ qs, answers, heardIn, conversation, onForm }: { qs: Question[
       </div>
 
       <div className="mx-auto mt-6 max-w-[760px] text-center">
-        <button onClick={onForm} className="inline-flex items-center gap-1.5 text-[14px] text-text-2 underline-offset-4 hover:text-foreground hover:underline">
-          <Keyboard className="size-4" /> Prefer writing? Fill in the form instead <ArrowRight className="size-3.5" />
-        </button>
+        <div className="flex flex-wrap justify-center gap-3">
+          <button
+            onClick={onForm}
+            className="inline-flex h-12 items-center gap-2 rounded-full bg-surface px-6 text-[15px] font-medium ring-1 ring-line shadow-sm transition hover:ring-link/50"
+          >
+            <Keyboard className="size-4" /> Prefer writing? Fill in the form <ArrowRight className="size-4" />
+          </button>
+          <Link
+            to="/status"
+            className="inline-flex h-12 items-center gap-2 rounded-full bg-surface px-6 text-[15px] font-medium ring-1 ring-line shadow-sm transition hover:ring-link/50"
+          >
+            <Search className="size-4" /> Already reported? Check status
+          </Link>
+        </div>
       </div>
 
       <div className="mx-auto mt-10 max-w-[760px]">
@@ -1006,7 +1020,7 @@ function FilePick({ label, name, onPick }: { label: string; name?: string; onPic
 
 // ------------------------------------------------------------------ done
 
-function Done({ result, setResult, name, email }: { result: ReportResult; setResult: (r: ReportResult) => void; name: string; email: string }) {
+function Done({ result, setResult, name, email, plate = "" }: { result: ReportResult; setResult: (r: ReportResult) => void; name: string; email: string; plate?: string }) {
   const first = name.split(" ")[0] || "there";
   const [rechecked, setRechecked] = useState<ReportResult["recommendation"] | null>(null);
   const missing = result.missing_fields.map((f) => CUSTOMER_MISSING[f] ?? f);
@@ -1037,8 +1051,12 @@ function Done({ result, setResult, name, email }: { result: ReportResult; setRes
         Your reference number is <span className="font-mono font-medium text-foreground">{result.case_id}</span>. Please keep it for any questions.
       </p>
       <p className="mt-3">
-        <Link to="/status" search={{ case: result.case_id }} className="text-[14px] font-medium text-link hover:underline">
-          Track your claim status
+        <Link
+          to="/status"
+          search={plate ? { plate, case: result.case_id } : {}}
+          className="inline-flex h-11 items-center gap-2 rounded-full bg-link px-5 text-[14px] font-medium text-white hover:bg-link/90"
+        >
+          Track your claim status <ArrowRight className="size-4" />
         </Link>
       </p>
 
