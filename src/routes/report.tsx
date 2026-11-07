@@ -212,7 +212,15 @@ function ReportPage() {
 // ------------------------------------------------------------------ landing: the conversation is the page
 
 function Landing({ qs, answers, heardIn, conversation, onForm }: { qs: Question[]; answers: ReportAnswers; heardIn: Partial<Record<AnswerKey, number>>; conversation: ReactNode; onForm: () => void }) {
-  const started = qs.some((q) => fieldState(q, answers) !== "missing");
+  const started = true; // the checklist is the conversation guide, visible from the start
+  // Same order Mia asks in: who you are, what happened, then the rest
+  const first: AnswerKey[] = ["name", "email", "what_happened"];
+  const ordered = [...qs].sort((a, b) => {
+    const ia = first.indexOf(a.key), ib = first.indexOf(b.key);
+    return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
+  });
+  const open = ordered.filter((q) => fieldState(q, answers) === "missing");
+  const current = (open.find((q) => !q.optional) ?? open[0])?.key;
   return (
     <div className="pt-6">
       <div className="mx-auto max-w-[720px] text-center">
@@ -227,7 +235,7 @@ function Landing({ qs, answers, heardIn, conversation, onForm }: { qs: Question[
         <div className="min-w-0">{conversation}</div>
         {started && (
           <aside className="lg:sticky lg:top-6 lg:self-start">
-            <Checklist qs={qs} answers={answers} heardIn={heardIn} />
+            <Checklist qs={ordered} answers={answers} heardIn={heardIn} current={current} />
           </aside>
         )}
       </div>
@@ -771,9 +779,15 @@ function Conversation({
       const mod: any = await import(/* @vite-ignore */ url);
       await navigator.mediaDevices.getUserMedia({ audio: true });
       setPhase("thinking");
+      const resumed = linesRef.current.length > 0;
+      const nq0 = nextQuestion(answersRef.current);
+      const opening = resumed
+        ? `Okay, let's continue. ${nq0?.ask ?? ""}`.trim()
+        : "Hi, I'm Mia from Clearpath. I just need a few details for your claim. First, your full name and the email you're registered with?";
       const sess = await mod.Conversation.startSession({
         agentId: ELEVEN_AGENT_ID,
         connectionType: "websocket",
+        dynamicVariables: { opening },
         clientTools: {
           update_claim: async (params: Record<string, unknown>) => {
             let found = cleanAgentAnswers(params ?? {});
@@ -813,7 +827,7 @@ function Conversation({
           },
         },
         onMessage: (m: any) => {
-          const text = String(m?.message ?? "").trim();
+          const text = String(m?.message ?? "").replace(/\[[a-z\s-]{2,20}\]\s*/gi, "").trim();
           if (!text) return;
           const speaker: Line["speaker"] = m?.source === "user" || m?.role === "user" ? "customer" : "agent";
           linesRef.current = [...linesRef.current, { speaker, text }];
@@ -829,6 +843,15 @@ function Conversation({
         onError: () => setNote("The voice connection had a problem. You can continue by typing below."),
       });
       session.current = sess;
+      if (resumed) {
+        const known = Object.entries(answersRef.current)
+          .filter(([, v]) => v !== "" && v !== undefined && v !== null)
+          .map(([k, v]) => `${k}: ${String(v).slice(0, 120)}`)
+          .join("; ");
+        sess.sendContextualUpdate?.(
+          `The conversation was paused and is now resuming. Do not greet or introduce yourself again. Already recorded: ${known || "nothing"}. Continue with the next open question only.`,
+        );
+      }
       sess.sendContextualUpdate?.(
         "Before any question about the claim, ask for the caller's full name and the email address they registered with, and call update_claim with name and email. Only continue with the claim once update_claim says the customer is verified.",
       );
@@ -860,7 +883,7 @@ function Conversation({
     const q = nextQuestion(answersRef.current);
     const intro = linesRef.current.length
       ? q?.ask ?? ""
-      : `Hi, I'm ${AGENT_NAME}, the Clearpath claims assistant. I'll ask you a few short questions to record your claim. If you're not sure about something, just say so. First I need to check that you're registered with us. ${q?.ask ?? ""}`;
+      : `Hi, I'm ${AGENT_NAME} from Clearpath. I just need a few details for your claim. ${q?.ask ?? ""}`;
     await speak(intro);
     if (mic.current || getRecognition()) void loop();
     else setPhase("idle");
