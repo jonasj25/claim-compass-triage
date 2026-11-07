@@ -1,13 +1,14 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { ArrowRight } from "lucide-react";
+import { AlertTriangle, ArrowRight, Clock, Users, Zap, type LucideIcon } from "lucide-react";
+import type { ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { casesQuery, type CaseRow } from "@/lib/data";
 import { useRole } from "@/lib/role";
 import { isClosed } from "@/lib/csv";
 import { Button } from "@/components/ui/button";
-import { Card, Kpi } from "@/components/triage/ui";
+import { Card } from "@/components/triage/ui";
 import { ClaimsTable } from "@/components/triage/ClaimsTable";
 import { saveCaseNav } from "@/lib/case-nav";
 import { cn } from "@/lib/utils";
@@ -122,32 +123,41 @@ function Dashboard() {
 
       {/* Live numbers; each tile selects the same filter as its tab below */}
       <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <Kpi
+        <StatTile
+          color="blue"
+          icon={AlertTriangle}
           label="To review"
           value={onYou.length}
           sub={`${overdue.length} overdue · SLA 24h`}
-          tone={onYou.length ? "action" : undefined}
+          progress={onYou.length ? overdue.length / onYou.length : 0}
+          progressLabel={`${overdue.length} of ${onYou.length} past their SLA`}
           onClick={() => setTab("to_review")}
           active={current.key === "to_review"}
         />
-        <Kpi
+        <StatTile
+          color="orange"
+          icon={Users}
           label="Waiting on customer"
           value={waiting.length}
-          sub="Outreach sent automatically"
+          sub="Outreach sent automatically."
           onClick={() => setTab("waiting_customer")}
           active={current.key === "waiting_customer"}
         />
-        <Kpi
+        <StatTile
+          color="green"
+          icon={Zap}
           label="Auto-processed"
           value={auto.length}
-          sub="Routine, not a payment approval"
+          sub="Routine, not a payment approval."
           onClick={() => setTab("auto_processed")}
           active={current.key === "auto_processed"}
         />
-        <Kpi
+        <StatTile
+          color="purple"
+          icon={Clock}
           label="Avg handling time"
           value={handling.data?.avg ? fmtSecs(handling.data.avg) : "–"}
-          sub={handling.data?.n ? `${handling.data.n} ${handling.data.n === 1 ? "decision" : "decisions"} today · show done` : "No decisions yet today"}
+          sub={handling.data?.n ? `${handling.data.n} ${handling.data.n === 1 ? "decision" : "decisions"} today.` : "No decisions yet today."}
           onClick={() => setTab("done")}
           active={current.key === "done"}
         />
@@ -180,5 +190,64 @@ function Dashboard() {
         <ClaimsTable rows={rows} navLabel={current.label} />
       </Card>
     </div>
+  );
+}
+
+const TILE_COLORS = {
+  blue: { bg: "bg-[linear-gradient(135deg,oklch(0.975_0.018_255),oklch(0.945_0.04_258))]", chip: "bg-[oklch(0.92_0.045_258)] text-[oklch(0.48_0.19_262)]", blob: "bg-[oklch(0.88_0.07_258/0.45)]", bar: "bg-[oklch(0.6_0.19_258)]", track: "bg-[oklch(0.88_0.05_258)]", ring: "ring-[oklch(0.75_0.1_258)]" },
+  orange: { bg: "bg-[linear-gradient(135deg,oklch(0.985_0.015_75),oklch(0.96_0.035_65))]", chip: "bg-[oklch(0.94_0.045_65)] text-[oklch(0.58_0.15_50)]", blob: "bg-[oklch(0.9_0.06_65/0.45)]", bar: "", track: "", ring: "ring-[oklch(0.8_0.09_60)]" },
+  green: { bg: "bg-[linear-gradient(135deg,oklch(0.98_0.02_155),oklch(0.955_0.045_158))]", chip: "bg-[oklch(0.92_0.06_155)] text-[oklch(0.48_0.13_155)]", blob: "bg-[oklch(0.88_0.08_155/0.45)]", bar: "", track: "", ring: "ring-[oklch(0.75_0.1_155)]" },
+  purple: { bg: "bg-[linear-gradient(135deg,oklch(0.978_0.014_295),oklch(0.952_0.03_290))]", chip: "bg-[oklch(0.93_0.035_290)] text-[oklch(0.42_0.12_290)]", blob: "bg-[oklch(0.9_0.05_290/0.45)]", bar: "", track: "", ring: "ring-[oklch(0.78_0.07_290)]" },
+} as const;
+
+function StatTile({
+  color,
+  icon: Icon,
+  label,
+  value,
+  sub,
+  progress,
+  progressLabel,
+  onClick,
+  active,
+}: {
+  color: keyof typeof TILE_COLORS;
+  icon: LucideIcon;
+  label: string;
+  value: ReactNode;
+  sub: ReactNode;
+  progress?: number;
+  progressLabel?: string;
+  onClick: () => void;
+  active: boolean;
+}) {
+  const c = TILE_COLORS[color];
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={cn(
+        "relative flex flex-col items-start overflow-hidden rounded-[16px] p-5 text-left ring-1 ring-white/80 shadow-[0_1px_2px_oklch(0.35_0.05_262/0.05)] transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:shadow-[var(--shadow-lift)]",
+        c.bg,
+        active && cn("-translate-y-0.5 shadow-[var(--shadow-lift)] ring-2", c.ring),
+      )}
+    >
+      {/* soft decorative shape in the corner */}
+      <span aria-hidden className={cn("pointer-events-none absolute -bottom-12 -right-10 size-36 rounded-full blur-2xl", c.blob)} />
+      <span className="relative flex items-center gap-2.5">
+        <span className={cn("inline-flex size-7 items-center justify-center rounded-[8px]", c.chip)}>
+          <Icon className="size-4" strokeWidth={1.8} />
+        </span>
+        <span className="font-mono text-[11.5px] uppercase tracking-[0.06em] text-foreground/80">{label}</span>
+      </span>
+      <span className="num relative mt-3 text-[34px] font-semibold leading-none tracking-tight text-foreground">{value}</span>
+      <span className="relative mt-2 text-[12.5px] text-text-2">{sub}</span>
+      {progress !== undefined && (
+        <span className={cn("relative mt-3 h-1 w-full overflow-hidden rounded-full", c.track)} role="img" aria-label={progressLabel}>
+          <span className={cn("block h-full rounded-full transition-[width] duration-500", c.bar)} style={{ width: `${Math.round(Math.min(1, Math.max(0, progress)) * 100)}%` }} />
+        </span>
+      )}
+    </button>
   );
 }
