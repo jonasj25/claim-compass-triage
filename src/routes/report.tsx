@@ -29,7 +29,7 @@ import { uploadClaimFile } from "@/lib/files.functions";
 import { DocumentUploads, UPLOAD_SLOTS, type PendingFile, type UploadKind } from "@/components/triage/DocumentUploads";
 import { speakText, transcribeAudio, voiceStatus } from "@/lib/voice.functions";
 import { verifyCustomer } from "@/lib/customers.functions";
-import { normalizeEmail, sameName } from "@/lib/customers";
+import { normalizeEmail, plateKey, sameName } from "@/lib/customers";
 import { VoiceOrb, type Phase } from "@/components/triage/VoiceOrb";
 
 // Public page (no sign-in): a customer reports a motor claim, by form or by voice.
@@ -79,16 +79,19 @@ function ReportPage() {
 
   const qs = useMemo(() => activeQuestions(answers), [answers]);
   const set = (k: AnswerKey, v: string) => {
-    if (k === "name" || k === "email") setFormCheck({ busy: false, error: null });
+    if (k === "name" || k === "email" || k === "plate") setFormCheck({ busy: false, error: null });
     setAnswers((a) => ({ ...a, [k]: v }));
   };
 
-  // Written form: name and email must match a registered customer before the claim questions
+  // Written form: name and email must match a registered customer, and the plate their registered car
   const formVerified = useRef<{ name: string; email: string } | null>(null);
   const [formCheck, setFormCheck] = useState<{ busy: boolean; error: string | null }>({ busy: false, error: null });
   const formIsVerified = (a: ReportAnswers) =>
     !!formVerified.current && sameName(formVerified.current.name, a.name) && normalizeEmail(a.email) === normalizeEmail(formVerified.current.email);
   const emailStep = qs.findIndex((q) => q.key === "email");
+  const plateStep = qs.findIndex((q) => q.key === "plate");
+  const formPlate = useRef("");
+  const formPlateOk = (a: ReportAnswers) => formIsVerified(a) && !!formPlate.current && formPlate.current === plateKey(a.plate);
   const formNext = async () => {
     const q = qs[Math.min(step, qs.length - 1)];
     if (q.key === "email" && !formIsVerified(answers)) {
@@ -99,7 +102,17 @@ function ReportPage() {
         return;
       }
       formVerified.current = { name: answers.name, email: r.email };
-      setAnswers((a) => ({ ...a, email: r.email!, plate: a.plate || (r.plate ?? "") }));
+      setAnswers((a) => ({ ...a, email: r.email! }));
+      setFormCheck({ busy: false, error: null });
+    }
+    if (q.key === "plate" && !formPlateOk(answers)) {
+      setFormCheck({ busy: true, error: null });
+      const r = await verifyCustomer({ data: { name: answers.name, email: answers.email, plate: answers.plate } }).catch(() => null);
+      if (!r?.registered || !r.plateMatches) {
+        setFormCheck({ busy: false, error: !r ? "We couldn't check your details just now. Please try again." : !r.registered ? "We couldn't find a registered customer with this name and email. Please go back and check both." : "This number plate doesn't match the car registered to you. Please check it." });
+        return;
+      }
+      formPlate.current = plateKey(answers.plate);
       setFormCheck({ busy: false, error: null });
     }
     // Skip questions a document already answered
@@ -228,7 +241,7 @@ function ReportPage() {
           <Shell
             side={
               <div className="space-y-4">
-                <Checklist qs={qs} answers={answers} heardIn={{}} onJump={(i) => setStep(formIsVerified(answers) ? i : Math.min(i, emailStep))} current={qs[step]?.key} />
+                <Checklist qs={qs} answers={answers} heardIn={{}} onJump={(i) => setStep(!formIsVerified(answers) ? Math.min(i, emailStep) : formPlateOk(answers) ? i : Math.min(i, plateStep))} current={qs[step]?.key} />
                 {uploadsCard(true)}
               </div>
             }
@@ -489,7 +502,7 @@ function FormStep({ q, index, total, answers, set, onBack, onNext, checking = fa
           </div>
         )}
         {q.type === "email" && value && !emailOk(value) && <p className="mt-2 text-[13px] text-action">Please check the email address.</p>}
-        {q.key === "email" && checkError && (
+        {(q.key === "email" || q.key === "plate") && checkError && (
           <p role="alert" className="mt-2 text-[13px] text-action">
             {checkError}
           </p>
@@ -655,25 +668,40 @@ function Conversation({
     scroller.current?.scrollTo({ top: scroller.current.scrollHeight, behavior: "smooth" });
   }, [lines.length, interim, phase]);
 
-  // ---- customer check: Mia asks for name and email first and only continues once they match a registered customer
-  const verified = useRef<{ name: string; email: string; plate: string } | null>(null);
+  // ---- customer check: Mia asks for name and email first, then the plate of the registered car, and only continues once both match
+  const verified = useRef<{ name: string; email: string } | null>(null);
+  const confirmedPlate = useRef("");
+  const failedPlates = useRef(0);
   const failedChecks = useRef(0);
   const isVerified = (a: ReportAnswers) =>
     !!verified.current && sameName(verified.current.name, a.name) && normalizeEmail(a.email) === normalizeEmail(verified.current.email);
   const checkCustomer = async (a: ReportAnswers): Promise<"verified" | "unknown" | "incomplete"> => {
     if (isVerified(a)) return "verified";
     if (!a.name.trim() || !a.email.trim()) return "incomplete";
-    const r = await verifyCustomer({ data: { name: a.name, email: a.email } }).catch(() => ({ registered: false as const, name: undefined, email: undefined, plate: undefined }));
+    const r = await verifyCustomer({ data: { name: a.name, email: a.email } }).catch(() => ({ registered: false as const, name: undefined, email: undefined }));
     if (r.registered && r.name && r.email) {
-      verified.current = { name: r.name, email: r.email, plate: r.plate ?? "" };
+      verified.current = { name: r.name, email: r.email };
       return "verified";
     }
     failedChecks.current += 1;
     return "unknown";
   };
+  const plateOk = (a: ReportAnswers) => isVerified(a) && !!confirmedPlate.current && confirmedPlate.current === plateKey(a.plate);
+  const checkPlate = async (a: ReportAnswers): Promise<"ok" | "wrong" | "incomplete"> => {
+    if (plateOk(a)) return "ok";
+    if (!plateKey(a.plate)) return "incomplete";
+    const r = await verifyCustomer({ data: { name: a.name, email: a.email, plate: a.plate } }).catch(() => null);
+    if (r?.registered && r.plateMatches) {
+      confirmedPlate.current = plateKey(a.plate);
+      return "ok";
+    }
+    failedPlates.current += 1;
+    return "wrong";
+  };
 
   const nextQuestion = (a: ReportAnswers) => {
     if (!isVerified(a)) return QUESTIONS.find((q) => q.key === (a.name.trim() ? "email" : "name"));
+    if (!plateOk(a)) return QUESTIONS.find((q) => q.key === "plate");
     const open = activeQuestions(a)
       .filter((q) => fieldState(q, a) === "missing")
       .sort((x, y) => Number(y.key === "what_happened") - Number(x.key === "what_happened"));
@@ -733,12 +761,15 @@ function Conversation({
   type Turn = { say: string; next: "continue" | "done" | "stop" };
   const NOT_FOUND = "I couldn't find a customer account with that name and email. Could you tell me your full name and the email address you registered with?";
   const BLOCKED = "I'm sorry, I still can't find a customer account with those details, so I can't take your claim by voice. Please check your registration or contact us, and try again.";
+  const PLATE_WRONG = "That number plate doesn't match the car registered to your account. Could you tell me the number plate again?";
+  const PLATE_BLOCKED = "I'm sorry, that plate still doesn't match the car on your account, so I can't take this claim by voice. Please contact us and we'll help you.";
   const understand = async (text: string): Promise<Turn> => {
     const clean = text.trim();
     const before = answersRef.current;
     const asked = nextQuestion(before);
     const lineNo = linesRef.current.length + 1;
     const wasVerified = isVerified(before);
+    const wasPlateOk = plateOk(before);
     let found: Partial<ReportAnswers> = { ...(asked ? interpretReply(asked, clean) : {}), ...extractFromUtterance(clean) };
     if (!wasVerified) {
       // Until the customer is verified, only name and email count
@@ -747,17 +778,27 @@ function Conversation({
       const name = found.name?.replace(/[\w.+-]+@\S+/g, "").replace(/[\s,;]+$/, "").trim();
       if (name) id.name = name;
       found = id;
+    } else if (!wasPlateOk) {
+      // Then only the plate counts, until it matches the registered car
+      found = found.plate ? { plate: found.plate } : {};
     } else if (!before.what_happened && clean.split(/\s+/).length >= 6 && !found.what_happened) found.what_happened = clean;
     let merged = { ...before, ...found };
     linesRef.current = [...linesRef.current, { speaker: "customer", text: clean }];
     setLines((l) => [...l, { speaker: "customer", text: clean }]);
 
     let check: "verified" | "unknown" | "incomplete" = "verified";
+    let plateCheck: "ok" | "wrong" | "incomplete" = "ok";
     if (!wasVerified) {
       check = await checkCustomer(merged);
-      if (check === "verified") merged = { ...merged, email: verified.current!.email, plate: merged.plate || verified.current!.plate };
+      if (check === "verified") merged = { ...merged, email: verified.current!.email };
       if (check === "unknown") {
         merged = { ...merged, name: "", email: "" };
+        found = {};
+      }
+    } else if (!wasPlateOk) {
+      plateCheck = await checkPlate(merged);
+      if (plateCheck === "wrong") {
+        merged = { ...merged, plate: "" };
         found = {};
       }
     }
@@ -769,12 +810,16 @@ function Conversation({
         delete n.name;
         delete n.email;
       }
+      if (plateCheck === "wrong") delete n.plate;
       for (const k of Object.keys(found) as AnswerKey[]) n[k] = lineNo;
       return n;
     });
 
     if (check === "unknown") return failedChecks.current >= 3 ? { say: BLOCKED, next: "stop" } : { say: NOT_FOUND, next: "continue" };
+    if (plateCheck === "wrong") return failedPlates.current >= 3 ? { say: PLATE_BLOCKED, next: "stop" } : { say: PLATE_WRONG, next: "continue" };
     const nq = nextQuestion(merged);
+    if (wasVerified && !wasPlateOk && plateCheck === "ok")
+      return nq ? { say: `Thanks, that matches the car on your account. ${nq.ask}`, next: "continue" } : { say: "", next: "done" };
     if (!wasVerified && check === "verified") {
       const first = merged.name.split(" ")[0];
       return nq ? { say: `Thanks, ${first}, I've found your customer account. ${nq.ask}`, next: "continue" } : { say: "", next: "done" };
@@ -873,12 +918,13 @@ function Conversation({
         dynamicVariables: { opening },
         clientTools: {
           update_claim: async (params: Record<string, unknown>) => {
-            let found = cleanAgentAnswers(params ?? {});
+            const all = cleanAgentAnswers(params ?? {});
+            let found: Partial<ReportAnswers> = all;
             let merged = { ...answersRef.current, ...found };
             let greeting = "";
             if (!isVerified(answersRef.current)) {
               // Nothing about the claim is saved until the caller is a registered customer
-              found = { ...(found.name ? { name: found.name } : {}), ...(found.email ? { email: found.email } : {}) };
+              found = { ...(all.name ? { name: all.name } : {}), ...(all.email ? { email: all.email } : {}) };
               merged = { ...answersRef.current, ...found };
               const check = await checkCustomer(merged);
               if (check !== "verified") {
@@ -891,8 +937,28 @@ function Conversation({
                   return "Not saved. Still no registered customer with that name and email. Apologise, explain you can only take claims from registered customers, ask them to check their registration or contact Clearpath, and end the conversation.";
                 return "Not saved. No registered customer matches that name and email. Tell the caller politely, ask them to repeat their full name and the email address they registered with, and call update_claim again. Do not ask about the claim until the customer is verified.";
               }
-              merged = { ...merged, email: verified.current!.email, plate: merged.plate || verified.current!.plate };
+              merged = { ...merged, email: verified.current!.email };
+              answersRef.current = merged;
+              setAnswers(() => merged);
               greeting = `Customer verified: ${merged.name}. `;
+            }
+            if (!plateOk(answersRef.current)) {
+              // Then the plate must match the customer's registered car before anything about the claim
+              const withPlate = { ...answersRef.current, ...(all.plate ? { plate: all.plate } : {}) };
+              const pc = await checkPlate(withPlate);
+              if (pc !== "ok") {
+                const keep = { ...withPlate, plate: "" };
+                answersRef.current = keep;
+                setAnswers(() => keep);
+                if (pc === "incomplete")
+                  return `${greeting}Not saved yet. Ask for the number plate of the caller's car and call update_claim with plate. Do not ask about the claim until the plate is confirmed.`;
+                if (failedPlates.current >= 3)
+                  return "Not saved. The number plate still doesn't match the car registered to this customer. Apologise, explain you can't take the claim without the registered car's plate, ask them to contact Clearpath, and end the conversation.";
+                return "Not saved. That number plate doesn't match the car registered to this customer. Tell the caller politely, ask for the number plate again and call update_claim with plate. Do not ask about the claim yet.";
+              }
+              found = { ...(greeting ? found : {}), plate: withPlate.plate };
+              merged = { ...answersRef.current, ...found };
+              greeting += "Number plate confirmed. ";
             }
             answersRef.current = merged;
             setAnswers(() => merged);
@@ -936,7 +1002,7 @@ function Conversation({
         );
       }
       sess.sendContextualUpdate?.(
-        "Before any question about the claim, ask for the caller's full name and the email address they registered with, and call update_claim with name and email. Only continue with the claim once update_claim says the customer is verified.",
+        "Before any question about the claim, ask for the caller's full name and the email address they registered with, and call update_claim with name and email. Then ask for the number plate of their car and call update_claim with plate. Only continue with the claim once update_claim says the customer is verified and the number plate is confirmed.",
       );
       setViaAgent(true);
       return true;

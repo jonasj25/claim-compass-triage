@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { findCustomer, normalizeEmail, sameName } from "./customers";
+import { findCustomer, normalizeEmail, samePlate, sameName } from "./customers";
 import { REGISTERED_CUSTOMERS } from "./customers.server";
 
 describe("registered customers", () => {
@@ -45,5 +45,13 @@ describe("registered customers", () => {
   it("matches a full registered name only in full", () => {
     expect(sameName("Anna Schmidt", "Anna Schmidt")).toBe(true);
     expect(sameName("Anna Schmidt", "Anna")).toBe(false);
+  });
+
+  it("compares plates however they are written or said", () => {
+    expect(samePlate("M-JO 4821", "m jo 4821")).toBe(true);
+    expect(samePlate("M-JO 4821", "MJO4821")).toBe(true);
+    expect(samePlate("M-JO 4821", "M JO four eight two one")).toBe(true);
+    expect(samePlate("M-JO 4821", "M-AN 2735")).toBe(false);
+    expect(samePlate("M-JO 4821", "")).toBe(false);
   });
 });

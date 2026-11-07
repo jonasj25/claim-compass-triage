@@ -66,6 +66,17 @@ export function sameName(registered: string, said: string): boolean {
   return r.length === 1 ? s[0] === r[0] : r.every((w, i) => s[i] === w);
 }
 
+/** Comparable plate: "m-jo 4821", "M JO four eight two one" and "MJO4821" are the same. */
+export function plateKey(raw: string): string {
+  const t = String(raw ?? "")
+    .toLowerCase()
+    .replace(/\b(zero|oh|one|two|three|four|five|six|seven|eight|nine)\b/g, (w) => DIGITS[w] ?? w);
+  return t.toUpperCase().replace(/[^A-Z0-9]/g, "");
+}
+
+export const samePlate = (registered: string, said: string) =>
+  !!plateKey(said) && plateKey(registered) === plateKey(said);
+
 /** The registered customer with this name AND this email, or null. Both must belong to the same customer. */
 export function findCustomer(
   list: readonly Customer[],

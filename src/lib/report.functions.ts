@@ -3,7 +3,7 @@ import { decide, type Claim, type Policy, type Recommendation } from "./triage";
 import { queueFor } from "./lifecycle";
 import { secondCheckReason } from "./second-check";
 import { tryAutoAssign } from "./auto-assign";
-import { findCustomer } from "./customers";
+import { findCustomer, samePlate } from "./customers";
 import { buildDocuments, type FactSource, type FormField, type TranscriptLine } from "./intake";
 import { activeQuestions, answerLabel, CSV_COLUMNS, EMPTY_ANSWERS, FIELD_SOURCE, isUnknownText, knownClaimFields, toClaimFields, type AnswerKey, type ReportAnswers } from "./report-intake";
 
@@ -62,6 +62,7 @@ export const submitClaimReport = createServerFn({ method: "POST" })
       const { REGISTERED_CUSTOMERS } = await import("./customers.server");
       const customer = findCustomer(REGISTERED_CUSTOMERS, a.name, a.email);
       if (!customer) throw new Error("We couldn't find a registered customer with this name and email. Please check both and try again.");
+      if (!samePlate(customer.plate, a.plate)) throw new Error("This number plate doesn't match the car registered to you. Please check it and try again.");
       a.email = customer.email;
     }
 

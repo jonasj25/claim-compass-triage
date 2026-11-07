@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { findCustomer } from "@/lib/customers";
+import { findCustomer, samePlate } from "@/lib/customers";
 import { REGISTERED_CUSTOMERS } from "@/lib/customers.server";
 import { Route as ReportRoute } from "@/routes/report";
 
@@ -10,9 +10,15 @@ vi.mock("@tanstack/react-router", async (orig) => {
 });
 // The server check, run locally against the same list
 vi.mock("@/lib/customers.functions", () => ({
-  verifyCustomer: async ({ data }: { data: { name: string; email: string } }) => {
+  verifyCustomer: async ({ data }: { data: { name: string; email: string; plate?: string } }) => {
     const c = findCustomer(REGISTERED_CUSTOMERS, data.name, data.email);
-    return c ? { registered: true, ...c } : { registered: false };
+    if (!c) return { registered: false };
+    return {
+      registered: true,
+      name: c.name,
+      email: c.email,
+      ...(data.plate !== undefined ? { plateMatches: samePlate(c.plate, data.plate) } : {}),
+    };
   },
 }));
 vi.mock("@/lib/voice.functions", () => ({
@@ -44,7 +50,20 @@ describe("Mia checks the customer before the claim", () => {
     say("John123@gmail.com");
     await waitFor(() =>
       expect(
-        screen.getByText(/Thanks, John, I've found your customer account\. What happened\?/),
+        screen.getByText(
+          /I've found your customer account\. What's the number plate of your car\?/,
+        ),
+      ).toBeTruthy(),
+    );
+    say("M-AN 2735");
+    await waitFor(() =>
+      expect(screen.getByText(/doesn't match the car registered to your account/)).toBeTruthy(),
+    );
+    expect(screen.queryByText(/What happened\?/)).toBeNull();
+    say("M JO 4821");
+    await waitFor(() =>
+      expect(
+        screen.getByText(/Thanks, that matches the car on your account\. What happened\?/),
       ).toBeTruthy(),
     );
   });
@@ -92,13 +111,25 @@ describe("the written form checks the customer too", () => {
     expect(screen.getByText("Which email can we reach you at?")).toBeTruthy();
   });
 
-  it("continues for a registered customer and fills in their plate", async () => {
+  it("asks for the plate itself and only continues when it matches the registered car", async () => {
     render(<Page />);
     fireEvent.click(screen.getByRole("button", { name: /form|type|write/i }));
     typeIn("Anna");
     await waitFor(() => expect(screen.getByText("Which email can we reach you at?")).toBeTruthy());
     typeIn("Anna123@gmail.com");
     await waitFor(() => expect(screen.getByText("What's your policy number?")).toBeTruthy());
-    expect(screen.getAllByText("M-AN 2735").length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByRole("button", { name: /Skip/ }));
+    await waitFor(() =>
+      expect(screen.getByText("What's the number plate of your car?")).toBeTruthy(),
+    );
+    expect((document.querySelector("main input") as HTMLInputElement).value).toBe(""); // not filled in for them
+    typeIn("M-JO 4821");
+    await waitFor(() =>
+      expect(screen.getByRole("alert").textContent).toMatch(
+        /doesn't match the car registered to you/,
+      ),
+    );
+    typeIn("m an 2735");
+    await waitFor(() => expect(screen.getByText("When did it happen?")).toBeTruthy());
   });
 });
