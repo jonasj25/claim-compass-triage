@@ -119,8 +119,19 @@ function SignIn() {
         </div>
 
         <Link
-          to="/batch"
+          to="/report"
           className="card-quiet mt-6 flex items-center justify-between px-4 py-3 hover:bg-surface-2"
+        >
+          <span>
+            <span className="block text-[14px] font-medium">Customer view: report a claim</span>
+            <span className="block text-[12px] text-text-2">Form or voice, triaged on submit</span>
+          </span>
+          <span className="label-mono">→</span>
+        </Link>
+
+        <Link
+          to="/batch"
+          className="card-quiet mt-3 flex items-center justify-between px-4 py-3 hover:bg-surface-2"
         >
           <span>
             <span className="block text-[14px] font-medium">
