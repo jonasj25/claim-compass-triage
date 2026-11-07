@@ -186,8 +186,8 @@ function Dashboard() {
   const filtering = !!term || task !== "all" || channel !== "all";
   const scopes = [
     ["mine", "Mine", mineCount],
-    ["unassigned", "Unassigned", unassignedCount],
     ["all", "Everyone", work.ordered.length],
+    ["unassigned", "Unassigned", unassignedCount],
   ] as const;
   const reset = () => {
     setSearch("");
