@@ -26,7 +26,7 @@ import {
   TriangleAlert,
   CircleCheck,
   CircleX,
-  Flag,
+  RefreshCw,
   FileQuestion,
   BellRing,
 } from "lucide-react";
@@ -600,8 +600,8 @@ function CaseDetail() {
           </span>
         )}
         {recheck && !closed && (
-          <span className="inline-flex items-center gap-1 text-[12px] text-wait">
-            <Flag className="size-3.5 fill-wait-dot" /> Changed by policy update
+          <span className="inline-flex items-center gap-1 text-[12px] text-text-2">
+            <RefreshCw className="size-3.5 text-link" /> Policy change
           </span>
         )}
         <span

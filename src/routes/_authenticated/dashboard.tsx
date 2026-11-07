@@ -3,7 +3,15 @@ import { useQuery, useQueryClient, useSuspenseQuery } from "@tanstack/react-quer
 import { toast } from "sonner";
 import { assignCases } from "@/lib/assignment";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowRight, CheckCircle2, ChevronDown, Flag, Phone, Search, TriangleAlert } from "lucide-react";
+import {
+  ArrowRight,
+  CheckCircle2,
+  ChevronDown,
+  Phone,
+  RefreshCw,
+  Search,
+  TriangleAlert,
+} from "lucide-react";
 import { activePolicyQuery, casesQuery } from "@/lib/data";
 import { dashboardActivityQuery, outreachRemindersQuery } from "@/lib/dashboard-activity";
 import {
@@ -514,18 +522,7 @@ function Dashboard() {
                         selected === id && "bg-surface-2",
                       )}
                     >
-                      <td
-                        className={cn(
-                          "whitespace-nowrap px-3 py-2 font-mono text-[12px]",
-                          policyChanged && "shadow-[inset_3px_0_0_var(--wait-dot)]",
-                        )}
-                      >
-                        {policyChanged && (
-                          <Flag
-                            aria-label="Changed by the policy update"
-                            className="mr-1.5 inline size-3.5 fill-wait-dot text-wait"
-                          />
-                        )}
+                      <td className="whitespace-nowrap px-3 py-2 font-mono text-[12px]">
                         <Link
                           to="/claims/$caseId"
                           params={{ caseId: id }}
@@ -555,7 +552,10 @@ function Dashboard() {
                                 Near limit
                               </>
                             ) : policyChanged ? (
-                              <span className="text-wait">{item.why.split(" · ")[0]}</span>
+                              <>
+                                <RefreshCw className="mr-1 inline size-3 text-link" />
+                                Policy change
+                              </>
                             ) : workTab(item) === "Risk cases" ? (
                               item.why.split(" · ")[0]
                             ) : (
