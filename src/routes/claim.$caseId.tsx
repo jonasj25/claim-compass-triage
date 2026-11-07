@@ -119,7 +119,10 @@ function ClaimPortal() {
     };
   }, [incoming?.requested_at]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const missingFields = (status?.missing_fields ?? []).filter((f) => FIELD_QUESTIONS[f]);
+  // What the reviewer asked Mia to collect (missing facts and open questions), else what the rules are missing
+  const missingFields = (status?.incoming_call?.missing_items?.length ? status.incoming_call.missing_items : (status?.missing_fields ?? [])).filter(
+    (f) => FIELD_QUESTIONS[f],
+  );
   const levelOf = () => {
     const s = session.current;
     try {

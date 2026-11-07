@@ -343,7 +343,8 @@ export const getClaimStatus = createServerFn({ method: "POST" })
     const evs = (events.data ?? []) as { type: string; created_at: string; payload: Record<string, unknown> | null }[];
     const lastReq = evs.find((e) => e.type === "call_requested");
     const lastEnd = evs.find((e) => e.type === "call_ended" || e.type === "call_logged");
-    const pending = lastReq && (!lastEnd || lastEnd.created_at < lastReq.created_at) && dec.data?.recommendation === "request_information";
+    const open = String(claim.case_status ?? "").toLowerCase() !== "closed" && wf.data?.queue !== "done";
+    const pending = lastReq && (!lastEnd || lastEnd.created_at < lastReq.created_at) && open;
     return {
       case_id: data.case_id,
       name: (intake.data?.customer_name as string | null) ?? null,

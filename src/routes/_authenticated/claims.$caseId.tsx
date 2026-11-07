@@ -367,9 +367,17 @@ function CaseDetail() {
   const call = () =>
     run(() => must(event("call_logged", { channel: "phone" })), "Phone call logged");
   // Mia calls the customer in their claim portal and asks only for what is missing
+  // What Mia asks: facts the rules are missing plus every check that is still unknown
+  const callItems = (): string[] =>
+    Array.from(
+      new Set([
+        ...((decision?.missing_fields as string[] | undefined) ?? []),
+        ...live.checklist.filter((c) => c.status === "unknown").map((c) => c.field),
+      ]),
+    ).filter((f) => !["duplicate_flag", "evidence_conflict"].includes(f));
   const callCustomer = () =>
     run(
-      () => must(event("call_requested", { channel: "portal", missing_items: (decision?.missing_fields as string[] | undefined) ?? [] })),
+      () => must(event("call_requested", { channel: "portal", missing_items: callItems() })),
       "Calling the customer… their claim page is ringing",
     );
   const portalEmail = String(((data?.claim as Row | undefined)?.raw as Row | undefined)?.customer_email ?? "");
@@ -1260,7 +1268,7 @@ function CaseDetail() {
                 onDeny={() => openChat("deny")}
                 onRequest={() => openChat("request")}
                 onReminder={() => openChat("reminder")}
-                onCall={portalUrl ? () => void callCustomer() : undefined}
+                onCall={portalUrl && !closed && callItems().length ? () => void callCustomer() : undefined}
                 portalUrl={portalUrl}
                 onConfirm={() => void confirm(true)}
                 onOverride={() =>
@@ -1346,6 +1354,11 @@ function DecisionPanel({
         <Button variant="outline" disabled={busy} onClick={onRequest} className="mt-2 w-full">
           <FileQuestion className="size-4" /> Ask customer for information
         </Button>
+        {onCall && (
+          <Button variant="outline" disabled={busy} onClick={onCall} className="mt-2 w-full">
+            <PhoneCall className="size-4" /> Call customer (Mia)
+          </Button>
+        )}
         <p className="mt-2 text-[10.5px] text-text-3">Opens the message to the customer. Nothing is sent before you confirm.</p>
         {change}
       </>
