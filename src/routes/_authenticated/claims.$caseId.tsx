@@ -9,6 +9,7 @@ import {
   Lock,
   MessageSquare,
   PhoneCall,
+  Phone,
   Send,
   UserPlus,
   X,
@@ -375,9 +376,16 @@ function CaseDetail() {
         ...live.checklist.filter((c) => c.status === "unknown").map((c) => c.field),
       ]),
     ).filter((f) => !["duplicate_flag", "evidence_conflict"].includes(f));
+  const callTopics = (): string[] => {
+    const items = callItems();
+    if (items.length) return items;
+    return Array.from(new Set(live.checklist.filter((c) => c.status === "fail").map((c) => c.field))).filter(
+      (f) => !["duplicate_flag", "evidence_conflict"].includes(f),
+    );
+  };
   const callCustomer = () =>
     run(
-      () => must(event("call_requested", { channel: "portal", missing_items: callItems() })),
+      () => must(event("call_requested", { channel: "portal", missing_items: callTopics() })),
       "Calling the customer… their claim page is ringing",
     );
   const portalEmail = String(((data?.claim as Row | undefined)?.raw as Row | undefined)?.customer_email ?? "");
@@ -1039,6 +1047,35 @@ function CaseDetail() {
               claim={claim}
               policy={policy}
               initialTemplate={chatTpl}
+              callSlot={
+                closed ? null : (
+                  <div className="mt-5 flex items-center gap-3 border-t border-line pt-4">
+                    <button
+                      type="button"
+                      disabled={busy || !portalUrl}
+                      onClick={() => void callCustomer()}
+                      aria-label="Call customer"
+                      title={portalUrl ? "Call the customer with Mia" : "No plate or email to reach the customer's claim page"}
+                      className="flex size-11 shrink-0 items-center justify-center rounded-full bg-[oklch(0.62_0.17_150)] text-white shadow-sm transition-transform hover:scale-105 disabled:opacity-40 disabled:hover:scale-100"
+                    >
+                      <Phone className="size-5 fill-white" strokeWidth={1.5} />
+                    </button>
+                    <div className="min-w-0 text-[12.5px]">
+                      <p className="font-medium">Or call {data.intake?.customer_name ?? "the customer"}</p>
+                      <p className="text-text-2">
+                        {portalUrl
+                          ? `Mia (voice agent) calls them in their claim page${callTopics().length ? ` and asks about: ${callTopics().map((f) => (FIELD_LABELS[f] ?? f.replace(/_/g, " ")).toLowerCase()).join(", ")}` : ""}.`
+                          : "No plate or email on file, so the claim page cannot ring."}
+                      </p>
+                      {portalUrl && (
+                        <a href={portalUrl} target="_blank" rel="noreferrer" className="text-[11.5px] text-link hover:underline">
+                          Open the customer's claim page (demo)
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                )
+              }
               onRequestSent={() => {
                 if (chatTpl) {
                   if (nextId) goTo(nextId);
@@ -1273,8 +1310,6 @@ function CaseDetail() {
                 onDeny={() => openChat("deny")}
                 onRequest={() => openChat("request")}
                 onReminder={() => openChat("reminder")}
-                onCall={portalUrl && !closed && callItems().length ? () => void callCustomer() : undefined}
-                portalUrl={portalUrl}
                 onConfirm={() => void confirm(true)}
                 onOverride={() =>
                   setOverrideOpen(rec === "human_review" ? "routine_processing" : "human_review")
@@ -1300,7 +1335,9 @@ function CaseDetail() {
   );
 }
 
-// One place for the reviewer's decision. What it offers depends on why the case is here.
+// One place for the reviewer's decision. What it offers depends on why the case is here;
+// "Ask customer for information" is always the last action (it opens the Customer tab:
+// write an email or call the customer).
 function DecisionPanel({
   mode,
   rec,
@@ -1310,8 +1347,6 @@ function DecisionPanel({
   onDeny,
   onRequest,
   onReminder,
-  onCall,
-  portalUrl,
   onConfirm,
   onOverride,
 }: {
@@ -1323,29 +1358,17 @@ function DecisionPanel({
   onDeny: () => void;
   onRequest: () => void;
   onReminder: () => void;
-  onCall?: () => void;
-  portalUrl?: string | null;
   onConfirm: () => void;
   onOverride: () => void;
 }) {
-  const change = (
-    <button
-      type="button"
-      disabled={busy}
-      onClick={onOverride}
-      className="mt-3 w-full text-center text-[11px] text-text-2 underline-offset-4 hover:text-foreground hover:underline"
-    >
-      Rule got it wrong? Change recommendation <Kbd>O</Kbd>
-    </button>
-  );
   const head = (title: string, sub: string | null) => (
     <>
       <Label className="block text-[12px]">{title}</Label>
       {sub && <p className="mb-3 mt-1 line-clamp-2 text-[11px] text-text-2">{sub}</p>}
     </>
   );
-  if (mode === "review")
-    return (
+  const body =
+    mode === "review" ? (
       <>
         {head("Your decision", reason ? `Flagged: ${reason}` : `Rules say: ${RECOMMENDATION_LABELS[rec]}`)}
         <div className="grid grid-cols-2 gap-2">
@@ -1356,60 +1379,42 @@ function DecisionPanel({
             <CircleX className="size-4" /> Deny claim
           </Button>
         </div>
-        <Button variant="outline" disabled={busy} onClick={onRequest} className="mt-2 w-full">
-          <FileQuestion className="size-4" /> Ask customer for information
-        </Button>
-        {onCall && (
-          <Button variant="outline" disabled={busy} onClick={onCall} className="mt-2 w-full">
-            <PhoneCall className="size-4" /> Call customer (Mia)
-          </Button>
-        )}
-        {onCall && portalUrl && (
-          <a href={portalUrl} target="_blank" rel="noreferrer" className="mt-1.5 block text-center text-[11.5px] text-link hover:underline">
-            Open the customer's claim page (demo)
-          </a>
-        )}
-        <p className="mt-2 text-[10.5px] text-text-3">Opens the message to the customer. Nothing is sent before you confirm.</p>
-        {change}
       </>
-    );
-  if (mode === "check")
-    return (
+    ) : mode === "check" ? (
       <>
         {head("Quick double-check", reason ?? "Random QA sample")}
         <Button className="w-full" disabled={busy} onClick={onConfirm}>
           Looks right – confirm & next <Kbd dark>C</Kbd>
         </Button>
-        {change}
       </>
-    );
-  if (mode === "waiting")
-    return (
+    ) : mode === "waiting" ? (
       <>
         {head("Waiting on customer", "A request was sent. The case is checked again automatically when they reply.")}
-        {onCall && (
-          <Button className="mb-2 w-full" disabled={busy} onClick={onCall}>
-            <PhoneCall className="size-4" /> Call customer (Mia)
-          </Button>
-        )}
         <Button variant="outline" className="w-full" disabled={busy} onClick={onReminder}>
           <BellRing className="size-4" /> Send reminder
         </Button>
-        {portalUrl && (
-          <a href={portalUrl} target="_blank" rel="noreferrer" className="mt-2 block text-center text-[11.5px] text-link hover:underline">
-            Open the customer's claim page (demo)
-          </a>
-        )}
-        {change}
       </>
+    ) : (
+      head(
+        mode === "done" ? "Reviewed" : "Auto-processed",
+        mode === "done" ? "In normal claims handling. Nothing left to do here." : "No reviewer needed.",
+      )
     );
   return (
     <>
-      {head(
-        mode === "done" ? "Reviewed" : "Auto-processed",
-        mode === "done" ? "In normal claims handling. Nothing left to do here." : "No reviewer needed.",
-      )}
-      {change}
+      {body}
+      <Button variant="outline" disabled={busy} onClick={onRequest} className="mt-2 w-full">
+        <FileQuestion className="size-4" /> Ask customer for information
+      </Button>
+      <p className="mt-1.5 text-[10.5px] text-text-3">Opens the Customer tab: write an email or call. Nothing is sent before you confirm.</p>
+      <button
+        type="button"
+        disabled={busy}
+        onClick={onOverride}
+        className="mt-3 w-full text-center text-[11px] text-text-2 underline-offset-4 hover:text-foreground hover:underline"
+      >
+        Rule got it wrong? Change recommendation <Kbd>O</Kbd>
+      </button>
     </>
   );
 }
