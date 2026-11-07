@@ -49,12 +49,30 @@ export function MiaCall({
   phaseRef.current = phase;
   const fields = items.filter((f) => FIELD_QUESTIONS[f]);
 
-  // Two-tone ring while waiting
+  // Browsers only allow sound after the user has clicked on the page once
+  const [muted, setMuted] = useState(false);
+
+  // Two-tone ring while waiting; flashes the tab title as well
   useEffect(() => {
     if (inCall) return;
-    let stop = () => undefined as void;
+    const title = document.title;
+    const flash = window.setInterval(() => {
+      document.title = document.title === title ? "📞 Clearpath is calling…" : title;
+    }, 1000);
+    let stop = () => {
+      window.clearInterval(flash);
+      document.title = title;
+    };
     try {
       const ctx = new AudioContext();
+      const unlock = () => {
+        ctx.resume().then(() => setMuted(false)).catch(() => undefined);
+      };
+      if (ctx.state === "suspended") {
+        setMuted(true);
+        window.addEventListener("pointerdown", unlock);
+        window.addEventListener("keydown", unlock);
+      }
       const beep = () => {
         for (const [f, at] of [[440, 0], [480, 0], [440, 0.45], [480, 0.45]] as const) {
           const o = ctx.createOscillator();
@@ -71,6 +89,10 @@ export function MiaCall({
       const t = window.setInterval(beep, 2500);
       stop = () => {
         window.clearInterval(t);
+        window.clearInterval(flash);
+        document.title = title;
+        window.removeEventListener("pointerdown", unlock);
+        window.removeEventListener("keydown", unlock);
         ctx.close().catch(() => undefined);
       };
     } catch {
@@ -180,6 +202,9 @@ export function MiaCall({
       <p className="mt-1 text-[13.5px] text-text-2">
         {inCall ? "Answer naturally. Say if you're not sure about something." : `Mia would like to complete your claim ${caseId}.`}
       </p>
+      {!inCall && muted && (
+        <p className="mt-2 text-[12px] text-text-3">Tap anywhere on the page to hear the ringtone.</p>
+      )}
       <div className="mt-5 flex gap-3">
         {inCall ? (
           <Button onClick={hangUp} className="h-11 rounded-full bg-action px-6 hover:bg-action/90">

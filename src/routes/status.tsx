@@ -68,25 +68,35 @@ function StatusPage() {
   const [list, setList] = useState<MyClaimSummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const load = useCallback(async (p: string) => {
-    setBusy(true);
-    setError(null);
+  const load = useCallback(async (p: string, quiet = false) => {
+    if (!quiet) {
+      setBusy(true);
+      setError(null);
+    }
     try {
       setList(await findMyClaims({ data: { plate: p } }));
     } catch (e) {
-      setError((e as Error).message);
+      if (!quiet) setError((e as Error).message);
     } finally {
-      setBusy(false);
+      if (!quiet) setBusy(false);
     }
   }, []);
 
-  // Auto-lookup when the plate comes in the link
+  // Auto-lookup when the plate comes in the link; keep refreshing so an incoming call shows up in the list
   useEffect(() => {
-    if (search.plate) {
-      setPlate(search.plate);
-      void load(search.plate);
-    } else setList(null);
-  }, [search.plate, load]);
+    if (!search.plate) {
+      setList(null);
+      return;
+    }
+    setPlate(search.plate);
+    void load(search.plate);
+    if (search.case) return;
+    const p = search.plate;
+    const t = window.setInterval(() => void load(p, true), 3000);
+    return () => window.clearInterval(t);
+  }, [search.plate, search.case, load]);
+
+  const calling = !search.case ? list?.find((c) => c.incoming_call) : undefined;
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -131,6 +141,17 @@ function StatusPage() {
             </form>
 
             {error && <p className="mt-4 text-[14px] text-action">{error}</p>}
+
+            {calling && (
+              <button
+                onClick={() => void navigate({ search: { plate: search.plate, case: calling.case_id } })}
+                className="mt-6 flex w-full animate-pulse items-center gap-3 rounded-[14px] bg-ok px-5 py-4 text-left text-white shadow-lg"
+              >
+                <Phone className="size-5" />
+                <span className="flex-1 text-[15px] font-semibold">Clearpath is calling you about {calling.case_id}</span>
+                <span className="rounded-full bg-white px-4 py-1.5 text-[13px] font-semibold text-ok">Answer</span>
+              </button>
+            )}
 
             {list && (
               <section className="mt-8">
