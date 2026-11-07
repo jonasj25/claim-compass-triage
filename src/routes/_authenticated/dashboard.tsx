@@ -385,7 +385,7 @@ function Dashboard() {
 
       <div className="card-quiet overflow-hidden">
         {/* Row 1: whose cases (underline tabs). Row 2: kind of case (pill group) + search and filters.
-            All counts follow the other filters live. */}
+            Scope tabs always show the "All" number of that scope; the kinds follow the chosen scope. */}
         <div
           role="tablist"
           aria-label="Whose cases"
@@ -405,7 +405,7 @@ function Dashboard() {
             >
               {label}
               <span className="num text-text-3">
-                {work.ordered.filter((i) => (task === "all" || workTab(i) === task) && matchesFilters(i, key)).length}
+                {work.ordered.filter((i) => matchesFilters(i, key)).length}
               </span>
             </Button>
           ))}
