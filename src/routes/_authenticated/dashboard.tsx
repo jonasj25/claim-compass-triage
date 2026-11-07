@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { assignCases } from "@/lib/assignment";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -33,6 +33,7 @@ import { Chip } from "@/components/triage/ui";
 import { ClaimsProgress } from "@/components/triage/ClaimsProgress";
 import { Unknown } from "@/components/triage/ui";
 import { saveCaseNav } from "@/lib/case-nav";
+import { fmtSecs, handlingQuery } from "@/lib/handling-time";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
@@ -83,6 +84,7 @@ function Dashboard() {
   const { data: policy } = useSuspenseQuery(activePolicyQuery);
   const { data: events } = useSuspenseQuery(dashboardActivityQuery);
   const { data: outreach } = useSuspenseQuery(outreachRemindersQuery);
+  const handling = useQuery(handlingQuery);
   const navigate = useNavigate();
   const [now, setNow] = useState(() => new Date());
   const [collapsed, setCollapsed] = useState<Set<GroupKey>>(() => new Set());
@@ -234,42 +236,56 @@ function Dashboard() {
     return () => document.removeEventListener("keydown", onKey);
   });
 
-  // Header numbers. "Handled automatically" uses the same definition as Workload & flow:
-  // open claims whose current recommendation is Auto-processed or Request info.
+  // Header numbers: the first four are about the reviewer's own queue; what runs on its own
+  // (waiting on customer, auto-processed) is shown small at the end.
   const total = work.ordered.length;
   const openRows = data.filter((r) => r.decision && !isDone(r));
   const autoShare = openRows.length
     ? openRows.filter((r) => r.decision?.recommendation !== "human_review").length / openRows.length
     : 0;
   const reviewVolume = work.ordered.reduce((n, i) => n + (i.row.claim.quote_eur ?? 0), 0);
+  const largest = work.ordered.reduce<WorkItem | null>(
+    (m, i) => ((i.row.claim.quote_eur ?? -1) > (m?.row.claim.quote_eur ?? -1) ? i : m),
+    null,
+  );
+  const ages = work.ordered
+    .map((i) => Date.parse(i.row.claim.received_at ?? ""))
+    .filter((t) => Number.isFinite(t))
+    .map((t) => (now.getTime() - t) / 86_400_000);
+  const avgDays = ages.length ? ages.reduce((a, b) => a + b, 0) / ages.length : null;
   const oldest = work.ordered.reduce<WorkItem | null>((o, i) => {
     const t = Date.parse(i.row.claim.received_at ?? "");
     if (!Number.isFinite(t)) return o;
     return !o || t < Date.parse(o.row.claim.received_at ?? "") ? i : o;
   }, null);
   const oldestAge = oldest ? age(oldest.row.claim.received_at, now) : null;
-  const kpis: { value: string; label: string; sub: string; to?: { status: ClaimStatus } }[] = [
-    { value: String(total), label: "To review", sub: "need your decision" },
+  const byTab = WORK_TABS.map((t) => [t, work.ordered.filter((i) => workTab(i) === t).length] as const)
+    .filter(([, n]) => n > 0)
+    .sort((a, b) => b[1] - a[1]);
+  const fmtK = (n: number) => (n >= 10_000 ? `€${Math.round(n / 1000)}k` : money(n));
+  const kpis: { value: string; label: string; sub: string; caseItem?: WorkItem | null; tone?: "action" }[] = [
     {
-      value: String(counts.waiting_customer),
-      label: "Waiting on customer",
-      sub: "request sent, nothing to do",
-      to: { status: "waiting_customer" },
-    },
-    {
-      value: `${Math.round(autoShare * 100)}%`,
-      label: "Handled automatically",
-      sub: `of ${openRows.length} open claims`,
-    },
-    {
-      value: reviewVolume >= 10_000 ? `€${Math.round(reviewVolume / 1000)}k` : money(reviewVolume),
-      label: "Quote volume to review",
-      sub: total ? `avg ${money(Math.round(reviewVolume / total))} per case` : "nothing waiting",
+      value: String(total),
+      label: "To review",
+      sub: byTab.length ? byTab.slice(0, 3).map(([t, n]) => `${n} ${t.toLowerCase()}`).join(" · ") : "nothing waiting",
+      tone: total > 0 ? "action" : undefined,
     },
     {
       value: oldestAge ?? "–",
-      label: "Oldest open case",
-      sub: oldest ? oldest.row.claim.case_id : "nothing waiting",
+      label: "Longest waiting",
+      sub: avgDays !== null ? `${oldest?.row.claim.case_id} · avg ${avgDays < 1 ? "<1" : Math.round(avgDays)}d in queue` : "nothing waiting",
+      caseItem: oldest,
+    },
+    {
+      value: fmtK(reviewVolume),
+      label: "Quote volume to review",
+      sub: largest?.row.claim.quote_eur ? `largest ${money(largest.row.claim.quote_eur)} · ${largest.row.claim.case_id}` : "nothing waiting",
+      caseItem: largest,
+    },
+    {
+      value: handling.data?.avg ? fmtSecs(handling.data.avg) : "–",
+      label: "Avg time per decision",
+      sub: handling.data?.n ? `${handling.data.n} decisions today` : "no decisions yet today",
     },
   ];
 
@@ -283,37 +299,24 @@ function Dashboard() {
           <p className="mb-3 text-[14px] font-medium">
             {greet}, {me.name.split(" ")[0]}
           </p>
-          <div className="flex flex-wrap divide-x divide-line">
+          <div className="flex flex-wrap items-end divide-x divide-line">
             {kpis.map((k) => {
               const body = (
                 <>
-                  <div
-                    className={cn(
-                      "num text-[20px] font-semibold",
-                      k.label === "To review" && total > 0 && "text-action",
-                    )}
-                  >
+                  <div className={cn("num text-[22px] font-semibold leading-tight", k.tone === "action" && "text-action")}>
                     {k.value}
                   </div>
                   <div className="text-[11px] font-medium text-foreground">{k.label}</div>
                   <div className="text-[11px] text-text-2">{k.sub}</div>
                 </>
               );
-              return k.to ? (
-                <Link
-                  key={k.label}
-                  to="/claims"
-                  search={k.to}
-                  className="px-5 first:pl-0 hover:opacity-80"
-                >
-                  {body}
-                </Link>
-              ) : k.label === "Oldest open case" && oldest ? (
+              const item = k.caseItem;
+              return item ? (
                 <Link
                   key={k.label}
                   to="/claims/$caseId"
-                  params={{ caseId: oldest.row.claim.case_id }}
-                  onClick={() => remember(oldest)}
+                  params={{ caseId: item.row.claim.case_id }}
+                  onClick={() => remember(item)}
                   className="px-5 first:pl-0 hover:opacity-80"
                 >
                   {body}
@@ -324,6 +327,16 @@ function Dashboard() {
                 </div>
               );
             })}
+            <Link
+              to="/claims"
+              search={{ status: "waiting_customer" }}
+              className="px-5 text-[11px] leading-relaxed text-text-3 hover:text-text-2"
+            >
+              <span className="block font-medium text-text-2">Running on its own</span>
+              {counts.waiting_customer} waiting on customer · {counts.auto_processed} auto-processed
+              <br />
+              {Math.round(autoShare * 100)}% of open claims need no reviewer
+            </Link>
           </div>
         </div>
         {visible[0] && (
@@ -548,9 +561,7 @@ function Dashboard() {
         )}
       </div>
       <p className="mt-4 text-[12px] text-text-2">
-        Running on its own · {counts.auto_processed} auto-processed · {counts.waiting_customer}{" "}
-        waiting on customer · {counts.done} done{" "}
-        <Link to="/claims" className="ml-3 underline underline-offset-4">
+        <Link to="/claims" className="underline underline-offset-4">
           See all claims
         </Link>
       </p>
