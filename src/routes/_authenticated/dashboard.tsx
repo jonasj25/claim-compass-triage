@@ -495,12 +495,12 @@ function Dashboard() {
                         "w-[150px]",
                         "w-[220px]",
                         "",
-                        // Amount stays right-aligned where it was; the three columns after it are centred
-                        // so the gaps between them look even (same total width as before)
-                        "w-[90px] text-right",
-                        "w-[100px] text-center",
-                        "w-[130px] text-center",
-                        "w-[90px] text-center",
+                        // Amount, Priority, Assignee, Received: four equal columns, all centred, so the
+                        // gaps between them are the same; 99px keeps "Amount" starting where it did
+                        "w-[99px] px-2 text-center",
+                        "w-[99px] px-2 text-center",
+                        "w-[99px] px-2 text-center",
+                        "w-[99px] px-2 text-center",
                       ][i],
                     )}
                   >
@@ -575,10 +575,10 @@ function Dashboard() {
                       >
                         {row.claim.claim_summary ?? <Unknown />}
                       </td>
-                      <td className="num px-3 py-2 text-right">
+                      <td className="num px-2 py-2 text-center">
                         {row.claim.quote_eur === null ? <Unknown /> : money(row.claim.quote_eur)}
                       </td>
-                      <td className="px-3 py-2 text-center">
+                      <td className="px-2 py-2 text-center">
                         <span
                           title={p.why}
                           className={cn(
@@ -593,7 +593,7 @@ function Dashboard() {
                           {p.level}
                         </span>
                       </td>
-                      <td className="px-3 py-2 text-center text-[12px]">
+                      <td className="px-2 py-2 text-center text-[12px]">
                         {row.workflow?.assignee ? (
                           <span className="block truncate text-text-2">
                             {row.workflow.assignee === me.name ? "You" : row.workflow.assignee}
@@ -602,14 +602,14 @@ function Dashboard() {
                           <Button
                             size="sm"
                             variant="outline"
-                            className="relative z-10 h-7 bg-white px-2 text-[11.5px]"
+                            className="relative z-10 h-7 bg-white px-1.5 text-[11px]"
                             onClick={() => void assignToMe(id)}
                           >
                             Assign to me
                           </Button>
                         )}
                       </td>
-                      <td className="px-3 py-2 text-center text-[11px] text-text-2">
+                      <td className="px-2 py-2 text-center text-[11px] text-text-2">
                         {waited ? `${waited} ago` : <Unknown />}
                       </td>
                     </tr>
