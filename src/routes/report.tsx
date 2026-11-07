@@ -26,7 +26,7 @@ import {
 } from "@/lib/report-intake";
 import { addClaimInfo, submitClaimReport, type ReportResult } from "@/lib/report.functions";
 import { uploadClaimFile } from "@/lib/files.functions";
-import { readClaimDocument } from "@/lib/doc-reader.functions";
+import { scanDocument } from "@/lib/document-scan.functions";
 import { DocumentUploads, UPLOAD_SLOTS, type PendingFile, type UploadKind } from "@/components/triage/DocumentUploads";
 import { speakText, transcribeAudio, voiceStatus } from "@/lib/voice.functions";
 import { verifyCustomer } from "@/lib/customers.functions";
@@ -128,25 +128,9 @@ function ReportPage() {
   const latest = useRef({ answers, lines, heardIn, files, uploads });
   latest.current = { answers, lines, heardIn, files, uploads };
 
-<<<<<<< Updated upstream
   // An added document is read right away; what it clearly states ticks the checklist and Mia skips it.
   // Only empty answers are filled: what the customer said themselves is never overwritten.
   const addUpload = (f: PendingFile, slotAnswers: Partial<ReportAnswers>) => {
-=======
-  // An added document fills the answers it gives that the customer hasn't given yet (checklist ticks, Mia skips them)
-  const addUpload = (f: PendingFile, found: Partial<ReportAnswers>) => {
-    const cur = latest.current.answers;
-    const ans = Object.fromEntries(
-      Object.entries(found).filter(([k, v]) => {
-        const mine = String(cur[k as AnswerKey] ?? "").trim();
-        return !!v && (!mine || mine === "unsure");
-      }),
-    ) as Partial<ReportAnswers>;
-    setUploads((u) => [...u.filter((x) => x.kind !== f.kind), f]);
-    setFiles((fs) => (f.kind === "photos" ? fs : { ...fs, [f.kind]: f.name }));
-    uploadSet.current[f.kind] = ans;
-    if (Object.keys(ans).length) setAnswers((a) => ({ ...a, ...ans }));
->>>>>>> Stashed changes
     const label = UPLOAD_SLOTS.find((x) => x.kind === f.kind)?.label ?? f.kind;
     setUploads((u) => [...u.filter((x) => x.kind !== f.kind), { ...f, reading: "reading" }]);
     setFiles((fs) => (f.kind === "photos" ? fs : { ...fs, [f.kind]: f.name }));
@@ -154,7 +138,7 @@ function ReportPage() {
     const base: Partial<ReportAnswers> = f.kind === "incident_report" ? { incident_report: "yes" } : {};
     const apply = (found: Partial<ReportAnswers>, summary: string | null, ok: boolean) => {
       const cur = latest.current.answers as unknown as Record<string, string>;
-      const fresh = Object.fromEntries(Object.entries({ ...found, ...base }).filter(([k, v]) => v && !cur[k])) as Partial<ReportAnswers>;
+      const fresh = Object.fromEntries(Object.entries({ ...found, ...base }).filter(([k, v]) => v && (!cur[k] || cur[k] === "unsure"))) as Partial<ReportAnswers>;
       uploadSet.current[f.kind] = fresh;
       if (Object.keys(fresh).length) setAnswers((a) => ({ ...a, ...fresh }));
       const shown = Object.entries(fresh).map(([k, v]) => {
@@ -166,8 +150,8 @@ function ReportPage() {
       const said = Object.entries(fresh).map(([k, v]) => `${k}=${v}`).join(", ");
       setUploadNote(`The customer just uploaded: ${label} (${f.name}).${said ? ` Read from it and recorded: ${said}. Do not ask about these.` : ""}`);
     };
-    void readClaimDocument({ data: { name: f.name, type: f.type, b64: f.b64 } })
-      .then((r) => (r.ok ? apply(r.facts, r.summary, true) : apply(f.demo ? slotAnswers : {}, null, f.demo)))
+    void scanDocument({ data: { name: f.name, type: f.type, b64: f.b64, kind: f.kind } })
+      .then((r) => (r.method !== "none" ? apply(r.answers, null, true) : apply(f.demo ? slotAnswers : {}, null, f.demo)))
       .catch(() => apply(f.demo ? slotAnswers : {}, null, f.demo));
   };
   const removeUpload = (kind: UploadKind) => {
@@ -177,7 +161,7 @@ function ReportPage() {
     delete uploadSet.current[kind];
     if (Object.keys(ans).length) setAnswers((a) => ({ ...a, ...Object.fromEntries(Object.keys(ans).map((k) => [k, ""])) }));
   };
-  const uploadsCard = (compact?: boolean) => <DocumentUploads files={uploads} onAdd={addUpload} onRemove={removeUpload} compact={compact} answers={answers} />;
+  const uploadsCard = (compact?: boolean) => <DocumentUploads files={uploads} onAdd={addUpload} onRemove={removeUpload} compact={compact} />;
   const submitting = useRef(false);
 
   const submit = async () => {

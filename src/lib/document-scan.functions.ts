@@ -5,11 +5,12 @@ import {
   type ScanFinding,
   type ScanResult,
 } from "./document-scan";
-import { cleanAgentAnswers } from "./report-intake";
+import { readDocumentWithAi } from "./doc-reader.functions";
 
 // Scans an uploaded document for the claim: the text of a PDF is read with fixed rules (document-scan.ts).
-// Photos, scans without a text layer and documents the rules can't place go to the Lovable AI gateway, which
-// only fills fields the rules left open. The key stays on the server. Nothing here decides the claim.
+// Photos, scans without a text layer and documents the rules find little in go to the AI reader
+// (doc-reader.functions.ts, Lovable AI gateway), which only fills fields the rules left open.
+// The key stays on the server. Nothing here decides the claim.
 
 export interface ScanInput {
   name: string;
@@ -22,36 +23,6 @@ export interface ScanResponse extends ScanResult {
   note?: string;
 }
 
-const FIELDS: ScanField[] = [
-  "policy_number",
-  "incident_date",
-  "what_happened",
-  "claim_kind",
-  "injury",
-  "other_party",
-  "fault",
-  "repair_kind",
-  "quote_amount",
-  "quote_itemized",
-  "incident_report",
-];
-
-const PROMPT = `You read one document a customer uploaded for a motor insurance claim (incident or police report, repair quote, damage photo, letter).
-Return only JSON, no prose, with any of these keys you can support from the document itself. Leave a key out if the document does not say it.
-- policy_number: string
-- incident_date: "yyyy-mm-dd" (only the date the incident happened, not the document date)
-- what_happened: short description in the document's own words
-- claim_kind: "own_damage" | "theft" | "other"
-- injury: "yes" | "no"
-- other_party: "yes" | "no"  (another vehicle or person involved)
-- fault: "agree" | "disagree"  (only if another party is involved)
-- repair_kind: "standard" | "ev_battery"  (ev_battery only for a high-voltage / traction battery)
-- quote_amount: number in euros (the quote's total)
-- quote_itemized: "yes" | "no"  (does the quote list individual parts and labour)
-- incident_report: "yes"  (only if this document is an incident or police report)
-- evidence: object mapping each key you returned to the short text or visual detail it came from
-Never guess. Do not return names, email addresses or number plates.`;
-
 async function readPdfText(bytes: Uint8Array): Promise<string> {
   try {
     const { extractText, getDocumentProxy } = await import("unpdf");
@@ -60,67 +31,6 @@ async function readPdfText(bytes: Uint8Array): Promise<string> {
     return String(text ?? "");
   } catch {
     return "";
-  }
-}
-
-async function askGateway(
-  input: ScanInput,
-  text: string,
-): Promise<{
-  answers: Partial<Record<ScanField, string>>;
-  evidence: Record<string, string>;
-} | null> {
-  const key = process.env["LOVABLE_API_KEY"];
-  if (!key) return null;
-  const isImage = input.type.startsWith("image/");
-  const isPdf = /pdf/i.test(input.type) || /\.pdf$/i.test(input.name);
-  const dataUrl = `data:${isImage ? input.type : "application/pdf"};base64,${input.b64}`;
-  const content: unknown[] = [
-    {
-      type: "text",
-      text: text.trim() ? `${PROMPT}\n\nDocument text:\n${text.slice(0, 12000)}` : PROMPT,
-    },
-  ];
-  if (!text.trim() && isImage) content.push({ type: "image_url", image_url: { url: dataUrl } });
-  else if (!text.trim() && isPdf)
-    content.push({
-      type: "file",
-      file: { filename: input.name || "document.pdf", file_data: dataUrl },
-    });
-  else if (!text.trim()) return null;
-  try {
-    const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        temperature: 0,
-        messages: [{ role: "user", content }],
-      }),
-    });
-    if (!res.ok) return null;
-    const json = (await res.json()) as { choices?: { message?: { content?: string } }[] };
-    const raw = json.choices?.[0]?.message?.content ?? "";
-    const obj = JSON.parse(raw.slice(raw.indexOf("{"), raw.lastIndexOf("}") + 1)) as Record<
-      string,
-      unknown
-    >;
-    const cleaned = cleanAgentAnswers(obj);
-    const answers: Partial<Record<ScanField, string>> = {};
-    for (const k of FIELDS)
-      if (cleaned[k] !== undefined && cleaned[k] !== "unsure") answers[k] = String(cleaned[k]);
-    const ev = (obj.evidence && typeof obj.evidence === "object" ? obj.evidence : {}) as Record<
-      string,
-      unknown
-    >;
-    return {
-      answers,
-      evidence: Object.fromEntries(
-        Object.entries(ev).map(([k, v]) => [k, String(v).slice(0, 140)]),
-      ),
-    };
-  } catch {
-    return null;
   }
 }
 
@@ -151,13 +61,13 @@ export const scanDocument = createServerFn({ method: "POST" })
     // Photos, scans and documents the rules found little in: ask the AI gateway for the rest
     let usedAi = false;
     if (!readable || fromText < 2) {
-      const ai = await askGateway(data, readable ? text : "");
-      if (ai) {
-        for (const [k, v] of Object.entries(ai.answers) as [ScanField, string][]) {
-          if (result.findings[k]) continue;
+      const ai = await readDocumentWithAi(data);
+      if (ai.ok) {
+        for (const [k, v] of Object.entries(ai.facts) as [ScanField, string][]) {
+          if (result.findings[k] || !v) continue;
           const finding: ScanFinding = {
             value: v,
-            evidence: ai.evidence[k] || "Read from the document",
+            evidence: ai.summary || "Read from the document",
             source: "ai",
           };
           result.findings[k] = finding;

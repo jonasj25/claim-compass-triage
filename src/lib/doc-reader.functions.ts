@@ -109,29 +109,32 @@ async function ask(key: string, part: Record<string, unknown>): Promise<Response
   });
 }
 
+/** Reads one document with the AI gateway (server only). Also used by scanDocument for what its text rules miss. */
+export async function readDocumentWithAi(data: { name: string; type: string; b64: string }): Promise<DocReading> {
+  const empty = { doc_type: null, summary: null, facts: {} };
+  const key = process.env["LOVABLE_API_KEY"];
+  if (!key) return { ok: false, ...empty, error: "AI gateway not configured" };
+  if (!data.b64 || data.b64.length > 14_000_000) return { ok: false, ...empty, error: "File too large to read" };
+  const url = `data:${data.type};base64,${data.b64}`;
+  const isImage = data.type.startsWith("image/");
+  try {
+    // PDFs as a file part; if the gateway rejects that, try the image_url form (Gemini also reads PDFs there)
+    let res = await ask(key, isImage ? { type: "image_url", image_url: { url } } : { type: "file", file: { filename: data.name, file_data: url } });
+    if (!res.ok && !isImage) res = await ask(key, { type: "image_url", image_url: { url } });
+    if (!res.ok) return { ok: false, ...empty, error: `AI gateway returned ${res.status}` };
+    const json = (await res.json()) as { choices?: { message?: { content?: string } }[] };
+    const parsed = parseJson(json.choices?.[0]?.message?.content ?? "");
+    if (!parsed) return { ok: false, ...empty, error: "Could not read the answer" };
+    return { ok: true, ...clean(parsed) };
+  } catch (e) {
+    return { ok: false, ...empty, error: (e as Error).message };
+  }
+}
+
 export const readClaimDocument = createServerFn({ method: "POST" })
   .inputValidator((d: { name: string; type: string; b64: string }) => ({
     name: String(d?.name ?? "document").slice(0, 120),
     type: String(d?.type ?? "application/pdf").slice(0, 80),
     b64: String(d?.b64 ?? ""),
   }))
-  .handler(async ({ data }): Promise<DocReading> => {
-    const empty = { doc_type: null, summary: null, facts: {} };
-    const key = process.env["LOVABLE_API_KEY"];
-    if (!key) return { ok: false, ...empty, error: "AI gateway not configured" };
-    if (!data.b64 || data.b64.length > 14_000_000) return { ok: false, ...empty, error: "File too large to read" };
-    const url = `data:${data.type};base64,${data.b64}`;
-    const isImage = data.type.startsWith("image/");
-    try {
-      // PDFs as a file part; if the gateway rejects that, try the image_url form (Gemini also reads PDFs there)
-      let res = await ask(key, isImage ? { type: "image_url", image_url: { url } } : { type: "file", file: { filename: data.name, file_data: url } });
-      if (!res.ok && !isImage) res = await ask(key, { type: "image_url", image_url: { url } });
-      if (!res.ok) return { ok: false, ...empty, error: `AI gateway returned ${res.status}` };
-      const json = (await res.json()) as { choices?: { message?: { content?: string } }[] };
-      const parsed = parseJson(json.choices?.[0]?.message?.content ?? "");
-      if (!parsed) return { ok: false, ...empty, error: "Could not read the answer" };
-      return { ok: true, ...clean(parsed) };
-    } catch (e) {
-      return { ok: false, ...empty, error: (e as Error).message };
-    }
-  });
+  .handler(async ({ data }): Promise<DocReading> => readDocumentWithAi(data));
