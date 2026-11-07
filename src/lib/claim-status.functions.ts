@@ -166,7 +166,7 @@ async function loadClaims(db: any, ids: string[]) { // eslint-disable-line @type
     const workflow = W.get(id)?.[0];
     const decision = D.get(id)?.[0];
     const outcome = O.get(id)?.[0];
-    const events = (E.get(id) ?? []) as { type: string; actor: string | null; payload: Record<string, unknown> | null; created_at: string }[];
+    const events = (E.get(id) ?? []) as unknown as { type: string; actor: string | null; payload: Record<string, unknown> | null; created_at: string }[];
     const status = customerStatus({ caseStatus: c.case_status, queue: workflow?.queue, recommendation: decision?.recommendation as Recommendation | undefined, outcome: outcome?.final_outcome });
     const lastReq = [...events].reverse().find((e) => e.type === "call_requested");
     const lastEnd = [...events].reverse().find((e) => e.type === "call_ended" || e.type === "call_logged");
