@@ -25,6 +25,8 @@ import {
   type ReportAnswers,
 } from "@/lib/report-intake";
 import { addClaimInfo, submitClaimReport, type ReportResult } from "@/lib/report.functions";
+import { uploadClaimFile } from "@/lib/files.functions";
+import { DocumentUploads, UPLOAD_SLOTS, type PendingFile, type UploadKind } from "@/components/triage/DocumentUploads";
 import { speakText, transcribeAudio, voiceStatus } from "@/lib/voice.functions";
 import { verifyCustomer } from "@/lib/customers.functions";
 import { normalizeEmail, sameName } from "@/lib/customers";
@@ -67,6 +69,9 @@ function ReportPage() {
   const [lines, setLines] = useState<Line[]>([]);
   const [heardIn, setHeardIn] = useState<Partial<Record<AnswerKey, number>>>({});
   const [files, setFiles] = useState<{ incident_report?: string; quote?: string }>({});
+  const [uploads, setUploads] = useState<PendingFile[]>([]);
+  const [uploadNote, setUploadNote] = useState("");
+  const uploadSet = useRef<Partial<Record<UploadKind, Partial<ReportAnswers>>>>({});
   const [result, setResult] = useState<ReportResult | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -76,8 +81,27 @@ function ReportPage() {
   const set = (k: AnswerKey, v: string) => setAnswers((a) => ({ ...a, [k]: v }));
 
   // Latest values for callbacks that fire later (voice agent, timers)
-  const latest = useRef({ answers, lines, heardIn, files });
-  latest.current = { answers, lines, heardIn, files };
+  const latest = useRef({ answers, lines, heardIn, files, uploads });
+  latest.current = { answers, lines, heardIn, files, uploads };
+
+  // An added document answers its question at once (checklist ticks, Mia skips it)
+  const addUpload = (f: PendingFile, ans: Partial<ReportAnswers>) => {
+    setUploads((u) => [...u.filter((x) => x.kind !== f.kind), f]);
+    setFiles((fs) => (f.kind === "photos" ? fs : { ...fs, [f.kind]: f.name }));
+    uploadSet.current[f.kind] = ans;
+    if (Object.keys(ans).length) setAnswers((a) => ({ ...a, ...ans }));
+    const label = UPLOAD_SLOTS.find((x) => x.kind === f.kind)?.label ?? f.kind;
+    const said = Object.entries(ans).map(([k, v]) => `${k}=${v}`).join(", ");
+    setUploadNote(`The customer just uploaded: ${label} (${f.name}).${said ? ` Already recorded from it: ${said}. Do not ask about these.` : ""}`);
+  };
+  const removeUpload = (kind: UploadKind) => {
+    setUploads((u) => u.filter((x) => x.kind !== kind));
+    setFiles((fs) => ({ ...fs, [kind]: undefined }));
+    const ans = uploadSet.current[kind] ?? {};
+    delete uploadSet.current[kind];
+    if (Object.keys(ans).length) setAnswers((a) => ({ ...a, ...Object.fromEntries(Object.keys(ans).map((k) => [k, ""])) }));
+  };
+  const uploadsCard = (compact?: boolean) => <DocumentUploads files={uploads} onAdd={addUpload} onRemove={removeUpload} compact={compact} />;
   const submitting = useRef(false);
 
   const submit = async () => {
@@ -88,6 +112,9 @@ function ReportPage() {
     try {
       const cur = latest.current;
       const res = await submitClaimReport({ data: { channel: channel.current, answers: cur.answers, transcript: cur.lines, heardIn: cur.heardIn, files: cur.files } });
+      // Store the documents with the new claim (a failed upload does not undo the claim)
+      for (const f of cur.uploads)
+        await uploadClaimFile({ data: { case_id: res.case_id, email: cur.answers.email, plate: cur.answers.plate, kind: f.kind, name: f.name, type: f.type, b64: f.b64 } }).catch(() => undefined);
       setResult(res);
       setMode("done");
       window.scrollTo({ top: 0 });
@@ -134,6 +161,7 @@ function ReportPage() {
       <main className="mx-auto max-w-[1180px] px-6 pb-16">
         {mode === "start" && (
           <Landing
+            uploads={uploadsCard(true)}
             qs={qs}
             answers={answers}
             heardIn={heardIn}
@@ -144,6 +172,7 @@ function ReportPage() {
                 lines={lines}
                 setLines={setLines}
                 setHeardIn={setHeardIn}
+                uploadNote={uploadNote}
                 onStart={() => {
                   channel.current = "phone";
                 }}
@@ -166,7 +195,14 @@ function ReportPage() {
         )}
 
         {mode === "form" && (
-          <Shell side={<Checklist qs={qs} answers={answers} heardIn={{}} onJump={(i) => setStep(i)} current={qs[step]?.key} />}>
+          <Shell
+            side={
+              <div className="space-y-4">
+                <Checklist qs={qs} answers={answers} heardIn={{}} onJump={(i) => setStep(i)} current={qs[step]?.key} />
+                {uploadsCard(true)}
+              </div>
+            }
+          >
             <FormStep
               q={qs[Math.min(step, qs.length - 1)]}
               index={Math.min(step, qs.length - 1)}
@@ -188,6 +224,7 @@ function ReportPage() {
             voice={channel.current === "phone"}
             files={files}
             setFiles={setFiles}
+            uploads={uploadsCard()}
             busy={busy}
             error={error}
             onBack={() => setMode(channel.current === "phone" ? "start" : "form")}
@@ -211,7 +248,7 @@ function ReportPage() {
 
 // ------------------------------------------------------------------ landing: the conversation is the page
 
-function Landing({ qs, answers, heardIn, conversation, onForm }: { qs: Question[]; answers: ReportAnswers; heardIn: Partial<Record<AnswerKey, number>>; conversation: ReactNode; onForm: () => void }) {
+function Landing({ qs, answers, heardIn, conversation, onForm, uploads }: { qs: Question[]; answers: ReportAnswers; heardIn: Partial<Record<AnswerKey, number>>; conversation: ReactNode; onForm: () => void; uploads: ReactNode }) {
   const started = true; // the checklist is the conversation guide, visible from the start
   // Same order Mia asks in: who you are, what happened, then the rest
   const first: AnswerKey[] = ["name", "email", "what_happened"];
@@ -235,7 +272,10 @@ function Landing({ qs, answers, heardIn, conversation, onForm }: { qs: Question[
         <div className="min-w-0">{conversation}</div>
         {started && (
           <aside className="lg:sticky lg:top-6 lg:self-start">
-            <Checklist qs={ordered} answers={answers} heardIn={heardIn} current={current} />
+            <div className="space-y-4">
+              <Checklist qs={ordered} answers={answers} heardIn={heardIn} current={current} />
+              {uploads}
+            </div>
           </aside>
         )}
       </div>
@@ -505,7 +545,9 @@ function Conversation({
   onStart,
   onDone,
   onComplete,
+  uploadNote,
 }: {
+  uploadNote?: string;
   answers: ReportAnswers;
   setAnswers: (fn: (a: ReportAnswers) => ReportAnswers) => void;
   lines: Line[];
@@ -524,6 +566,10 @@ function Conversation({
   const [interim, setInterim] = useState("");
   const [note, setNote] = useState<string | null>(null);
   const [lang, setLang] = useState<"en" | "de">("en");
+  // A document uploaded during the call: tell Mia so she doesn't ask about it
+  useEffect(() => {
+    if (uploadNote) session.current?.sendContextualUpdate?.(uploadNote);
+  }, [uploadNote]);
   const answersRef = useRef(answers);
   const linesRef = useRef(lines);
   answersRef.current = answers;
@@ -1019,20 +1065,20 @@ function Review({
   set,
   heardIn,
   voice,
-  files,
-  setFiles,
   busy,
   error,
   onBack,
   onSubmit,
+  uploads,
 }: {
+  uploads: ReactNode;
   qs: Question[];
   answers: ReportAnswers;
   set: (k: AnswerKey, v: string) => void;
   heardIn: Partial<Record<AnswerKey, number>>;
   voice: boolean;
-  files: { incident_report?: string; quote?: string };
-  setFiles: (f: { incident_report?: string; quote?: string }) => void;
+  files?: unknown;
+  setFiles?: unknown;
   busy: boolean;
   error: string | null;
   onBack: () => void;
@@ -1082,15 +1128,7 @@ function Review({
         })}
       </div>
 
-      <div className="card-quiet mt-5 p-5">
-        <p className="section-title">Documents</p>
-        <p className="mt-1 text-[13px] text-text-2">Attach them now if you have them. You can also send them later.</p>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          <FilePick label="Incident or police report" name={files.incident_report} onPick={(n) => setFiles({ ...files, incident_report: n })} />
-          <FilePick label="Repair quote" name={files.quote} onPick={(n) => setFiles({ ...files, quote: n })} />
-        </div>
-        <p className="mt-3 text-[11.5px] text-text-3">Demo: only the file name is recorded, the file itself is not uploaded.</p>
-      </div>
+      <div className="mt-5">{uploads}</div>
 
       {required.length > 0 && <p className="mt-4 text-[13px] text-action">Please fill in: {required.map((q) => q.label).join(", ")}.</p>}
       {error && <p className="mt-4 text-[13px] text-action">{error}</p>}

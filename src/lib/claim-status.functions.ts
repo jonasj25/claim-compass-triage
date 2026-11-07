@@ -194,6 +194,7 @@ function portalEvents(events: { type: string; payload: Record<string, unknown> |
       : e.type === "call_logged" ? { text: "You spoke with Mia and gave us the missing details", kind: "call" as const }
       : e.type === "call_ended" ? { text: p?.outcome === "declined" ? "You declined Mia's call" : "Call ended", kind: "call" as const }
       : e.type === "documents_received" ? { text: "We received your information", kind: "customer" as const }
+      : e.type === "file_uploaded" ? { text: `You uploaded ${String(p?.name ?? "a document")}`, kind: "customer" as const }
       : e.type === "retriaged" ? { text: "Your claim was checked again", kind: "system" as const }
       : e.type === "assigned" ? { text: "A claims specialist picked up your claim", kind: "us" as const }
       : e.type === "escalated" || e.type === "second_check_flagged" ? { text: "A claims specialist takes a second look", kind: "us" as const }

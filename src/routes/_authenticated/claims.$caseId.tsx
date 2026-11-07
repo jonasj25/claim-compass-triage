@@ -72,6 +72,7 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import type { TranscriptLine, FormField, IntakeDocument } from "@/lib/intake";
+import { getClaimFileUrl } from "@/lib/files.functions";
 
 export const Route = createFileRoute("/_authenticated/claims/$caseId")({
   head: ({ params }) => ({
@@ -123,6 +124,7 @@ const EVENT_TEXT: Record<string, string> = {
   call_requested: "Call to the customer started (Mia, voice agent)",
   call_ended: "Call with the customer ended",
   documents_received: "Documents received",
+  file_uploaded: "Customer uploaded a document",
   retriaged: "Re-triaged",
   escalated: "Escalated to a reviewer",
   confirmed: "Recommendation confirmed",
@@ -251,7 +253,18 @@ function CaseDetail() {
 
   const transcript = (data.intake?.transcript as unknown as TranscriptLine[] | null) ?? null;
   const form = (data.intake?.form as unknown as FormField[] | null) ?? null;
-  const docs = (data.intake?.documents as unknown as IntakeDocument[] | null) ?? [];
+  const docs = (data.intake?.documents as unknown as (IntakeDocument & { path?: string })[] | null) ?? [];
+  const openFile = async (path: string) => {
+    const w = window.open("", "_blank");
+    try {
+      const url = await getClaimFileUrl({ data: { path } });
+      if (w) w.location.href = url;
+      else window.location.href = url;
+    } catch (e) {
+      w?.close();
+      toast.error((e as Error).message);
+    }
+  };
   const facts = data.facts as Row[];
   const refOf = (f: string) => facts.find((x) => x.field === f);
   // Only the checklist item under the pointer (or keyboard focus) marks its source
@@ -1217,9 +1230,20 @@ function CaseDetail() {
                 {docs.length === 0 && <li className="text-text-2">No documents recorded.</li>}
                 {docs.map((doc) => (
                   <li key={doc.name} className="flex items-start gap-2 py-3">
-                    <FileText className="mt-0.5 size-4 shrink-0 text-text-3" />
-                    <div className="min-w-0">
-                      <p className="break-words font-mono text-[11px]">{doc.name}</p>
+                    <FileText className={cn("mt-0.5 size-4 shrink-0", doc.path ? "text-link" : "text-text-3")} />
+                    <div className="min-w-0 flex-1">
+                      {doc.path ? (
+                        <button
+                          type="button"
+                          onClick={() => void openFile(doc.path!)}
+                          className="break-words text-left font-mono text-[11px] text-link hover:underline"
+                          title="Open the document"
+                        >
+                          {doc.name}
+                        </button>
+                      ) : (
+                        <p className="break-words font-mono text-[11px]">{doc.name}</p>
+                      )}
                       <p className="mt-1 text-[11px] text-text-2">
                         {doc.name.split(".").pop()?.toUpperCase()} ·{" "}
                         <span
@@ -1231,6 +1255,7 @@ function CaseDetail() {
                         >
                           {doc.status}
                         </span>
+                        {doc.path ? " · stored, click to open" : ""}
                       </p>
                     </div>
                   </li>

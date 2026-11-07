@@ -33,7 +33,7 @@ export interface ReportResult {
 const clip = (v: unknown, n: number) => String(v ?? "").trim().slice(0, n);
 const keyOf = (p: unknown) => String(p ?? "").toUpperCase().replace(/[^A-Z0-9]/g, "");
 /** A customer claim, recognised by the email from the report or by the number plate. */
-const isOwner = (raw: Record<string, unknown>, email?: string, plate?: string) =>
+export const isOwner = (raw: Record<string, unknown>, email?: string, plate?: string) =>
   raw.source === "customer_report" &&
   ((!!email && String(raw.customer_email ?? "").toLowerCase() === email.toLowerCase()) || (!!keyOf(plate) && keyOf(raw.plate) === keyOf(plate)));
 

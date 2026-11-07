@@ -78,6 +78,8 @@ export const QUESTIONS: Question[] = [
     label: "Type of claim",
     ask: "What best describes your claim?",
     type: "choice",
+    // Usually clear from the story; only asked when it isn't
+    when: (a) => !!a.claim_kind || (a.what_happened.trim() !== "" && !inferClaimKind(a.what_happened)),
     choices: [
       { value: "own_damage", label: "Damage to my own car" },
       { value: "theft", label: "My car or parts were stolen" },
@@ -159,12 +161,20 @@ export function parseEuro(input: string): number | null {
 const tri = (v: Tri): boolean | null => (v === "yes" ? true : v === "no" ? false : null);
 
 /** Customer answers -> the claim fields the policy reads. System checks are added on the server. */
+/** The claim type as the customer's own story states it, or null when the story doesn't say. */
+export function inferClaimKind(story: string): "own_damage" | "theft" | null {
+  const t = ` ${story.toLowerCase()} `;
+  if (/stolen|theft|stole |gestohlen|diebstahl|broke into/.test(t)) return "theft";
+  if (/crash|collid|collision|scratch|dent|bumper|hit (a|the|my)|reversed|parking|accident|unfall|damage|kratzer|delle|windscreen|windshield|glass|hail/.test(t)) return "own_damage";
+  return null;
+}
+
 export function toClaimFields(a: ReportAnswers) {
   const liability_disputed =
     a.other_party === "no" ? false : a.other_party === "yes" ? (a.fault === "disagree" ? true : a.fault === "agree" ? false : null) : null;
   return {
     claim_summary: a.what_happened.trim().slice(0, 400) || null,
-    claim_type: a.claim_kind === "own_damage" ? "motor_own_damage" : a.claim_kind === "theft" ? "theft" : a.claim_kind === "other" ? "other" : null,
+    claim_type: ((k) => (k === "own_damage" ? "motor_own_damage" : k === "theft" ? "theft" : k === "other" ? "other" : null))(a.claim_kind || inferClaimKind(a.what_happened) || ""),
     repair_type: a.repair_kind === "standard" ? "standard" : a.repair_kind === "ev_battery" ? "ev_high_voltage_battery" : null,
     quote_eur: parseEuro(a.quote_amount),
     itemized_quote_present: tri(a.quote_itemized),
