@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { activePolicyQuery, caseDetailQuery, casesQuery } from "@/lib/data";
 import { readCaseNav } from "@/lib/case-nav";
-import { channelLabel, claimTypeLabel, humanize, repairTypeLabel, SOURCE_TYPE_LABEL, valueLabel } from "@/lib/labels";
+import { channelLabel, claimTypeLabel, humanize, repairTypeLabel, valueLabel } from "@/lib/labels";
 import { decide, FIELD_LABELS, POLICY_V1, RECOMMENDATION_LABELS, type Claim, type Recommendation } from "@/lib/triage";
 import { isClosed } from "@/lib/csv";
 import { queueFor, SLA_HOURS } from "@/lib/lifecycle";
@@ -119,7 +119,7 @@ function CaseDetail() {
     if (!box || !el || box.scrollHeight <= box.clientHeight) return;
     const top = el.offsetTop;
     const bottom = top + el.offsetHeight;
-    if (top < box.scrollTop + 90 || bottom > box.scrollTop + box.clientHeight - 16) {
+    if (top < box.scrollTop + 16 || bottom > box.scrollTop + box.clientHeight - 16) {
       box.scrollTo({ top: Math.max(0, top - box.clientHeight / 3), behavior: "smooth" });
     }
   }, [hover, hl, caseId, isLoading]);
@@ -157,7 +157,6 @@ function CaseDetail() {
   const firstIssue = live.checklist.find((c) => c.status === "fail") ?? live.checklist.find((c) => c.status === "unknown");
   const active = hover ?? hl ?? firstIssue?.field ?? null;
   const activeSrc = active ? refOf(active) : undefined;
-  const activeCheck = active ? live.checklist.find((c) => c.field === active) : undefined;
   // System checks that are not already a line in the call transcript (online-form and CSV cases)
   const systemSources = facts
     .filter((x) => x.source_type === "system" && !String(x.ref ?? "").startsWith("line"))
@@ -574,32 +573,7 @@ function CaseDetail() {
         <div ref={srcBox} className="relative min-w-0 rounded-[18px] lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto">
         <Card className="flex flex-col">
           <h2 className="section-title">Sources</h2>
-          <p className="mb-3 mt-1 text-[12.5px] text-text-2">Point at a checklist item to see where the fact came from. Click to keep it marked.</p>
-          {/* Fixed-height strip so hovering never shifts the layout */}
-          <div
-            className={cn(
-              "sticky top-0 z-10 mb-4 min-h-[66px] rounded-[10px] px-3 py-2.5 text-[13px] ring-1 backdrop-blur transition-colors duration-200",
-              activeSrc ? "bg-[color-mix(in_oklch,var(--link)_10%,white)] ring-link/30" : "bg-surface-2 ring-line",
-            )}
-          >
-            {active ? (
-              <>
-                <Mono>
-                  {FIELD_LABELS[active] ?? active} · {activeSrc ? `${SOURCE_TYPE_LABEL[activeSrc.source_type] ?? activeSrc.source_type} · ${activeSrc.ref}` : "no source recorded"}
-                </Mono>
-                <p className="mt-1">
-                  {activeSrc?.quote ? `“${humanize(activeSrc.quote)}”` : activeCheck?.status === "unknown" ? "Left blank. The system does not guess, it asks for it." : "No source recorded for this field."}
-                  {activeSrc?.confidence === "unconfirmed" && (
-                    <span className="ml-2">
-                      <Unknown>unconfirmed</Unknown>
-                    </span>
-                  )}
-                </p>
-              </>
-            ) : (
-              <p className="pt-2 text-text-3">Nothing selected</p>
-            )}
-          </div>
+          <p className="mb-4 mt-1 text-[12.5px] text-text-2">Point at a checklist item to see where the fact came from. Click to keep it marked.</p>
           {transcript && (
             <div className="mb-5">
               <Mono>Call transcript</Mono>
