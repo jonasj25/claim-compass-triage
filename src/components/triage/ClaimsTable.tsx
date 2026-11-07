@@ -37,12 +37,13 @@ export function ClaimsTable({ rows }: { rows: CaseRow[] }) {
             return (
               <tr key={c.claim.case_id} className="relative h-14 border-b border-line/70 last:border-0 hover:bg-white/80">
                 <td className="whitespace-nowrap px-3 font-mono text-[12px]">
-                  <Link to="/claims/$caseId" params={{ caseId: c.claim.case_id }} className="after:absolute after:inset-0 focus-visible:outline-none">
+                  {/* The link's overlay covers the whole row, so the full-summary tooltip lives here. */}
+                  <Link to="/claims/$caseId" params={{ caseId: c.claim.case_id }} title={c.claim.claim_summary ?? undefined} className="after:absolute after:inset-0 focus-visible:outline-none">
                     {c.claim.case_id}
                   </Link>
                 </td>
-                <td className="max-w-[320px] px-3">
-                  <div className="truncate">{c.claim.claim_summary}</div>
+                <td className="max-w-[320px] px-3 py-2">
+                  <div className="line-clamp-2">{c.claim.claim_summary}</div>
                   <div className="mt-1 flex flex-wrap gap-1">
                     {c.workflow?.qa_sample && <Chip>QA sample</Chip>}
                     {c.workflow?.queue === "on_you" && !c.workflow.assignee && <Chip>Unassigned</Chip>}
