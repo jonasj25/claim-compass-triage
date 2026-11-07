@@ -7,6 +7,7 @@ import {
   useRouterState,
 } from "@tanstack/react-router";
 import { Logo } from "@/components/triage/Logo";
+import { NotificationsBell } from "@/components/triage/NotificationsBell";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -205,24 +206,7 @@ function TopBar() {
         <span className="rounded-md border border-line px-2 py-1 font-mono text-[11px] text-text-2">
           Policy {policy.data?.version ?? "…"}
         </span>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="relative size-8"
-          title="Notifications"
-          aria-label="Notifications"
-          onClick={() => {
-            if (role === "reviewer") void navigate({ to: "/dashboard" });
-            toast(
-              onMe
-                ? `${toReview} cases to review in the workstream`
-                : "Nothing to review right now",
-            );
-          }}
-        >
-          <Bell className="size-4" />
-          {onMe && <span className="absolute right-1 top-1 size-1.5 rounded-full bg-action-dot" />}
-        </Button>
+        <NotificationsBell />
         <button
           type="button"
           title={me.name}
