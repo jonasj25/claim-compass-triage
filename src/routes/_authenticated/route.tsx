@@ -172,7 +172,7 @@ function TopBar() {
         (path === "/import" ? "Import CSV" : "Clearpath"));
   const navigate = useNavigate();
   return (
-    <header className="sticky top-0 z-30 flex h-[52px] items-center justify-between gap-4 border-b border-line bg-surface px-6">
+    <header className="sticky top-0 z-30 relative flex h-[52px] items-center justify-between gap-4 border-b border-line bg-surface px-6">
       <div className="flex min-w-0 items-center gap-3">
         <span className="text-[13px] font-semibold">Clearpath</span>
         <span className="text-text-3">/</span>
@@ -182,7 +182,7 @@ function TopBar() {
         <div
           role="tablist"
           aria-label="Role"
-          className="flex rounded-md border border-line bg-surface-2 p-0.5"
+          className="absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 rounded-md border border-line bg-surface-2 p-0.5"
         >
           {(Object.keys(ROLE_LABELS) as Role[]).map((r) => (
             <Button
