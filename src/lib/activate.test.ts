@@ -94,9 +94,17 @@ describe("activatePolicy", () => {
 
     const events = calls
       .filter((c) => c.table === "case_events")
-      .flatMap((c) => c.payload as { type: string }[]);
-    expect(events).toHaveLength(6);
-    expect(events.every((e) => e.type === "policy_change")).toBe(true);
+      .flatMap((c) => c.payload as { type: string; case_id: string }[]);
+    expect(events.filter((e) => e.type === "policy_change")).toHaveLength(6);
+    // Routine but close to the new €1,200 limit: second check, recommendation unchanged
+    expect(events.filter((e) => e.type === "second_check_flagged").map((e) => e.case_id)).toEqual([
+      "PRA-002",
+    ]);
+    const qa = calls.find(
+      (c) => c.table === "case_workflow" && (c.payload as { qa_sample?: boolean }).qa_sample,
+    );
+    expect(qa?.filters).toContainEqual(["in", "case_id", ["PRA-002"]]);
+    expect(inserted.find((d) => d.case_id === "PRA-002")).toMatchObject({ needs_recheck: false });
 
     const last = calls.slice(-2);
     expect(last.map((c) => [c.table, (c.payload as { status: string }).status])).toEqual([

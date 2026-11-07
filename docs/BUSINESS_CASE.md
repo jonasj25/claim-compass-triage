@@ -29,3 +29,15 @@ A spreadsheet or an app page is fine; keep this file as the written explanation.
 ## 3. Sensitivity
 
 Show best / base / worst cases for the 2–3 assumptions that move the result most.
+
+## 4. Second check near the limit (threshold logic)
+
+Routine claims just under the quote limit stay routine (the policy decides), but are flagged for a person to double-check. The band and its justification live in `src/lib/second-check.ts`. **The figures below are placeholders: replace them with sourced numbers.**
+
+| Assumption | Value now | Meaning |
+|---|---|---|
+| `ESTIMATE_UPLIFT` | 20% | How much a first repair quote can grow once the car is opened up. Band = limit / (1 + uplift) … limit, so €1,000.01–€1,200 under v2 and €1,250.01–€1,500 under v1. |
+| `REVIEW_COST_EUR` | €15 | Reviewer time for one second check |
+| `WRONG_ROUTINE_COST_EUR` | €300 | Average loss when a claim that needed review goes routine |
+
+The check pays off when at least REVIEW_COST / WRONG_ROUTINE_COST (now 5%, i.e. 1 in 20) of the claims in the band would have needed review. Show this break-even in the pitch, plus the volume it adds for reviewers (count of flagged claims on the volume set).

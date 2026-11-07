@@ -1,12 +1,26 @@
 import { supabase } from "@/integrations/supabase/client";
 import { isClosed, type ParsedClaim } from "./csv";
-import { decide, type Policy } from "./triage";
-import { queueFor } from "./lifecycle";
+import { decide, type Policy, type Recommendation } from "./triage";
+import { queueFor, type Queue } from "./lifecycle";
+import { secondCheckReason } from "./second-check";
 import { buildCsvFacts, buildDocuments } from "./intake";
 
 const chunk = <T,>(a: T[], n = 200) => Array.from({ length: Math.ceil(a.length / n) }, (_, i) => a.slice(i * n, i * n + n));
 
-export interface ImportResult { inserted: number; frozen: number; byQueue: Record<string, number> }
+/** One line per row of the imported file, for the "this import" window. */
+export interface ImportedRow {
+  case_id: string;
+  summary: string | null;
+  quote: number | null;
+  frozen: boolean; // closed claim already in the system: left as decided
+  recommendation: Recommendation | null;
+  rule_id: string | null;
+  reasons: string[];
+  queue: Queue | null;
+  secondCheck: string | null; // reason, if flagged for a second check near the limit
+}
+
+export interface ImportResult { inserted: number; frozen: number; byQueue: Record<string, number>; secondChecks: number; rows: ImportedRow[] }
 
 export async function importClaims(claims: ParsedClaim[], policy: Policy, actor: string): Promise<ImportResult> {
   const ids = claims.map((c) => c.case_id);
@@ -22,10 +36,13 @@ export async function importClaims(claims: ParsedClaim[], policy: Policy, actor:
 
   const rows = todo.map((c) => {
     const d = decide(c, policy);
-    const queue = queueFor(d.recommendation, isClosed(c.case_status));
+    const closed = isClosed(c.case_status);
+    const queue = queueFor(d.recommendation, closed);
     byQueue[queue] = (byQueue[queue] ?? 0) + 1;
     const extras = Object.fromEntries(Object.entries(c.raw).filter(([k, v]) => v && !(k in c) ));
-    return { c, d, queue, extras };
+    // Recommendation stays routine; the flag only asks a person to double-check (see second-check.ts).
+    const second = closed ? null : secondCheckReason(c, policy, d.recommendation);
+    return { c, d, queue, extras, second };
   });
 
   for (const part of chunk(rows)) {
@@ -44,9 +61,9 @@ export async function importClaims(claims: ParsedClaim[], policy: Policy, actor:
       explanation: d.reasons.join(". "), missing_fields: d.missing_fields,
     })));
     if (res.error) throw res.error;
-    res = await supabase.from("case_workflow").upsert(part.map(({ c, queue }) => ({
-      case_id: c.case_id, queue, assignee: null, qa_sample: false,
-      sla_due_at: queue === "on_you" ? new Date(Date.now() + 24 * 3600e3).toISOString() : null, updated_at: now,
+    res = await supabase.from("case_workflow").upsert(part.map(({ c, queue, second }) => ({
+      case_id: c.case_id, queue, assignee: null, qa_sample: !!second,
+      sla_due_at: queue === "on_you" || second ? new Date(Date.now() + 24 * 3600e3).toISOString() : null, updated_at: now,
     })));
     if (res.error) throw res.error;
     res = await supabase.from("claim_intake").upsert(part.map(({ c }) => ({
@@ -55,10 +72,11 @@ export async function importClaims(claims: ParsedClaim[], policy: Policy, actor:
     if (res.error) throw res.error;
     res = await supabase.from("fact_sources").insert(part.flatMap(({ c }) => buildCsvFacts(c, c.row).map((f) => ({ case_id: c.case_id, ...f }))));
     if (res.error) throw res.error;
-    res = await supabase.from("case_events").insert(part.flatMap(({ c, d, queue }) => [
+    res = await supabase.from("case_events").insert(part.flatMap(({ c, d, queue, second }) => [
       { case_id: c.case_id, type: "received", actor: `CSV import · ${actor}`, payload: { channel: "csv_import", row: c.row } },
       { case_id: c.case_id, type: "triaged", actor: "Rules engine", payload: { recommendation: d.recommendation, rule_id: d.rule_id, policy_version: policy.version } },
       ...(queue === "waiting_customer" ? [{ case_id: c.case_id, type: "outreach_sent", actor: "Rules engine", payload: { channel: "email", missing_items: d.missing_fields } }] : []),
+      ...(second ? [{ case_id: c.case_id, type: "second_check_flagged", actor: "Rules engine", payload: { reason: second, policy_version: policy.version } }] : []),
     ]));
     if (res.error) throw res.error;
     const waiting = part.filter((r) => r.queue === "waiting_customer");
@@ -67,5 +85,12 @@ export async function importClaims(claims: ParsedClaim[], policy: Policy, actor:
       if (res.error) throw res.error;
     }
   }
-  return { inserted: todo.length, frozen: frozen.size, byQueue };
+  const done = new Map(rows.map((r) => [r.c.case_id, r]));
+  const out: ImportedRow[] = claims.map((c) => {
+    const r = done.get(c.case_id);
+    return r
+      ? { case_id: c.case_id, summary: c.claim_summary ?? null, quote: c.quote_eur, frozen: false, recommendation: r.d.recommendation, rule_id: r.d.rule_id, reasons: r.d.reasons, queue: r.queue, secondCheck: r.second }
+      : { case_id: c.case_id, summary: c.claim_summary ?? null, quote: c.quote_eur, frozen: true, recommendation: null, rule_id: null, reasons: [], queue: null, secondCheck: null };
+  });
+  return { inserted: todo.length, frozen: frozen.size, byQueue, secondChecks: rows.filter((r) => r.second).length, rows: out };
 }

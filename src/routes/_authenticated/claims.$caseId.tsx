@@ -12,7 +12,8 @@ import { isClosed } from "@/lib/csv";
 import { queueFor, SLA_HOURS } from "@/lib/lifecycle";
 import { useRole } from "@/lib/role";
 import { Card, Chip, Mono, StatusDot, Unknown, fmtEur, fmtTime } from "@/components/triage/ui";
-import { CustomerChat } from "@/components/triage/CustomerChat";
+import { CustomerChatLauncher } from "@/components/triage/CustomerChat";
+import { secondCheckReason } from "@/lib/second-check";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -50,6 +51,7 @@ const EVENT_TEXT: Record<string, string> = {
   comment: "Comment",
   policy_recheck: "Re-checked under new policy",
   qa_sampled: "Picked as random QA sample",
+  second_check_flagged: "Flagged for a second check (close to the limit)",
   closed: "Claim closed",
   message_sent: "Message sent to customer",
   message_received: "Customer replied",
@@ -129,6 +131,7 @@ function CaseDetail() {
   const version = (decision?.policy_version ?? policy.version) as string;
   const queue = workflow?.queue as string | undefined;
   const qa = !!workflow?.qa_sample;
+  const nearLimit = qa ? secondCheckReason(claim, policy, systemRec) : null;
   const recheck = !!decision?.needs_recheck;
   const confirmed = (data.events as Row[]).some((e) => e.type === "confirmed" || e.type === "qa_confirmed");
   const needsUser = !closed && (queue === "on_you" || qa);
@@ -293,8 +296,10 @@ function CaseDetail() {
       </>
     );
   } else if (qa || queue === "on_you") {
-    stepTitle = qa ? "Random QA sample" : "Check this case";
-    stepText = qa
+    stepTitle = nearLimit ? "Second check: close to the limit" : qa ? "Random QA sample" : "Check this case";
+    stepText = nearLimit
+      ? `${nearLimit} Check the quote and evidence; confirm if routine is right, or correct it.`
+      : qa
       ? "This claim was processed automatically. It was picked at random so a person can check the rules still work. Confirm if the decision is right, or correct it."
       : "This case is waiting for you. Confirm the recommendation or correct it.";
     actions = (
@@ -389,7 +394,7 @@ function CaseDetail() {
               </Mono>
               {closed ? <Chip><Lock className="mr-1 size-3" /> Closed</Chip> : <Chip>Open</Chip>}
               {recheck && <Chip>Needs re-check · policy {version}</Chip>}
-              {qa && <Chip>QA sample</Chip>}
+              {qa && <Chip>{nearLimit ? "Second check · near limit" : "QA sample"}</Chip>}
               {lastOverride && <Chip>Overridden</Chip>}
               {unknownCount > 0 && <Chip className="border-dashed">{unknownCount} unknown {unknownCount === 1 ? "field" : "fields"}</Chip>}
             </div>
@@ -444,8 +449,8 @@ function CaseDetail() {
         {actions && <div className="ml-auto flex flex-wrap items-center gap-2">{actions}</div>}
       </div>
 
-      {/* 2b · Customer conversation: accept / deny / request / remind via templates */}
-      <CustomerChat
+      {/* 2b · Customer conversation (opens in a pop-up): accept / deny / request / remind via templates */}
+      <CustomerChatLauncher
         caseId={caseId}
         customer={data.intake?.customer_name ?? null}
         plate={data.intake?.plate ?? null}

@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { FIELD_LABELS, type Recommendation } from "@/lib/triage";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { fmtEur, fmtTime } from "./ui";
 import { cn } from "@/lib/utils";
@@ -70,6 +71,7 @@ export function CustomerChat({
   decisionId,
   reviewer,
   events,
+  className,
 }: {
   caseId: string;
   customer: string | null;
@@ -85,13 +87,14 @@ export function CustomerChat({
   decisionId: string | null;
   reviewer: string;
   events: Row[];
+  className?: string;
 }) {
   const qc = useQueryClient();
   const recommended: TemplateKey[] =
     queue === "waiting_customer" ? ["reminder", "request"] : rec === "request_information" ? ["request"] : ["accept", "deny"];
   const [tpl, setTpl] = useState<TemplateKey>(recommended[0]);
   const [denyKey, setDenyKey] = useState<string>(DENY_REASONS.find((r) => r.key === failedTrigger)?.key ?? "not_covered");
-  const [channel, setChannel] = useState<"email" | "sms">("email");
+  const channel = "email" as const; // email only
   const [body, setBody] = useState("");
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -175,7 +178,7 @@ export function CustomerChat({
   const T = TEMPLATES[tpl];
 
   return (
-    <div className="card-quiet mb-5 overflow-hidden">
+    <div className={cn("card-quiet mb-5 overflow-hidden", className)}>
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line/70 px-7 py-4">
         <div className="flex items-center gap-3">
           <span className="inline-flex size-9 items-center justify-center rounded-full bg-gradient-to-br from-[oklch(0.95_0.03_245)] to-[oklch(0.86_0.07_258)] font-mono text-[11px] font-medium text-[oklch(0.38_0.1_262)] ring-2 ring-white">
@@ -184,7 +187,7 @@ export function CustomerChat({
           <div>
             <h2 className="section-title leading-tight">Customer · {customer ?? "Unknown customer"}</h2>
             <p className="label-mono mt-0.5">
-              {caseId} · {plate ?? "no plate"} · simulated {channel === "email" ? "email" : "SMS"}
+              {caseId} · {plate ?? "no plate"} · simulated email
             </p>
           </div>
         </div>
@@ -297,13 +300,9 @@ export function CustomerChat({
 
           {!closed && (
             <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-center gap-1 rounded-full bg-[oklch(0.93_0.015_258/0.7)] p-0.5 text-[12px]">
-                {(["email", "sms"] as const).map((c) => (
-                  <button key={c} type="button" onClick={() => setChannel(c)} className={cn("rounded-full px-2.5 py-1", channel === c ? "pill-active font-medium" : "text-text-2")}>
-                    {c === "email" ? "Email" : "SMS"}
-                  </button>
-                ))}
-              </div>
+              <span className="inline-flex items-center gap-1.5 text-[12px] text-text-2">
+                <Mail className="size-3.5" strokeWidth={1.7} /> Sent by email to {customer ?? "the customer"}
+              </span>
               {confirming ? (
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-[12.5px] text-text-2">This sends the message and closes the claim for good.</span>
@@ -327,5 +326,52 @@ export function CustomerChat({
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * Compact customer bar on the case page. Clicking it opens the full conversation (same component)
+ * in a pop-up window, so the case page stays short.
+ */
+export function CustomerChatLauncher(props: Parameters<typeof CustomerChat>[0]) {
+  const [open, setOpen] = useState(false);
+  const thread = props.events
+    .filter((e) => e.type === "message_sent" || e.type === "message_received")
+    .sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)));
+  const last = thread[thread.length - 1] as Row | undefined;
+  const lastText = last ? String((last.payload as Row | null)?.body ?? "").replace(/\s+/g, " ").slice(0, 110) : "";
+  const name = props.customer ?? "Unknown customer";
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="card-quiet mb-5 flex w-full items-center gap-4 px-7 py-4 text-left transition-shadow hover:shadow-[var(--shadow-lift)] focus-visible:outline-2 focus-visible:outline-link"
+      >
+        <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[oklch(0.95_0.03_245)] to-[oklch(0.86_0.07_258)] font-mono text-[11px] font-medium text-[oklch(0.38_0.1_262)] ring-2 ring-white">
+          {name.split(" ").map((p) => p[0]).join("").slice(0, 2)}
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="section-title block leading-tight">Customer · {name}</span>
+          <span className="mt-0.5 block truncate text-[13px] text-text-2">
+            {last ? `${last.type === "message_received" ? name : "You"}: ${lastText}` : "No messages yet"}
+          </span>
+        </span>
+        <span className="hidden shrink-0 text-[12.5px] text-text-2 sm:inline">
+          {thread.length} {thread.length === 1 ? "message" : "messages"}
+        </span>
+        <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-[12.5px] font-medium ring-1 ring-line">
+          <Mail className="size-3.5" strokeWidth={1.8} /> {props.closed ? "View conversation" : "Open conversation"}
+        </span>
+      </button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-h-[92vh] max-w-5xl overflow-y-auto border-0 bg-transparent p-0 shadow-none">
+          <DialogTitle className="sr-only">Conversation with {name}</DialogTitle>
+          <DialogDescription className="sr-only">Email messages for claim {props.caseId}</DialogDescription>
+          <CustomerChat {...props} className="mb-0 bg-background" />
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

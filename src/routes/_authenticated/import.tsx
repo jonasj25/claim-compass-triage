@@ -11,6 +11,7 @@ import { QUEUE_LABELS, queueFor, type Queue } from "@/lib/lifecycle";
 import { isClosed } from "@/lib/csv";
 import { Button } from "@/components/ui/button";
 import { Card, PageHeader } from "@/components/triage/ui";
+import { ImportResultDialog } from "@/components/triage/ImportResultDialog";
 
 export const Route = createFileRoute("/_authenticated/import")({
   head: () => ({ meta: [{ title: "Import CSV — Clearpath" }, { name: "description", content: "Upload a claims CSV and triage it with the active policy." }] }),
@@ -26,6 +27,8 @@ function ImportPage() {
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<ImportResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showResult, setShowResult] = useState(false);
+  const [importedName, setImportedName] = useState("");
 
   const preview: Partial<Record<Queue, number>> = {};
   if (claims && policy) for (const c of claims) {
@@ -45,6 +48,8 @@ function ImportPage() {
     try {
       const r = await importClaims(claims, policy, me.name);
       setResult(r);
+      setImportedName(fileName);
+      setShowResult(true);
       await qc.invalidateQueries();
       toast(`Imported ${r.inserted} cases`);
     } catch (e) {
@@ -77,11 +82,20 @@ function ImportPage() {
           </div>
         )}
         {result && (
-          <p className="mt-6 text-[13px] text-text-2">
-            {result.inserted} cases triaged{result.frozen ? `, ${result.frozen} closed cases left unchanged` : ""}.
-          </p>
+          <div className="mt-6 flex flex-wrap items-center justify-between gap-3 text-[13px] text-text-2">
+            <span>
+              {result.inserted} cases triaged{result.frozen ? `, ${result.frozen} closed cases left unchanged` : ""}
+              {result.secondChecks ? `, ${result.secondChecks} flagged for a second check` : ""}.
+            </span>
+            <Button variant="outline" onClick={() => setShowResult(true)}>
+              Show this import
+            </Button>
+          </div>
         )}
       </Card>
+      {result && policy && (
+        <ImportResultDialog open={showResult} onOpenChange={setShowResult} fileName={importedName} version={policy.version} result={result} />
+      )}
     </div>
   );
 }

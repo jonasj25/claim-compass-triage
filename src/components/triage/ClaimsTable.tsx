@@ -1,6 +1,9 @@
 import { Link } from "@tanstack/react-router";
 import { Avatar, Chip, StatusDot, Unknown, fmtEur } from "./ui";
-import type { CaseRow } from "@/lib/data";
+import { useQuery } from "@tanstack/react-query";
+import { activePolicyQuery, type CaseRow } from "@/lib/data";
+import { secondCheckReason } from "@/lib/second-check";
+import type { Policy } from "@/lib/triage";
 import { isClosed } from "@/lib/csv";
 import { cn } from "@/lib/utils";
 import { saveCaseNav } from "@/lib/case-nav";
@@ -12,14 +15,19 @@ const ageLabel = (iso: string | null) => {
   return h < 24 ? `${Math.max(1, Math.round(h))}h` : `${Math.floor(h / 24)}d`;
 };
 
-export function contextLine(c: CaseRow) {
+const nearLimit = (c: CaseRow, policy?: Policy) =>
+  !!(policy && c.workflow?.qa_sample && c.decision && secondCheckReason(c.claim, policy, c.decision.recommendation));
+
+export function contextLine(c: CaseRow, policy?: Policy) {
   const q = c.workflow?.queue;
   if (!c.decision) return "";
-  if (q === "auto_processed") return c.workflow?.qa_sample ? "Random QA sample – please confirm" : "All checks passed";
+  if (q === "auto_processed")
+    return nearLimit(c, policy) ? "Close to the limit – second check" : c.workflow?.qa_sample ? "Random QA sample – please confirm" : "All checks passed";
   return humanize(c.decision.explanation ?? "");
 }
 
 export function ClaimsTable({ rows, navLabel = "Claims" }: { rows: CaseRow[]; navLabel?: string }) {
+  const { data: policy } = useQuery(activePolicyQuery);
   if (!rows.length) return <p className="py-12 text-center text-text-2">No cases here.</p>;
   return (
     <div className="overflow-x-auto">
@@ -56,7 +64,7 @@ export function ClaimsTable({ rows, navLabel = "Claims" }: { rows: CaseRow[]; na
                     {c.decision?.needs_recheck && !closed && (
                       <Chip className="pill-action border-transparent">Recheck · {c.decision.policy_version}</Chip>
                     )}
-                    {c.workflow?.qa_sample && <Chip>QA sample</Chip>}
+                    {c.workflow?.qa_sample && <Chip>{nearLimit(c, policy) ? "Second check" : "QA sample"}</Chip>}
                     {c.workflow?.queue === "on_you" && !c.workflow.assignee && <Chip>Unassigned</Chip>}
                     {closed && <Chip>Closed</Chip>}
                     {unknown && <Chip className="border-dashed">Unknown fields</Chip>}
@@ -65,7 +73,7 @@ export function ClaimsTable({ rows, navLabel = "Claims" }: { rows: CaseRow[]; na
                 </td>
                 <td className="px-3">{c.decision && <StatusDot rec={c.decision.recommendation} closed={closed} />}</td>
                 <td className="px-3 font-mono text-[11px] uppercase text-text-2">{c.decision?.rule_id}</td>
-                <td className="max-w-[220px] truncate px-3 text-text-2">{contextLine(c)}</td>
+                <td className="max-w-[220px] truncate px-3 text-text-2">{contextLine(c, policy)}</td>
                 <td className="num px-3">{c.claim.quote_eur === null ? <Unknown /> : fmtEur(c.claim.quote_eur)}</td>
                 <td className={cn("num px-3 font-mono text-[12px]", overdue ? "text-action" : "text-text-2")}>{ageLabel(c.claim.received_at)}</td>
                 <td className="px-3"><Avatar name={c.workflow?.assignee} /></td>

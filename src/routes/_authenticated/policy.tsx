@@ -20,6 +20,7 @@ import { NewPolicyDialog } from "@/components/triage/NewPolicyDialog";
 import { DeleteDraftButton } from "@/components/triage/DeleteDraftButton";
 import { PageHeader, StatusDot, fmtEur } from "@/components/triage/ui";
 import { fieldsUsed } from "@/lib/policy-text";
+import { SECOND_CHECK, secondCheckBand } from "@/lib/second-check";
 import { FIELD_LABELS, type Policy, type Recommendation } from "@/lib/triage";
 
 export const Route = createFileRoute("/_authenticated/policy")({
@@ -190,6 +191,7 @@ function PolicyPage() {
     (d) => DOC[d] ?? { icon: FileText, short: fieldName(d), full: fieldName(d) },
   );
   const drafts = versions.filter((x) => x.status === "draft");
+  const band = secondCheckBand(p);
 
   return (
     <div className="mx-auto max-w-[760px]">
@@ -248,6 +250,16 @@ function PolicyPage() {
           <p className="text-[13px] text-text-2">
             Goes into the normal claims process. This is not a payment approval.
           </p>
+          {band && (
+            <p
+              className="mt-2 text-[13px] text-text-2"
+              title={`Assumes repair costs can rise up to ${Math.round(SECOND_CHECK.ESTIMATE_UPLIFT * 100)}% after the first quote. A check costs about €${SECOND_CHECK.REVIEW_COST_EUR}; a wrong routine decision about €${SECOND_CHECK.WRONG_ROUTINE_COST_EUR}.`}
+            >
+              Quotes above {fmtEur(band.from)} up to {fmtEur(band.to)} still go routine, but a
+              person double-checks them: a {Math.round(SECOND_CHECK.ESTIMATE_UPLIFT * 100)}% cost
+              increase during repair would cross the limit.
+            </p>
+          )}
         </Row>
       </ol>
 

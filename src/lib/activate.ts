@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { isClosed } from "./csv";
 import { queueFor, type Queue } from "./lifecycle";
 import { decide, type Claim, type Decision, type Policy, type Recommendation } from "./triage";
+import { secondCheckReason } from "./second-check";
 
 export interface PlannedDecision {
   case_id: string;
@@ -12,6 +13,7 @@ export interface PlannedDecision {
   decision: Decision; // under the new version
   changed: boolean;
   queue: Queue;
+  secondCheck: string | null; // routine but close to the new limit: a person double-checks it
 }
 
 export interface ActivationPlan {
@@ -19,6 +21,7 @@ export interface ActivationPlan {
   to: string;
   open: PlannedDecision[];
   changed: PlannedDecision[];
+  secondChecks: PlannedDecision[];
   closedUntouched: number;
 }
 
@@ -45,6 +48,7 @@ export function planActivation(
       decision: d,
       changed: d.recommendation !== before,
       queue: queueFor(d.recommendation, false),
+      secondCheck: secondCheckReason(c.claim, candidate, d.recommendation),
     });
   }
   return {
@@ -52,6 +56,7 @@ export function planActivation(
     to: candidate.version,
     open,
     changed: open.filter((p) => p.changed),
+    secondChecks: open.filter((p) => p.secondCheck),
     closedUntouched,
   };
 }
@@ -138,6 +143,31 @@ export async function activatePolicy(plan: ActivationPlan, actor: string): Promi
             after: p.decision.recommendation,
             rule_id: p.decision.rule_id,
           },
+        })),
+      ),
+    );
+
+  // Routine claims close to the new limit get a second check (recommendation unchanged).
+  for (const part of chunk(plan.secondChecks.map((p) => p.case_id))) {
+    await ok(
+      supabase
+        .from("case_workflow")
+        .update({
+          qa_sample: true,
+          sla_due_at: new Date(Date.now() + 24 * 3600e3).toISOString(),
+          updated_at: now,
+        })
+        .in("case_id", part),
+    );
+  }
+  if (plan.secondChecks.length)
+    await ok(
+      supabase.from("case_events").insert(
+        plan.secondChecks.map((p) => ({
+          case_id: p.case_id,
+          type: "second_check_flagged",
+          actor: "Rules engine",
+          payload: { reason: p.secondCheck, policy_version: plan.to },
         })),
       ),
     );

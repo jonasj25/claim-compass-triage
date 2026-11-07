@@ -88,6 +88,12 @@ export function ActivatePolicyButton({
                   {plan.changed.length} change their next step and are flagged for recheck.
                 </li>
                 <li>{plan.closedUntouched} closed claims keep their decision.</li>
+                {plan.secondChecks.length > 0 && (
+                  <li>
+                    {plan.secondChecks.length} routine claims close to the new limit get a second
+                    check.
+                  </li>
+                )}
                 <li>
                   Every new decision records {candidate.version}; the old ones stay in the history.
                 </li>
