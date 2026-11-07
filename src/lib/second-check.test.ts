@@ -18,7 +18,8 @@ describe("second check near the limit (€70 margin)", () => {
     const r = (q: number | null) => secondCheckReason({ quote_eur: q }, v2, "routine_processing");
     expect(r(1130)).toBeNull(); // exactly €70 below is outside
     expect(r(1130.01)).not.toBeNull();
-    expect(r(1200)).toContain("within €70 of the €1,200 limit");
+    expect(r(1200)).toContain("exactly at the €1,200 limit");
+    expect(r(1180)).toContain("only €20 under the €1,200 limit");
     expect(r(1201)).toBeNull(); // over the limit is human review anyway
     expect(r(1100)).toBeNull();
     expect(r(null)).toBeNull();

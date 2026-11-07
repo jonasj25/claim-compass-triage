@@ -301,7 +301,9 @@ function Dashboard() {
           aria-label="Workstream groups"
           className="flex flex-wrap gap-1 border-b border-line px-3 pt-2"
         >
-          {(["all", ...WORK_TABS] as const).map((tab) => (
+          {(["all", ...WORK_TABS] as const)
+            .filter((tab) => tab === "all" || tab === task || work.ordered.some((i) => workTab(i) === tab))
+            .map((tab) => (
             <Button
               key={tab}
               variant="ghost"
@@ -383,7 +385,7 @@ function Dashboard() {
                       "px-3 py-3 text-[11px] font-medium text-text-2",
                       [
                         "w-[90px]",
-                        "w-[175px]",
+                        "w-[220px]",
                         "",
                         "w-[90px] text-right",
                         "w-[100px]",
@@ -433,8 +435,8 @@ function Dashboard() {
                         </Link>
                       </td>
                       <td className="px-3 py-2" title={item.why}>
-                        <Chip className="max-w-full normal-case tracking-normal font-sans">
-                          <span className="truncate">
+                        <Chip className="max-w-full whitespace-normal normal-case tracking-normal font-sans leading-snug">
+                          <span className="line-clamp-2">
                             {item.nearLimit ? (
                               <>
                                 <TriangleAlert className="mr-1 inline size-3 text-wait" />

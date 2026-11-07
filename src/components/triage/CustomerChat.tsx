@@ -271,7 +271,8 @@ export function CustomerChat({
       ]);
       toast(t.closes ? `Message sent · claim ${t.closes} and closed` : "Message sent (simulated)");
       setConfirming(false);
-      if (tpl === "request") onRequestSent?.();
+      // the decision panel moves on to the next case after a decision or a request
+      if (tpl === "request" || t.closes) onRequestSent?.();
     } catch (e) {
       toast(`Could not send: ${(e as Error).message}`);
     } finally {
@@ -401,7 +402,7 @@ export function CustomerChat({
         {/* composer */}
         <div className="px-7 py-5">
           <div className="mb-3 flex flex-wrap gap-1.5">
-            {order.map((k) => {
+            {order.filter((k) => k !== "reminder" || queue === "waiting_customer").map((k) => {
               const t = TEMPLATES[k];
               const Icon = t.icon;
               return (

@@ -37,5 +37,7 @@ export function secondCheckReason(
   const q = claim.quote_eur;
   if (!band || rec !== "routine_processing" || q === null || q === undefined) return null;
   if (q <= band.from || q > band.to) return null;
-  return `Quote ${eur(q)} is within ${eur(SECOND_CHECK.MARGIN_EUR)} of the ${eur(band.to)} limit. Auto-processed as the policy says, plus a second check.`;
+  if (q === band.to)
+    return `Quote ${eur(q)} is exactly at the ${eur(band.to)} limit. Auto-processed as the policy says, plus a second check.`;
+  return `Quote ${eur(q)} is only ${eur(band.to - q)} under the ${eur(band.to)} limit. Auto-processed as the policy says, plus a second check.`;
 }

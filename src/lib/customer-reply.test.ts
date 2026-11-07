@@ -100,7 +100,7 @@ describe("customer reply → automatic re-check", () => {
   it("quote arrives just under the v2 limit → auto-processed plus a second check", async () => {
     const r = await reply("DEV-013", v2, { quote_eur: 1180 });
     expect(r.after).toBe("routine_processing");
-    expect(r.secondCheck).toContain("within €70");
+    expect(r.secondCheck).toContain("only €20 under");
     expect(workflow()).toMatchObject({ queue: "auto_processed", qa_sample: true });
     expect(events().map((e) => e.type)).toContain("second_check_flagged");
   });

@@ -71,7 +71,7 @@ export function ClaimsTable({ rows, navLabel = "Claims", statuses }: { rows: Cas
                       <Chip className="pill-action border-transparent">Recheck · {c.decision.policy_version}</Chip>
                     )}
                     {c.workflow?.qa_sample && <Chip>{nearLimit(c, policy) ? "Second check" : "QA sample"}</Chip>}
-                    {closed && <Chip>Closed</Chip>}
+                    {closed && !statuses && <Chip>Closed</Chip>}
                     {unknown && <Chip className="border-dashed">Unknown fields</Chip>}
                     {c.intake?.channel === "phone" && <Chip>Phone</Chip>}
                   </div>

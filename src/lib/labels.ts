@@ -56,6 +56,7 @@ export function humanize(text: string | null | undefined): string {
   return text
     .replace(/\bType: ([a-z_]+)/g, (_, c: string) => `Claim type: ${claimTypeLabel(c)}`)
     .replace(/\bRepair: ([a-z_]+)/g, (_, c: string) => `Repair: ${repairTypeLabel(c)}`)
+    .replace(/\b([Cc])laim type "([a-z_]+)"/g, (_, c: string, v: string) => `${c}laim type "${claimTypeLabel(v)}"`)
     .replace(/claim_type '([^']+)'/g, (_, c: string) => `claim type "${claimTypeLabel(c)}"`)
     .replace(/repair_type '([^']+)'/g, (_, c: string) => `repair "${repairTypeLabel(c)}"`)
     .replace(/"([a-z]+(?:_[a-z0-9]+)+)"/g, (_, c: string) => `"${valueLabel(c)}"`)
