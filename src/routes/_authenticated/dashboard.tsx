@@ -120,15 +120,36 @@ function Dashboard() {
         </Button>
       </div>
 
-      {/* Live numbers – information only, the tabs below do the filtering */}
+      {/* Live numbers; each tile selects the same filter as its tab below */}
       <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <Kpi label="To review" value={onYou.length} sub={`${overdue.length} overdue · SLA 24h`} tone={onYou.length ? "action" : undefined} />
-        <Kpi label="Waiting on customer" value={waiting.length} sub="Outreach sent automatically" />
-        <Kpi label="Auto-processed" value={auto.length} sub="Routine, not a payment approval" />
+        <Kpi
+          label="To review"
+          value={onYou.length}
+          sub={`${overdue.length} overdue · SLA 24h`}
+          tone={onYou.length ? "action" : undefined}
+          onClick={() => setTab("to_review")}
+          active={current.key === "to_review"}
+        />
+        <Kpi
+          label="Waiting on customer"
+          value={waiting.length}
+          sub="Outreach sent automatically"
+          onClick={() => setTab("waiting_customer")}
+          active={current.key === "waiting_customer"}
+        />
+        <Kpi
+          label="Auto-processed"
+          value={auto.length}
+          sub="Routine, not a payment approval"
+          onClick={() => setTab("auto_processed")}
+          active={current.key === "auto_processed"}
+        />
         <Kpi
           label="Avg handling time"
           value={handling.data?.avg ? fmtSecs(handling.data.avg) : "–"}
-          sub={handling.data?.n ? `${handling.data.n} ${handling.data.n === 1 ? "decision" : "decisions"} today` : "No decisions yet today"}
+          sub={handling.data?.n ? `${handling.data.n} ${handling.data.n === 1 ? "decision" : "decisions"} today · show done` : "No decisions yet today"}
+          onClick={() => setTab("done")}
+          active={current.key === "done"}
         />
       </div>
 
