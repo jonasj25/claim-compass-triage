@@ -36,7 +36,7 @@ export function ClaimsTable({ rows }: { rows: CaseRow[] }) {
             const unknown = (c.decision?.missing_fields ?? []).some((f) => c.claim[f] === null);
             return (
               <tr key={c.claim.case_id} className="relative h-14 border-b border-line last:border-0 hover:bg-surface-2">
-                <td className="px-3 font-mono text-[12px]">
+                <td className="whitespace-nowrap px-3 font-mono text-[12px]">
                   <Link to="/claims/$caseId" params={{ caseId: c.claim.case_id }} className="after:absolute after:inset-0 focus-visible:outline-none">
                     {c.claim.case_id}
                   </Link>
