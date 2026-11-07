@@ -52,7 +52,7 @@ export function ClaimsTable({ rows, navLabel = "Claims", statuses }: { rows: Cas
             const closed = isClosed(c.claim.case_status);
             const unknown = (c.decision?.missing_fields ?? []).some((f) => c.claim[f] === null);
             return (
-              <tr key={c.claim.case_id} className="relative h-14 border-b border-line/70 last:border-0 hover:bg-white/80">
+              <tr key={c.claim.case_id} className="relative h-11 border-b border-line/70 last:border-0 hover:bg-surface-2">
                 <td className="whitespace-nowrap px-3 font-mono text-[12px]">
                   {/* The link's overlay covers the whole row. */}
                   <Link
@@ -83,7 +83,7 @@ export function ClaimsTable({ rows, navLabel = "Claims", statuses }: { rows: Cas
                 <td className="px-3 font-mono text-[11px] uppercase text-text-2">{c.decision?.rule_id}</td>
                 <td className="max-w-[220px] truncate px-3 text-text-2">{contextLine(c, policy)}</td>
                 <td className="num px-3 text-right">{c.claim.quote_eur === null ? <Unknown /> : fmtEur(c.claim.quote_eur)}</td>
-                <td className="num px-3 text-right font-mono text-[12px] text-text-2">{ageLabel(c.claim.received_at)}</td>
+                <td className="num px-3 text-right font-mono text-[12px] text-text-2">{c.claim.received_at ? `${ageLabel(c.claim.received_at)} ago` : <Unknown />}</td>
               </tr>
             );
           })}

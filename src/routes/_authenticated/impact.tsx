@@ -21,6 +21,10 @@ export const Route = createFileRoute("/_authenticated/impact")({
     typeof s.v === "string" ? { v: s.v } : {},
   head: () => ({
     meta: [
+{ property: "og:title", content: "Change impact — Clearpath" },
+{ property: "og:description", content: "Clearpath claims workspace: review evidence, policy decisions and case activity." },
+{ property: "og:type", content: "website" },
+{ name: "twitter:card", content: "summary" },
       { title: "Change impact — Clearpath" },
       { name: "description", content: "See which open cases a new policy version would change." },
     ],
@@ -135,7 +139,7 @@ function ImpactPage() {
         )}
       </Card>
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="kpi-strip grid grid-cols-4 gap-0">
         <Kpi
           label="Handled without a reviewer"
           value={pct(impact.automationAfter)}

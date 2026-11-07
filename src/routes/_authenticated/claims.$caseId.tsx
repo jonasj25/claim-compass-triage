@@ -25,7 +25,11 @@ import { cn } from "@/lib/utils";
 import type { TranscriptLine, FormField, IntakeDocument } from "@/lib/intake";
 
 export const Route = createFileRoute("/_authenticated/claims/$caseId")({
-  head: ({ params }) => ({ meta: [{ title: `${params.caseId} — Clearpath` }, { name: "description", content: `Case ${params.caseId}: recommendation, checklist and sources.` }] }),
+  head: ({ params }) => ({ meta: [
+{ property: "og:title", content: `${params.caseId} — Clearpath` },
+{ property: "og:description", content: "Clearpath claims workspace: review evidence, policy decisions and case activity." },
+{ property: "og:type", content: "website" },
+{ name: "twitter:card", content: "summary" },{ title: `${params.caseId} — Clearpath` }, { name: "description", content: `Case ${params.caseId}: recommendation, checklist and sources.` }] }),
   component: CaseDetail,
 });
 
@@ -110,7 +114,7 @@ function CaseDetail() {
     const onKey = (e: KeyboardEvent) => {
       if (overrideOpen || e.metaKey || e.ctrlKey || e.altKey) return;
       const t = e.target as HTMLElement | null;
-      if (t && (t.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(t.tagName))) return;
+      if (t && (t.isContentEditable || t.closest("input, textarea, select, [role=dialog], [role=listbox], [role=combobox]"))) return;
       if (e.key === "ArrowRight" || e.key === "j" || e.key === "J") goTo(nextId);
       else if (e.key === "ArrowLeft" || e.key === "k" || e.key === "K") goTo(prevId);
       else if (e.key === "c" || e.key === "C") confirmKey.current?.();
@@ -207,7 +211,8 @@ function CaseDetail() {
         await must(supabase.from("case_workflow").update({ queue: "done", qa_sample: false, updated_at: new Date().toISOString() }).eq("case_id", caseId));
       }
     }, advance && nextId ? `Confirmed in ${handling_seconds}s · next case` : `Confirmed in ${handling_seconds}s`);
-    if (ok && advance && nextId) goTo(nextId);
+    if (ok && advance) { if (nextId) goTo(nextId); else void navigate({ to: "/dashboard" }); }
+    return ok;
   };
 
   const assignMe = () =>
@@ -277,9 +282,9 @@ function CaseDetail() {
   const missingFields = [...new Set([...(decision?.missing_fields ?? []), ...live.checklist.filter((c) => c.stage === "R2" && c.status === "fail").map((c) => c.field)])] as string[];
   const triggers = live.checklist.filter((c) => c.status === "fail");
   const status = closed ? "Closed" : queue === "done" || confirmed ? "Done" : queue === "waiting_customer" ? "Waiting on customer" : needsUser ? "Needs review" : "Auto-processed";
-  const assignees = [...new Set([me.name, "Mara Weber", "Jonas Klein", "Lea Fischer", ...(allCases.data ?? []).map((c) => c.workflow?.assignee).filter((v): v is string => !!v)])];
+  const assignees = [...new Set([me.name, ...(allCases.data ?? []).map((c) => c.workflow?.assignee).filter((v): v is string => !!v)])];
   const assign = (name: string) => run(async () => { await must(supabase.from("case_workflow").update({ assignee: name === "unassigned" ? null : name, updated_at: new Date().toISOString() }).eq("case_id", caseId)); await must(event("assigned", { assignee: name === "unassigned" ? null : name })); }, "Assignee updated");
-  const submit = () => { if (decisionAction === "override") setOverrideOpen(rec === "human_review" ? "routine_processing" : "human_review"); else if (decisionAction === "request") { setRequestMode(true); setMainTab("Customer"); } else void confirm(true).then(() => { if (!nextId) void navigate({ to: "/dashboard" }); }); };
+  const submit = () => { if (decisionAction === "override") setOverrideOpen(rec === "human_review" ? "routine_processing" : "human_review"); else if (decisionAction === "request") { setRequestMode(true); setMainTab("Customer"); } else void confirm(true); };
   const tasks = [...triggers.map((c) => ({ key: c.key, label: `Check ${FIELD_LABELS[c.field] ?? c.field.replace(/_/g, " ")}`, note: humanize(c.note), tab: "Evidence" })), ...(nearLimit ? [{ key: "near_limit", label: "Verify quote amount", note: nearLimit, tab: "Evidence" }] : []), { key: "identity", label: "Confirm customer identity", note: "Compare customer and vehicle details against the submitted evidence.", tab: "Overview" }];
   return (
     <div>
@@ -650,7 +655,7 @@ function CommentBox({ onPost, disabled, comments }: { onPost: (body: string) => 
               if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) void post();
             }}
             placeholder="Note for colleagues, e.g. Called the workshop, quote confirmed."
-            className="min-h-[96px] flex-1 bg-white/80"
+            className="min-h-[96px] flex-1 bg-surface"
           />
           <div className="mt-3 flex items-center justify-end gap-3">
             <span className="text-[12px] text-text-3">⌘ + Enter to post</span>

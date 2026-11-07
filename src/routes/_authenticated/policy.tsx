@@ -26,6 +26,10 @@ import { FIELD_LABELS, type Policy, type Recommendation } from "@/lib/triage";
 export const Route = createFileRoute("/_authenticated/policy")({
   head: () => ({
     meta: [
+{ property: "og:title", content: "Policy — Clearpath" },
+{ property: "og:description", content: "Clearpath claims workspace: review evidence, policy decisions and case activity." },
+{ property: "og:type", content: "website" },
+{ name: "twitter:card", content: "summary" },
       { title: "Policy — Clearpath" },
       { name: "description", content: "The active triage policy." },
     ],

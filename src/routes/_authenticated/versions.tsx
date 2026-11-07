@@ -10,6 +10,10 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/_authenticated/versions")({
   head: () => ({
     meta: [
+{ property: "og:title", content: "Versions — Clearpath" },
+{ property: "og:description", content: "Clearpath claims workspace: review evidence, policy decisions and case activity." },
+{ property: "og:type", content: "website" },
+{ name: "twitter:card", content: "summary" },
       { title: "Versions — Clearpath" },
       { name: "description", content: "Policy version history." },
     ],
@@ -43,20 +47,20 @@ function Versions() {
               const changes = prev ? diffPolicies(prev, v.config as unknown as Policy) : [];
               return (
                 <tr key={v.id} className="border-b border-line align-top last:border-0">
-                  <td className="px-6 py-4 font-mono uppercase">{v.id}</td>
-                  <td className="px-6 py-4">
+                  <td className="px-6 py-2 font-mono uppercase">{v.id}</td>
+                  <td className="px-6 py-2">
                     <span
                       className={cn(
-                        "rounded-full px-2.5 py-0.5 text-[12px] capitalize",
+                        "text-[12px] capitalize",
                         v.status === "active"
-                          ? "bg-foreground text-background"
-                          : "bg-surface-2 text-text-2 ring-1 ring-line",
+                          ? "text-foreground font-medium"
+                          : "text-text-2",
                       )}
                     >
                       {v.status}
                     </span>
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="px-6 py-2">
                     {v.description && <p className="mb-1">{v.description}</p>}
                     {prev ? (
                       changes.length ? (
@@ -72,11 +76,11 @@ function Versions() {
                       <p className="text-text-3">Initial version</p>
                     )}
                   </td>
-                  <td className="px-6 py-4 text-text-2">
+                  <td className="px-6 py-2 text-text-2">
                     {v.created_by && <p>{v.created_by}</p>}
                     <p className="font-mono text-[12px]">{fmtTime(v.created_at)}</p>
                   </td>
-                  <td className="px-6 py-4 text-text-2">
+                  <td className="px-6 py-2 text-text-2">
                     {v.approved_by ? (
                       <>
                         <p>{v.approved_by}</p>
@@ -86,7 +90,7 @@ function Versions() {
                       <p className="text-text-3">Not yet</p>
                     )}
                   </td>
-                  <td className="px-6 py-4 text-right">
+                  <td className="px-6 py-2 text-right">
                     <div className="flex flex-col items-end gap-1.5">
                       {v.status !== "active" && (
                         <Link

@@ -44,6 +44,10 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/_authenticated/business-case")({
   head: () => ({
     meta: [
+{ property: "og:title", content: "Business case — Clearpath" },
+{ property: "og:description", content: "Clearpath claims workspace: review evidence, policy decisions and case activity." },
+{ property: "og:type", content: "website" },
+{ name: "twitter:card", content: "summary" },
       { title: "Business case — Clearpath" },
       {
         name: "description",

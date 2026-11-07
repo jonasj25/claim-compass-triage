@@ -98,5 +98,7 @@ export const fmtEur = (n: number | null | undefined) =>
 export const fmtTime = (iso: string | null | undefined) => {
   if (!iso) return "";
   const d = new Date(iso);
-  return d.toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+  if (!Number.isFinite(d.getTime())) return "";
+  const minutes = Math.max(0, Math.floor((Date.now() - d.getTime()) / 60000));
+  return minutes < 1 ? "just now" : minutes < 60 ? `${minutes} min ago` : minutes < 1440 ? `${Math.floor(minutes / 60)} hours ago` : `${Math.floor(minutes / 1440)} days ago`;
 };
