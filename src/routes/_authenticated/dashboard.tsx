@@ -8,12 +8,12 @@ import {
   Phone,
   Search,
   TriangleAlert,
-  ListFilter,
 } from "lucide-react";
 import { activePolicyQuery, casesQuery } from "@/lib/data";
 import { dashboardActivityQuery, outreachRemindersQuery } from "@/lib/dashboard-activity";
 import {
   buildWorkstream,
+  isDone,
   claimStatuses,
   CLAIM_STATUSES,
   money,
@@ -33,8 +33,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { WORK_TABS, workTab, workPriority, type WorkTab } from "@/lib/workstream-presentation";
-import { Avatar, Chip } from "@/components/triage/ui";
+import { WORK_TABS, workTab, type WorkTab } from "@/lib/workstream-presentation";
+import { Chip } from "@/components/triage/ui";
 import { ClaimsProgress } from "@/components/triage/ClaimsProgress";
 import { Unknown } from "@/components/triage/ui";
 import { saveCaseNav } from "@/lib/case-nav";
@@ -215,9 +215,47 @@ function Dashboard() {
     return () => document.removeEventListener("keydown", onKey);
   });
 
+  // Header numbers. "Handled automatically" uses the same definition as Workload & flow:
+  // open claims whose current recommendation is Auto-processed or Request info.
+  const total = work.ordered.length;
+  const openRows = data.filter((r) => r.decision && !isDone(r));
+  const autoShare = openRows.length
+    ? openRows.filter((r) => r.decision?.recommendation !== "human_review").length / openRows.length
+    : 0;
+  const reviewVolume = work.ordered.reduce((n, i) => n + (i.row.claim.quote_eur ?? 0), 0);
+  const oldest = work.ordered.reduce<WorkItem | null>((o, i) => {
+    const t = Date.parse(i.row.claim.received_at ?? "");
+    if (!Number.isFinite(t)) return o;
+    return !o || t < Date.parse(o.row.claim.received_at ?? "") ? i : o;
+  }, null);
+  const oldestAge = oldest ? age(oldest.row.claim.received_at, now) : null;
+  const kpis: { value: string; label: string; sub: string; to?: { status: ClaimStatus } }[] = [
+    { value: String(total), label: "To review", sub: "need your decision" },
+    {
+      value: String(counts.waiting_customer),
+      label: "Waiting on customer",
+      sub: "request sent, nothing to do",
+      to: { status: "waiting_customer" },
+    },
+    {
+      value: `${Math.round(autoShare * 100)}%`,
+      label: "Handled automatically",
+      sub: `of ${openRows.length} open claims`,
+    },
+    {
+      value: reviewVolume >= 10_000 ? `€${Math.round(reviewVolume / 1000)}k` : money(reviewVolume),
+      label: "Quote volume to review",
+      sub: total ? `avg ${money(Math.round(reviewVolume / total))} per case` : "nothing waiting",
+    },
+    {
+      value: oldestAge ?? "–",
+      label: "Oldest open case",
+      sub: oldest ? oldest.row.claim.case_id : "nothing waiting",
+    },
+  ];
+
   const hour = now.getHours();
   const greet = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
-  const total = work.ordered.length;
 
   return (
     <div>
@@ -226,16 +264,23 @@ function Dashboard() {
           <p className="mb-3 text-[14px] font-medium">
             {greet}, {me.name.split(" ")[0]}
           </p>
-          <div className="flex divide-x divide-line">
-            {[
-              [total, "To review"],
-              [work.ordered.filter((i) => !i.row.workflow?.assignee).length, "Unassigned"],
-            ].map(([v, label]) => (
-              <div key={label} className="px-5 first:pl-0">
-                <div className="num text-[20px] font-semibold">{v}</div>
-                <div className="text-[11px] text-text-2">{label}</div>
-              </div>
-            ))}
+          <div className="flex flex-wrap divide-x divide-line">
+            {kpis.map((k) => {
+              const body = (
+                <>
+                  <div className={cn("num text-[20px] font-semibold", k.label === "To review" && total > 0 && "text-action")}>{k.value}</div>
+                  <div className="text-[11px] font-medium text-foreground">{k.label}</div>
+                  <div className="text-[11px] text-text-2">{k.sub}</div>
+                </>
+              );
+              return k.to ? (
+                <Link key={k.label} to="/claims" search={k.to} className="px-5 first:pl-0 hover:opacity-80">{body}</Link>
+              ) : k.label === "Oldest open case" && oldest ? (
+                <Link key={k.label} to="/claims/$caseId" params={{ caseId: oldest.row.claim.case_id }} onClick={() => remember(oldest)} className="px-5 first:pl-0 hover:opacity-80">{body}</Link>
+              ) : (
+                <div key={k.label} className="px-5 first:pl-0">{body}</div>
+              );
+            })}
           </div>
         </div>
         {visible[0] && (
@@ -330,8 +375,6 @@ function Dashboard() {
                   "Trigger",
                   "Summary",
                   "Amount",
-                  "Priority",
-                  "Assignee",
                   "Received",
                 ].map((h, i) => (
                   <th
@@ -343,16 +386,11 @@ function Dashboard() {
                         "w-[175px]",
                         "",
                         "w-[90px] text-right",
-                        "w-[78px]",
-                        "w-[150px]",
                         "w-[100px]",
                       ][i],
                     )}
                   >
                     {h}
-                    {["Trigger", "Priority", "Assignee"].includes(h) && (
-                      <ListFilter className="ml-1 inline size-3" />
-                    )}
                   </th>
                 ))}
               </tr>
@@ -361,7 +399,7 @@ function Dashboard() {
               <tbody key={group.key}>
                 {task === "all" && (
                   <tr className="border-b border-line bg-surface-2">
-                    <td colSpan={7} className="h-8 px-3 text-[11px] font-semibold text-text-2">
+                    <td colSpan={5} className="h-8 px-3 text-[11px] font-semibold text-text-2">
                       {group.label} · {group.items.length}
                     </td>
                   </tr>
@@ -370,7 +408,6 @@ function Dashboard() {
                   const { row } = item;
                   const id = row.claim.case_id;
                   const waited = age(row.claim.received_at, now);
-                  const priority = workPriority(workTab(item));
                   return (
                     <tr
                       key={id}
@@ -419,21 +456,6 @@ function Dashboard() {
                       </td>
                       <td className="num px-3 py-2 text-right">
                         {row.claim.quote_eur === null ? <Unknown /> : money(row.claim.quote_eur)}
-                      </td>
-                      <td
-                        className={cn(
-                          "px-3 py-2 text-[12px]",
-                          priority === "High"
-                            ? "text-action"
-                            : priority === "Medium"
-                              ? "text-wait"
-                              : "text-text-2",
-                        )}
-                      >
-                        {priority}
-                      </td>
-                      <td className="px-3 py-2">
-                        <Avatar name={row.workflow?.assignee} />
                       </td>
                       <td className="px-3 py-2 text-[11px] text-text-2">
                         {waited ? `${waited} ago` : <Unknown />}

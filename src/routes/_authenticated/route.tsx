@@ -138,12 +138,12 @@ function TopBar() {
   const { me, role, setRole } = useRole();
   const policy = useQuery(activePolicyQuery);
   const cases = useQuery(casesQuery);
-  const onMe = (cases.data ?? []).some(
-    (c) =>
-      c.workflow &&
-      (c.workflow.queue === "on_you" || c.workflow.qa_sample) &&
-      c.workflow.assignee === me.name,
-  );
+  // Single reviewer: the dot means "there is something to review", not "assigned to you".
+  const toReview = (cases.data ?? []).filter(
+    (c) => c.workflow && c.claim.case_status?.toLowerCase() !== "closed" && c.workflow.queue !== "done" &&
+      (c.workflow.queue === "on_you" || c.workflow.qa_sample),
+  ).length;
+  const onMe = toReview > 0;
   const path = useRouterState({ select: (s) => s.location.pathname });
   const title = path.startsWith("/claims/")
     ? `Workstream › ${decodeURIComponent(path.split("/").pop() ?? "")}`
@@ -195,7 +195,7 @@ function TopBar() {
           aria-label="Notifications"
           onClick={() => {
             if (role === "reviewer") void navigate({ to: "/dashboard" });
-            toast(onMe ? "Your assigned cases are in the workstream" : "No new notifications");
+            toast(onMe ? `${toReview} cases to review in the workstream` : "Nothing to review right now");
           }}
         >
           <Bell className="size-4" />

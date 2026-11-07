@@ -543,42 +543,10 @@ function CaseDetail() {
         >
           {status}
         </span>
-        <span
-          className={cn(
-            "border-l border-line pl-3 text-[12px]",
-            priority === "High"
-              ? "text-action"
-              : priority === "Medium"
-                ? "text-wait"
-                : "text-text-2",
-          )}
-        >
-          {priority} priority
-        </span>
         <div className="ml-auto flex items-center gap-2">
           <span className="text-[11px] text-text-2">
             Updated {fmtTime(workflow?.updated_at ?? data.claim.received_at)}
           </span>
-          <Select
-            value={workflow?.assignee ?? "unassigned"}
-            onValueChange={(v) => void assign(v)}
-            disabled={busy || closed}
-          >
-            <SelectTrigger
-              aria-label="Select assignee"
-              className="h-8 w-[165px] bg-surface text-[12px]"
-            >
-              <SelectValue placeholder="Select assignee" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="unassigned">Select assignee</SelectItem>
-              {assignees.map((name) => (
-                <SelectItem key={name} value={name}>
-                  {name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
           <span className="ml-2 text-[11px] text-text-2">
             Case {pos + 1} of {nav.ids.length}
           </span>

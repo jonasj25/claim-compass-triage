@@ -18,7 +18,7 @@ export const Route = createFileRoute("/_authenticated/overview")({
       {
         name: "description",
         content:
-          "Queues, automation rate, why claims need a person, reviewer load and the effect of policy changes.",
+          "Queues, automation rate, why claims need a person and the effect of policy changes.",
       },
       { property: "og:title", content: "Workload & flow — Clearpath" },
       {
@@ -148,7 +148,7 @@ function Overview() {
         </Card>
       </div>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-2">
+      <div className="mt-6 grid gap-6">
         <Card>
           <h2 className="section-title">Claims received, last 14 days</h2>
           <p className="mt-1 text-[13px] text-text-2">By the day they entered the system.</p>
@@ -180,21 +180,6 @@ function Overview() {
           </div>
         </Card>
 
-        <Card>
-          <h2 className="section-title">Reviewer load</h2>
-          <p className="mb-4 mt-1 text-[13px] text-text-2">
-            Open claims to review or second-check, per person.
-          </p>
-          <HBars
-            items={s.load.map(([name, v]) => ({
-              key: name,
-              label: name,
-              value: v,
-              color: SERIES.strong,
-            }))}
-            empty="Nothing assigned."
-          />
-        </Card>
       </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_1.2fr]">
