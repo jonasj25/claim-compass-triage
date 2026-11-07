@@ -11,7 +11,17 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
+import { Route as AuthenticatedAuditRouteImport } from './routes/_authenticated/audit'
+import { Route as AuthenticatedBusinessCaseRouteImport } from './routes/_authenticated/business-case'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedImpactRouteImport } from './routes/_authenticated/impact'
+import { Route as AuthenticatedOverviewRouteImport } from './routes/_authenticated/overview'
+import { Route as AuthenticatedPhoneIntakeRouteImport } from './routes/_authenticated/phone-intake'
+import { Route as AuthenticatedPolicyRouteImport } from './routes/_authenticated/policy'
+import { Route as AuthenticatedQualityRouteImport } from './routes/_authenticated/quality'
+import { Route as AuthenticatedTestsRouteImport } from './routes/_authenticated/tests'
+import { Route as AuthenticatedVersionsRouteImport } from './routes/_authenticated/versions'
+import { Route as AuthenticatedWorkloadRouteImport } from './routes/_authenticated/workload'
 import { Route as AuthenticatedClaimsIndexRouteImport } from './routes/_authenticated/claims.index'
 import { Route as AuthenticatedClaimsCaseIdRouteImport } from './routes/_authenticated/claims.$caseId'
 
@@ -24,9 +34,61 @@ const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
   id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedAuditRoute = AuthenticatedAuditRouteImport.update({
+  id: '/audit',
+  path: '/audit',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedBusinessCaseRoute =
+  AuthenticatedBusinessCaseRouteImport.update({
+    id: '/business-case',
+    path: '/business-case',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedImpactRoute = AuthenticatedImpactRouteImport.update({
+  id: '/impact',
+  path: '/impact',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedOverviewRoute = AuthenticatedOverviewRouteImport.update({
+  id: '/overview',
+  path: '/overview',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedPhoneIntakeRoute =
+  AuthenticatedPhoneIntakeRouteImport.update({
+    id: '/phone-intake',
+    path: '/phone-intake',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedPolicyRoute = AuthenticatedPolicyRouteImport.update({
+  id: '/policy',
+  path: '/policy',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedQualityRoute = AuthenticatedQualityRouteImport.update({
+  id: '/quality',
+  path: '/quality',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedTestsRoute = AuthenticatedTestsRouteImport.update({
+  id: '/tests',
+  path: '/tests',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedVersionsRoute = AuthenticatedVersionsRouteImport.update({
+  id: '/versions',
+  path: '/versions',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedWorkloadRoute = AuthenticatedWorkloadRouteImport.update({
+  id: '/workload',
+  path: '/workload',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedClaimsIndexRoute =
@@ -44,13 +106,33 @@ const AuthenticatedClaimsCaseIdRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/audit': typeof AuthenticatedAuditRoute
+  '/business-case': typeof AuthenticatedBusinessCaseRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/impact': typeof AuthenticatedImpactRoute
+  '/overview': typeof AuthenticatedOverviewRoute
+  '/phone-intake': typeof AuthenticatedPhoneIntakeRoute
+  '/policy': typeof AuthenticatedPolicyRoute
+  '/quality': typeof AuthenticatedQualityRoute
+  '/tests': typeof AuthenticatedTestsRoute
+  '/versions': typeof AuthenticatedVersionsRoute
+  '/workload': typeof AuthenticatedWorkloadRoute
   '/claims/$caseId': typeof AuthenticatedClaimsCaseIdRoute
   '/claims/': typeof AuthenticatedClaimsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/audit': typeof AuthenticatedAuditRoute
+  '/business-case': typeof AuthenticatedBusinessCaseRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/impact': typeof AuthenticatedImpactRoute
+  '/overview': typeof AuthenticatedOverviewRoute
+  '/phone-intake': typeof AuthenticatedPhoneIntakeRoute
+  '/policy': typeof AuthenticatedPolicyRoute
+  '/quality': typeof AuthenticatedQualityRoute
+  '/tests': typeof AuthenticatedTestsRoute
+  '/versions': typeof AuthenticatedVersionsRoute
+  '/workload': typeof AuthenticatedWorkloadRoute
   '/claims/$caseId': typeof AuthenticatedClaimsCaseIdRoute
   '/claims': typeof AuthenticatedClaimsIndexRoute
 }
@@ -58,20 +140,68 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/_authenticated/audit': typeof AuthenticatedAuditRoute
+  '/_authenticated/business-case': typeof AuthenticatedBusinessCaseRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/impact': typeof AuthenticatedImpactRoute
+  '/_authenticated/overview': typeof AuthenticatedOverviewRoute
+  '/_authenticated/phone-intake': typeof AuthenticatedPhoneIntakeRoute
+  '/_authenticated/policy': typeof AuthenticatedPolicyRoute
+  '/_authenticated/quality': typeof AuthenticatedQualityRoute
+  '/_authenticated/tests': typeof AuthenticatedTestsRoute
+  '/_authenticated/versions': typeof AuthenticatedVersionsRoute
+  '/_authenticated/workload': typeof AuthenticatedWorkloadRoute
   '/_authenticated/claims/$caseId': typeof AuthenticatedClaimsCaseIdRoute
   '/_authenticated/claims/': typeof AuthenticatedClaimsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/dashboard' | '/claims/$caseId' | '/claims/'
+  fullPaths:
+    | '/'
+    | '/audit'
+    | '/business-case'
+    | '/dashboard'
+    | '/impact'
+    | '/overview'
+    | '/phone-intake'
+    | '/policy'
+    | '/quality'
+    | '/tests'
+    | '/versions'
+    | '/workload'
+    | '/claims/$caseId'
+    | '/claims/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/dashboard' | '/claims/$caseId' | '/claims'
+  to:
+    | '/'
+    | '/audit'
+    | '/business-case'
+    | '/dashboard'
+    | '/impact'
+    | '/overview'
+    | '/phone-intake'
+    | '/policy'
+    | '/quality'
+    | '/tests'
+    | '/versions'
+    | '/workload'
+    | '/claims/$caseId'
+    | '/claims'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
+    | '/_authenticated/audit'
+    | '/_authenticated/business-case'
     | '/_authenticated/dashboard'
+    | '/_authenticated/impact'
+    | '/_authenticated/overview'
+    | '/_authenticated/phone-intake'
+    | '/_authenticated/policy'
+    | '/_authenticated/quality'
+    | '/_authenticated/tests'
+    | '/_authenticated/versions'
+    | '/_authenticated/workload'
     | '/_authenticated/claims/$caseId'
     | '/_authenticated/claims/'
   fileRoutesById: FileRoutesById
@@ -97,11 +227,81 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/audit': {
+      id: '/_authenticated/audit'
+      path: '/audit'
+      fullPath: '/audit'
+      preLoaderRoute: typeof AuthenticatedAuditRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/business-case': {
+      id: '/_authenticated/business-case'
+      path: '/business-case'
+      fullPath: '/business-case'
+      preLoaderRoute: typeof AuthenticatedBusinessCaseRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/dashboard': {
       id: '/_authenticated/dashboard'
       path: '/dashboard'
       fullPath: '/dashboard'
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/impact': {
+      id: '/_authenticated/impact'
+      path: '/impact'
+      fullPath: '/impact'
+      preLoaderRoute: typeof AuthenticatedImpactRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/overview': {
+      id: '/_authenticated/overview'
+      path: '/overview'
+      fullPath: '/overview'
+      preLoaderRoute: typeof AuthenticatedOverviewRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/phone-intake': {
+      id: '/_authenticated/phone-intake'
+      path: '/phone-intake'
+      fullPath: '/phone-intake'
+      preLoaderRoute: typeof AuthenticatedPhoneIntakeRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/policy': {
+      id: '/_authenticated/policy'
+      path: '/policy'
+      fullPath: '/policy'
+      preLoaderRoute: typeof AuthenticatedPolicyRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/quality': {
+      id: '/_authenticated/quality'
+      path: '/quality'
+      fullPath: '/quality'
+      preLoaderRoute: typeof AuthenticatedQualityRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/tests': {
+      id: '/_authenticated/tests'
+      path: '/tests'
+      fullPath: '/tests'
+      preLoaderRoute: typeof AuthenticatedTestsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/versions': {
+      id: '/_authenticated/versions'
+      path: '/versions'
+      fullPath: '/versions'
+      preLoaderRoute: typeof AuthenticatedVersionsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/workload': {
+      id: '/_authenticated/workload'
+      path: '/workload'
+      fullPath: '/workload'
+      preLoaderRoute: typeof AuthenticatedWorkloadRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/claims/': {
@@ -122,13 +322,33 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedAuditRoute: typeof AuthenticatedAuditRoute
+  AuthenticatedBusinessCaseRoute: typeof AuthenticatedBusinessCaseRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedImpactRoute: typeof AuthenticatedImpactRoute
+  AuthenticatedOverviewRoute: typeof AuthenticatedOverviewRoute
+  AuthenticatedPhoneIntakeRoute: typeof AuthenticatedPhoneIntakeRoute
+  AuthenticatedPolicyRoute: typeof AuthenticatedPolicyRoute
+  AuthenticatedQualityRoute: typeof AuthenticatedQualityRoute
+  AuthenticatedTestsRoute: typeof AuthenticatedTestsRoute
+  AuthenticatedVersionsRoute: typeof AuthenticatedVersionsRoute
+  AuthenticatedWorkloadRoute: typeof AuthenticatedWorkloadRoute
   AuthenticatedClaimsCaseIdRoute: typeof AuthenticatedClaimsCaseIdRoute
   AuthenticatedClaimsIndexRoute: typeof AuthenticatedClaimsIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedAuditRoute: AuthenticatedAuditRoute,
+  AuthenticatedBusinessCaseRoute: AuthenticatedBusinessCaseRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedImpactRoute: AuthenticatedImpactRoute,
+  AuthenticatedOverviewRoute: AuthenticatedOverviewRoute,
+  AuthenticatedPhoneIntakeRoute: AuthenticatedPhoneIntakeRoute,
+  AuthenticatedPolicyRoute: AuthenticatedPolicyRoute,
+  AuthenticatedQualityRoute: AuthenticatedQualityRoute,
+  AuthenticatedTestsRoute: AuthenticatedTestsRoute,
+  AuthenticatedVersionsRoute: AuthenticatedVersionsRoute,
+  AuthenticatedWorkloadRoute: AuthenticatedWorkloadRoute,
   AuthenticatedClaimsCaseIdRoute: AuthenticatedClaimsCaseIdRoute,
   AuthenticatedClaimsIndexRoute: AuthenticatedClaimsIndexRoute,
 }
