@@ -12,6 +12,7 @@ import { isClosed } from "@/lib/csv";
 import { queueFor, SLA_HOURS } from "@/lib/lifecycle";
 import { useRole } from "@/lib/role";
 import { Card, Chip, Mono, StatusDot, Unknown, fmtEur, fmtTime } from "@/components/triage/ui";
+import { CustomerChat } from "@/components/triage/CustomerChat";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -24,7 +25,7 @@ export const Route = createFileRoute("/_authenticated/claims/$caseId")({
   component: CaseDetail,
 });
 
-const HUMAN_EVENTS = new Set(["confirmed", "override", "comment", "call_logged", "assigned", "reminder_sent", "qa_confirmed"]);
+const HUMAN_EVENTS = new Set(["message_sent", "closed", "confirmed", "override", "comment", "call_logged", "assigned", "reminder_sent", "qa_confirmed"]);
 const RECS: Recommendation[] = ["routine_processing", "request_information", "human_review"];
 const REASONS: [string, string][] = [
   ["new_information", "New information"],
@@ -49,7 +50,9 @@ const EVENT_TEXT: Record<string, string> = {
   comment: "Comment",
   policy_recheck: "Re-checked under new policy",
   qa_sampled: "Picked as random QA sample",
-  closed: "Closed",
+  closed: "Claim closed",
+  message_sent: "Message sent to customer",
+  message_received: "Customer replied",
 };
 
 type Row = Record<string, any>;
@@ -440,6 +443,24 @@ function CaseDetail() {
         </div>
         {actions && <div className="ml-auto flex flex-wrap items-center gap-2">{actions}</div>}
       </div>
+
+      {/* 2b · Customer conversation: accept / deny / request / remind via templates */}
+      <CustomerChat
+        caseId={caseId}
+        customer={data.intake?.customer_name ?? null}
+        plate={data.intake?.plate ?? null}
+        quote={claim.quote_eur}
+        version={version}
+        rec={rec}
+        queue={queue}
+        closed={closed}
+        needsUser={needsUser}
+        missingFields={((decision?.missing_fields as string[] | undefined) ?? []).concat(live.checklist.filter((c) => c.stage === "R2" && c.status === "fail").map((c) => c.field)).filter((f, i, a) => a.indexOf(f) === i)}
+        failedTrigger={live.checklist.find((c) => c.status === "fail" && c.stage === "R1")?.key ?? null}
+        decisionId={(decision?.id as string | undefined) ?? null}
+        reviewer={me.name}
+        events={data.events as Row[]}
+      />
 
       {/* 3 · Evidence: checklist and sources side by side, same height */}
       <div className="mb-5 grid items-stretch gap-5 lg:grid-cols-2">
