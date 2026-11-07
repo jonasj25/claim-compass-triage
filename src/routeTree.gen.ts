@@ -24,6 +24,7 @@ import { Route as AuthenticatedPhoneIntakeRouteImport } from './routes/_authenti
 import { Route as AuthenticatedPolicyRouteImport } from './routes/_authenticated/policy'
 import { Route as AuthenticatedQualityRouteImport } from './routes/_authenticated/quality'
 import { Route as AuthenticatedVersionsRouteImport } from './routes/_authenticated/versions'
+import { Route as ClaimCaseIdRouteImport } from './routes/claim.$caseId'
 import { Route as AuthenticatedClaimsIndexRouteImport } from './routes/_authenticated/claims.index'
 import { Route as AuthenticatedClaimsCaseIdRouteImport } from './routes/_authenticated/claims.$caseId'
 
@@ -103,6 +104,11 @@ const AuthenticatedVersionsRoute = AuthenticatedVersionsRouteImport.update({
   path: '/versions',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const ClaimCaseIdRoute = ClaimCaseIdRouteImport.update({
+  id: '/claim/$caseId',
+  path: '/claim/$caseId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedClaimsIndexRoute =
   AuthenticatedClaimsIndexRouteImport.update({
     id: '/claims/',
@@ -131,6 +137,7 @@ export interface FileRoutesByFullPath {
   '/policy': typeof AuthenticatedPolicyRoute
   '/quality': typeof AuthenticatedQualityRoute
   '/versions': typeof AuthenticatedVersionsRoute
+  '/claim/$caseId': typeof ClaimCaseIdRoute
   '/claims/$caseId': typeof AuthenticatedClaimsCaseIdRoute
   '/claims/': typeof AuthenticatedClaimsIndexRoute
 }
@@ -149,6 +156,7 @@ export interface FileRoutesByTo {
   '/policy': typeof AuthenticatedPolicyRoute
   '/quality': typeof AuthenticatedQualityRoute
   '/versions': typeof AuthenticatedVersionsRoute
+  '/claim/$caseId': typeof ClaimCaseIdRoute
   '/claims/$caseId': typeof AuthenticatedClaimsCaseIdRoute
   '/claims': typeof AuthenticatedClaimsIndexRoute
 }
@@ -169,6 +177,7 @@ export interface FileRoutesById {
   '/_authenticated/policy': typeof AuthenticatedPolicyRoute
   '/_authenticated/quality': typeof AuthenticatedQualityRoute
   '/_authenticated/versions': typeof AuthenticatedVersionsRoute
+  '/claim/$caseId': typeof ClaimCaseIdRoute
   '/_authenticated/claims/$caseId': typeof AuthenticatedClaimsCaseIdRoute
   '/_authenticated/claims/': typeof AuthenticatedClaimsIndexRoute
 }
@@ -189,6 +198,7 @@ export interface FileRouteTypes {
     | '/policy'
     | '/quality'
     | '/versions'
+    | '/claim/$caseId'
     | '/claims/$caseId'
     | '/claims/'
   fileRoutesByTo: FileRoutesByTo
@@ -207,6 +217,7 @@ export interface FileRouteTypes {
     | '/policy'
     | '/quality'
     | '/versions'
+    | '/claim/$caseId'
     | '/claims/$caseId'
     | '/claims'
   id:
@@ -226,6 +237,7 @@ export interface FileRouteTypes {
     | '/_authenticated/policy'
     | '/_authenticated/quality'
     | '/_authenticated/versions'
+    | '/claim/$caseId'
     | '/_authenticated/claims/$caseId'
     | '/_authenticated/claims/'
   fileRoutesById: FileRoutesById
@@ -236,6 +248,7 @@ export interface RootRouteChildren {
   BatchRoute: typeof BatchRoute
   ReportRoute: typeof ReportRoute
   StatusRoute: typeof StatusRoute
+  ClaimCaseIdRoute: typeof ClaimCaseIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -345,6 +358,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedVersionsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/claim/$caseId': {
+      id: '/claim/$caseId'
+      path: '/claim/$caseId'
+      fullPath: '/claim/$caseId'
+      preLoaderRoute: typeof ClaimCaseIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/claims/': {
       id: '/_authenticated/claims/'
       path: '/claims'
@@ -401,6 +421,7 @@ const rootRouteChildren: RootRouteChildren = {
   BatchRoute: BatchRoute,
   ReportRoute: ReportRoute,
   StatusRoute: StatusRoute,
+  ClaimCaseIdRoute: ClaimCaseIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

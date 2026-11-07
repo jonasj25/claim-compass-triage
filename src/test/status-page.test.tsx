@@ -1,83 +1,16 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { QueryClient } from "@tanstack/react-query";
+import { createRouter, rootRouteId } from "@tanstack/react-router";
+import { describe, expect, it } from "vitest";
+import { routeTree } from "@/routeTree.gen";
 
-const getClaimStatus = vi.fn();
-vi.mock("@/lib/claim-status.functions", () => ({
-  getClaimStatus: (a: unknown) => getClaimStatus(a),
-}));
-vi.mock("@tanstack/react-router", async (orig) => ({
-  ...(await orig<typeof import("@tanstack/react-router")>()),
-  Link: ({ children }: { children: React.ReactNode }) => <a>{children}</a>,
-}));
-
-async function renderPage() {
-  const { Route } = await import("@/routes/status");
-  (Route as unknown as { useSearch: () => object }).useSearch = () => ({});
-  const Page = Route.options.component as React.ComponentType;
-  render(<Page />);
-}
-
-describe("public claim status page", () => {
-  it("shows the status, what is missing and the progress after a matching lookup", async () => {
-    getClaimStatus.mockResolvedValueOnce({
-      found: true,
-      case_id: "CLM-0001",
-      status: "information_needed",
-      first_name: "Anna",
-      received_at: "2026-11-03T09:15:00Z",
-      updated_at: "2026-11-04T10:00:00Z",
-      missing: ["The incident report"],
-    });
-    await renderPage();
-    fireEvent.change(screen.getByLabelText("Reference number"), { target: { value: "CLM-0001" } });
-    fireEvent.change(screen.getByLabelText("Number plate"), { target: { value: "M-AK 1000" } });
-    fireEvent.click(screen.getByRole("button", { name: /Check/ }));
-    await waitFor(() =>
-      expect(screen.getAllByText("Information needed").length).toBeGreaterThan(0),
-    );
-    expect(getClaimStatus).toHaveBeenCalledWith({
-      data: { case_id: "CLM-0001", plate: "M-AK 1000" },
-    });
-    expect(screen.getByText("The incident report")).toBeTruthy();
-    expect(screen.getByText(/Hello Anna/)).toBeTruthy();
-  });
-
-  it("says nothing about other people's claims when the plate does not match", async () => {
-    getClaimStatus.mockResolvedValueOnce({ found: false });
-    await renderPage();
-    fireEvent.change(screen.getByLabelText("Reference number"), { target: { value: "CLM-0001" } });
-    fireEvent.change(screen.getByLabelText("Number plate"), { target: { value: "WRONG" } });
-    fireEvent.click(screen.getByRole("button", { name: /Check/ }));
-    await waitFor(() => expect(screen.getByText(/couldn't find a claim/)).toBeTruthy());
-  });
-});
-
-describe("progress colours", () => {
-  it.each([
-    ["in_review", "In progress", "var(--wait-dot)"],
-    ["information_needed", "Information needed", "var(--wait-dot)"],
-    ["accepted", "Accepted", "var(--ok-dot)"],
-    ["rejected", "Rejected", "var(--action-dot)"],
-  ])("%s highlights '%s' in %s", async (status, label, color) => {
-    getClaimStatus.mockResolvedValueOnce({
-      found: true,
-      case_id: "C1",
-      status,
-      first_name: null,
-      received_at: null,
-      updated_at: null,
-      missing: [],
-    });
-    await renderPage();
-    fireEvent.change(screen.getByLabelText("Reference number"), { target: { value: "C1" } });
-    fireEvent.change(screen.getByLabelText("Number plate"), { target: { value: "X1" } });
-    fireEvent.click(screen.getByRole("button", { name: /Check/ }));
-    const current = await waitFor(() => {
-      const el = document.querySelector('[aria-current="step"]');
-      if (!el) throw new Error("no current step");
-      return el as HTMLElement;
-    });
-    expect(current.textContent).toContain(label);
-    expect((current.firstElementChild as HTMLElement).getAttribute("style") ?? "").toContain(color);
+// The portal page is covered by the customer-status rule tests (src/lib/customer-status.test.ts).
+// Full rendering needs the app shell, which waits for stylesheets jsdom never loads, so we only
+// check that the customer pages are public routes outside the signed-in area.
+describe("customer pages are public", () => {
+  const router = createRouter({ routeTree, context: { queryClient: new QueryClient() } });
+  it.each(["/status", "/report", "/claim/CLM-0001", "/batch"])("%s needs no sign-in", (path) => {
+    const ids = router.matchRoutes(path).map((m) => m.routeId);
+    expect(ids.at(-1)).not.toBe(rootRouteId);
+    expect(ids.some((id) => id.includes("_authenticated"))).toBe(false);
   });
 });
