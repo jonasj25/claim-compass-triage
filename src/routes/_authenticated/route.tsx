@@ -391,7 +391,6 @@ function SideNav({ expanded, onToggle }: { expanded: boolean; onToggle: () => vo
           expanded ? PanelLeftClose : PanelLeftOpen,
           {
             onClick: onToggle,
-            hint: isMac ? "⌘B" : "Ctrl+B",
           },
         )}
         {item("settings", "Settings", Settings, { onClick: () => setSettingsOpen(true) })}
