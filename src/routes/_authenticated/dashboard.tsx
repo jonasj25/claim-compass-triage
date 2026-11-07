@@ -495,10 +495,11 @@ function Dashboard() {
                         "w-[150px]",
                         "w-[220px]",
                         "",
-                        "w-[90px] text-right",
-                        "w-[90px] pl-5",
-                        "w-[130px]",
-                        "w-[100px]",
+                        // Amount, Priority, Assignee, Received: same width, all left-aligned, so the gaps match
+                        "w-[120px]",
+                        "w-[120px]",
+                        "w-[120px]",
+                        "w-[120px]",
                       ][i],
                     )}
                   >
@@ -573,10 +574,10 @@ function Dashboard() {
                       >
                         {row.claim.claim_summary ?? <Unknown />}
                       </td>
-                      <td className="num px-3 py-2 text-right">
+                      <td className="num px-3 py-2">
                         {row.claim.quote_eur === null ? <Unknown /> : money(row.claim.quote_eur)}
                       </td>
-                      <td className="py-2 pl-5 pr-3">
+                      <td className="px-3 py-2">
                         <span
                           title={p.why}
                           className={cn(
