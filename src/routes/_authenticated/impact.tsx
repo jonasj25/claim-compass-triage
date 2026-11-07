@@ -6,6 +6,7 @@ import { computeImpact, type Counts, type Quality } from "@/lib/impact";
 import { diffPolicies } from "@/lib/policy-text";
 import { RECOMMENDATION_LABELS, type Policy, type Recommendation } from "@/lib/triage";
 import { Card, Kpi, PageHeader, StatusDot } from "@/components/triage/ui";
+import { ActivatePolicyButton } from "@/components/triage/ActivatePolicyButton";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -88,7 +89,7 @@ function ImpactPage() {
       <PageHeader
         eyebrow="Policy owner"
         title="Change impact"
-        sub={`What happens to the ${impact.total} claims in the system if ${candidate.version} replaces ${active.version}. Nothing is changed by viewing this.`}
+        sub={`What happens to the ${impact.total} claims in the system if ${candidate.version} replaces ${active.version}. Nothing changes until you activate it.`}
         right={
           <div className="flex items-center gap-2 text-[13px]">
             <span className="text-text-2">{active.version} →</span>
@@ -107,6 +108,13 @@ function ImpactPage() {
                 ))}
               </SelectContent>
             </Select>
+            <ActivatePolicyButton
+              cases={cases}
+              active={active}
+              candidate={candidate}
+              createdBy={chosen?.created_by ?? null}
+              impact={impact}
+            />
           </div>
         }
       />

@@ -45,6 +45,9 @@ export function ClaimsTable({ rows }: { rows: CaseRow[] }) {
                 <td className="max-w-[320px] px-3 py-2">
                   <div className="line-clamp-2">{c.claim.claim_summary}</div>
                   <div className="mt-1 flex flex-wrap gap-1">
+                    {c.decision?.needs_recheck && !closed && (
+                      <Chip className="pill-action border-transparent">Recheck · {c.decision.policy_version}</Chip>
+                    )}
                     {c.workflow?.qa_sample && <Chip>QA sample</Chip>}
                     {c.workflow?.queue === "on_you" && !c.workflow.assignee && <Chip>Unassigned</Chip>}
                     {closed && <Chip>Closed</Chip>}
