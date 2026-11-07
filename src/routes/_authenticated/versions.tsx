@@ -4,6 +4,7 @@ import { policyVersionsQuery } from "@/lib/data";
 import { diffPolicies } from "@/lib/policy-text";
 import type { Policy } from "@/lib/triage";
 import { Card, PageHeader, fmtTime } from "@/components/triage/ui";
+import { DeleteDraftButton } from "@/components/triage/DeleteDraftButton";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/versions")({
@@ -86,15 +87,18 @@ function Versions() {
                     )}
                   </td>
                   <td className="px-6 py-4 text-right">
-                    {v.status !== "active" && (
-                      <Link
-                        to="/impact"
-                        search={{ v: v.id }}
-                        className="whitespace-nowrap text-link hover:underline"
-                      >
-                        See impact →
-                      </Link>
-                    )}
+                    <div className="flex flex-col items-end gap-1.5">
+                      {v.status !== "active" && (
+                        <Link
+                          to="/impact"
+                          search={{ v: v.id }}
+                          className="whitespace-nowrap text-link hover:underline"
+                        >
+                          See impact →
+                        </Link>
+                      )}
+                      <DeleteDraftButton version={v} />
+                    </div>
                   </td>
                 </tr>
               );

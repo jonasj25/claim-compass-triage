@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { activePolicyQuery, policyVersionsQuery } from "@/lib/data";
 import { NewPolicyDialog } from "@/components/triage/NewPolicyDialog";
+import { DeleteDraftButton } from "@/components/triage/DeleteDraftButton";
 import { Mono, PageHeader, fmtEur } from "@/components/triage/ui";
 import { FIELD_LABELS, type Policy } from "@/lib/triage";
 import { cn } from "@/lib/utils";
@@ -270,9 +271,12 @@ function Drafts({ versions }: { versions: { id: string; status: string; descript
               <span className="font-mono uppercase">{d.id}</span>
               {d.description && <span className="ml-2 text-text-2">{d.description}</span>}
             </span>
-            <Link to="/impact" search={{ v: d.id }} className="shrink-0 text-link hover:underline">
-              See impact →
-            </Link>
+            <span className="flex shrink-0 items-center gap-4">
+              <Link to="/impact" search={{ v: d.id }} className="text-link hover:underline">
+                See impact →
+              </Link>
+              <DeleteDraftButton version={d} />
+            </span>
           </li>
         ))}
       </ul>
