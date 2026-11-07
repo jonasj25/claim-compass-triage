@@ -60,18 +60,15 @@ function CaseDetail() {
   const qc = useQueryClient();
   const { data, isLoading } = useQuery(caseDetailQuery(caseId));
   const policyQ = useQuery(activePolicyQuery);
-  const [hl, setHl] = useState<string | null>(null);
   const [hover, setHover] = useState<string | null>(null);
   const [overrideOpen, setOverrideOpen] = useState<Recommendation | null>(null);
   const [busy, setBusy] = useState(false);
   const opened = useRef(Date.now());
   const confirmKey = useRef<(() => void) | null>(null);
   const overrideKey = useRef<(() => void) | null>(null);
-  const srcBox = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     opened.current = Date.now();
-    setHl(null);
     setHover(null);
   }, [caseId]);
 
@@ -112,18 +109,6 @@ function CaseDetail() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nextId, prevId, overrideOpen]);
 
-  // Keep the marked source visible inside the Sources card (never scrolls the page itself)
-  useEffect(() => {
-    const box = srcBox.current;
-    const el = box?.querySelector<HTMLElement>("[data-on]");
-    if (!box || !el || box.scrollHeight <= box.clientHeight) return;
-    const top = el.offsetTop;
-    const bottom = top + el.offsetHeight;
-    if (top < box.scrollTop + 16 || bottom > box.scrollTop + box.clientHeight - 16) {
-      box.scrollTo({ top: Math.max(0, top - box.clientHeight / 3), behavior: "smooth" });
-    }
-  }, [hover, hl, caseId, isLoading]);
-
   if (isLoading) return <p className="label-mono">Loading</p>;
   if (!data?.claim) return <p className="text-text-2">Case not found.</p>;
 
@@ -153,9 +138,18 @@ function CaseDetail() {
   const docs = (data.intake?.documents as unknown as IntakeDocument[] | null) ?? [];
   const facts = data.facts as Row[];
   const refOf = (f: string) => facts.find((x) => x.field === f);
-  // Open on the reason: the first failed (or unknown) check is marked until the reviewer points elsewhere
-  const firstIssue = live.checklist.find((c) => c.status === "fail") ?? live.checklist.find((c) => c.status === "unknown");
-  const active = hover ?? hl ?? firstIssue?.field ?? null;
+  // Only the checklist item under the pointer (or keyboard focus) marks its source
+  const active = hover;
+  const activeItem = active ? live.checklist.find((c) => c.field === active) : undefined;
+  // The source gets the same colour as the checklist row: red trigger, amber missing, grey unknown, blue otherwise
+  const hlCls =
+    activeItem?.status === "fail"
+      ? activeItem.stage === "R1"
+        ? "bg-action-tint ring-1 ring-action-border"
+        : "bg-wait-tint ring-1 ring-wait-border"
+      : activeItem?.status === "unknown"
+        ? "bg-surface-2 ring-1 ring-text-3/50"
+        : "bg-link/10 ring-1 ring-link/30";
   const activeSrc = active ? refOf(active) : undefined;
   // System checks that are not already a line in the call transcript (online-form and CSV cases)
   const systemSources = facts
@@ -447,9 +441,8 @@ function CaseDetail() {
         {actions && <div className="ml-auto flex flex-wrap items-center gap-2">{actions}</div>}
       </div>
 
-      {/* 3 · Evidence: checklist + timeline on the left, sources follow along on the right */}
-      <div className="mb-5 grid items-start gap-5 lg:grid-cols-2">
-        <div className="flex min-w-0 flex-col gap-5">
+      {/* 3 · Evidence: checklist and sources side by side, same height */}
+      <div className="mb-5 grid items-stretch gap-5 lg:grid-cols-2">
         <Card className="flex flex-col">
           <div className="mb-4 flex items-baseline justify-between gap-3">
             <h2 className="section-title">Checklist · policy {version}</h2>
@@ -463,7 +456,6 @@ function CaseDetail() {
               return (
                 <li key={c.key}>
                   <button
-                    onClick={() => setHl(hl === c.field ? null : c.field)}
                     onMouseEnter={() => setHover(c.field)}
                     onFocus={() => setHover(c.field)}
                     onBlur={() => setHover(null)}
@@ -472,11 +464,14 @@ function CaseDetail() {
                       c.status === "fail" && c.stage === "R1" && "my-1 bg-action-tint ring-1 ring-action-border",
                       c.status === "fail" && c.stage !== "R1" && "my-1 bg-wait-tint ring-1 ring-wait-border",
                       c.status === "unknown" && "my-1 border border-dashed border-text-3/60 bg-surface-2",
-                      active === c.field
-                        ? c.status === "pass"
+                      active === c.field &&
+                        (c.status === "pass"
                           ? "bg-link/10 ring-1 ring-link/30"
-                          : "ring-2 ring-link/40"
-                        : c.status === "pass" && "hover:bg-white/70",
+                          : c.status === "unknown"
+                            ? "border-text-2"
+                            : c.stage === "R1"
+                              ? "ring-2 ring-action-dot/45"
+                              : "ring-2 ring-wait-dot/50"),
                     )}
                   >
                     <span
@@ -514,6 +509,83 @@ function CaseDetail() {
             {live.counterfactual}
           </p>
         </Card>
+
+        <Card className="flex flex-col">
+          <h2 className="section-title">Sources</h2>
+          <p className="mb-4 mt-1 text-[12.5px] text-text-2">Point at a checklist item to see where the fact came from.</p>
+          {transcript && (
+            <div className="mb-5">
+              <Mono>Call transcript</Mono>
+              <ol className="mt-2 space-y-1 text-[13px]">
+                {transcript.map((l) => {
+                  const on = !!activeSrc?.ref?.match(new RegExp(`line ${l.line}(\\b|$)`));
+                  return (
+                    <li key={l.line} data-on={on || undefined} className={cn("flex gap-2 rounded-[6px] px-1.5 py-1 transition-colors duration-200", on && hlCls)}>
+                      <span className="w-5 shrink-0 font-mono text-[11px] text-text-3">{l.line}</span>
+                      <span className={cn("w-16 shrink-0 font-mono text-[10.5px] uppercase tracking-[0.06em]", l.speaker === "customer" ? "text-foreground" : "text-text-2")}>{l.speaker}</span>
+                      <span className={cn(l.speaker === "system" && "text-text-2")}>{humanize(l.text)}</span>
+                    </li>
+                  );
+                })}
+              </ol>
+            </div>
+          )}
+          {form && (
+            <div className="mb-5">
+              <Mono>Online form</Mono>
+              <dl className="mt-2 divide-y divide-line/80 text-[13px]">
+                {form.map((f) => {
+                  const on = activeSrc?.ref === `field ${f.field}`;
+                  return (
+                    <div key={f.field} data-on={on || undefined} className={cn("flex justify-between gap-3 rounded-[6px] px-1.5 py-1.5 transition-colors duration-200", on && hlCls)}>
+                      <dt className="text-text-2">
+                        <span className="mr-2 font-mono text-[11px] text-text-3">{f.field}</span>
+                        {f.label}
+                      </dt>
+                      <dd className="text-right">{f.value === null ? <Unknown>empty</Unknown> : valueLabel(f.value)}</dd>
+                    </div>
+                  );
+                })}
+              </dl>
+            </div>
+          )}
+          <div>
+            <Mono>Documents</Mono>
+            <ul className="mt-2 space-y-1.5 text-[13px]">
+              {docs.map((d) => {
+                const on = activeSrc?.ref === d.name;
+                return (
+                  <li key={d.name} data-on={on || undefined} className={cn("flex items-center justify-between rounded-[6px] px-1.5 py-1 transition-colors duration-200", on && hlCls)}>
+                    <span className="font-mono text-[12px]">{d.name}</span>
+                    <span className={cn("text-[12px]", d.status === "missing" || d.status === "incomplete" ? "text-wait" : d.status === "unknown" ? "" : "text-text-2")}>
+                      {d.status === "unknown" ? <Unknown /> : humanize(d.note)}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+          {systemSources.length > 0 && (
+            <div className="mt-5">
+              <Mono>System checks</Mono>
+              <ul className="mt-2 space-y-1.5 text-[13px]">
+                {systemSources.map((f) => {
+                  const on = activeSrc?.ref === f.ref;
+                  return (
+                    <li key={f.ref} data-on={on || undefined} className={cn("flex items-center justify-between gap-3 rounded-[6px] px-1.5 py-1 transition-colors duration-200", on && hlCls)}>
+                      <span className="font-mono text-[12px]">{f.ref}</span>
+                      <span className="text-right text-[12px] text-text-2">{humanize(f.quote)}</span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
+        </Card>
+      </div>
+
+      {/* 4 · Timeline and comments side by side, same height */}
+      <div className="grid items-stretch gap-5 lg:grid-cols-2">
         <Card>
           <h2 className="section-title mb-5">Timeline</h2>
           {upcoming.length > 0 && (
@@ -567,87 +639,8 @@ function CaseDetail() {
             })}
           </ol>
         </Card>
-        </div>
-
-        {/* Sources follow while scrolling; the marked source is scrolled into view inside the card */}
-        <div ref={srcBox} className="relative min-w-0 rounded-[18px] lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto">
-        <Card className="flex flex-col">
-          <h2 className="section-title">Sources</h2>
-          <p className="mb-4 mt-1 text-[12.5px] text-text-2">Point at a checklist item to see where the fact came from. Click to keep it marked.</p>
-          {transcript && (
-            <div className="mb-5">
-              <Mono>Call transcript</Mono>
-              <ol className="mt-2 space-y-1 text-[13px]">
-                {transcript.map((l) => {
-                  const on = !!activeSrc?.ref?.match(new RegExp(`line ${l.line}(\\b|$)`));
-                  return (
-                    <li key={l.line} data-on={on || undefined} className={cn("flex gap-2 rounded-[6px] px-1.5 py-1 transition-colors duration-200", on && "bg-link/10 ring-1 ring-link/30")}>
-                      <span className="w-5 shrink-0 font-mono text-[11px] text-text-3">{l.line}</span>
-                      <span className={cn("w-16 shrink-0 font-mono text-[10.5px] uppercase tracking-[0.06em]", l.speaker === "customer" ? "text-foreground" : "text-text-2")}>{l.speaker}</span>
-                      <span className={cn(l.speaker === "system" && "text-text-2")}>{humanize(l.text)}</span>
-                    </li>
-                  );
-                })}
-              </ol>
-            </div>
-          )}
-          {form && (
-            <div className="mb-5">
-              <Mono>Online form</Mono>
-              <dl className="mt-2 divide-y divide-line/80 text-[13px]">
-                {form.map((f) => {
-                  const on = activeSrc?.ref === `field ${f.field}`;
-                  return (
-                    <div key={f.field} data-on={on || undefined} className={cn("flex justify-between gap-3 rounded-[6px] px-1.5 py-1.5 transition-colors duration-200", on && "bg-link/10 ring-1 ring-link/30")}>
-                      <dt className="text-text-2">
-                        <span className="mr-2 font-mono text-[11px] text-text-3">{f.field}</span>
-                        {f.label}
-                      </dt>
-                      <dd className="text-right">{f.value === null ? <Unknown>empty</Unknown> : valueLabel(f.value)}</dd>
-                    </div>
-                  );
-                })}
-              </dl>
-            </div>
-          )}
-          <div>
-            <Mono>Documents</Mono>
-            <ul className="mt-2 space-y-1.5 text-[13px]">
-              {docs.map((d) => {
-                const on = activeSrc?.ref === d.name;
-                return (
-                  <li key={d.name} data-on={on || undefined} className={cn("flex items-center justify-between rounded-[6px] px-1.5 py-1 transition-colors duration-200", on && "bg-link/10 ring-1 ring-link/30")}>
-                    <span className="font-mono text-[12px]">{d.name}</span>
-                    <span className={cn("text-[12px]", d.status === "missing" || d.status === "incomplete" ? "text-wait" : d.status === "unknown" ? "" : "text-text-2")}>
-                      {d.status === "unknown" ? <Unknown /> : humanize(d.note)}
-                    </span>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-          {systemSources.length > 0 && (
-            <div className="mt-5">
-              <Mono>System checks</Mono>
-              <ul className="mt-2 space-y-1.5 text-[13px]">
-                {systemSources.map((f) => {
-                  const on = activeSrc?.ref === f.ref;
-                  return (
-                    <li key={f.ref} data-on={on || undefined} className={cn("flex items-center justify-between gap-3 rounded-[6px] px-1.5 py-1 transition-colors duration-200", on && "bg-link/10 ring-1 ring-link/30")}>
-                      <span className="font-mono text-[12px]">{f.ref}</span>
-                      <span className="text-right text-[12px] text-text-2">{humanize(f.quote)}</span>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          )}
-        </Card>
-        </div>
+        <CommentBox disabled={busy} onPost={postComment} comments={comments} />
       </div>
-
-      {/* 4 · Comments, full width */}
-      <CommentBox disabled={busy} onPost={postComment} comments={comments} />
 
       <OverrideDialog
         open={overrideOpen !== null}
@@ -682,13 +675,24 @@ function CommentBox({ onPost, disabled, comments }: { onPost: (body: string) => 
   };
   const recent = [...comments].sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
   return (
-    <Card>
+    <Card className="flex flex-col">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="section-title">Comments</h2>
-        <span className="label-mono">{comments.length ? `${comments.length} · saved with name and time, cannot be edited` : "Saved with name and time, cannot be edited"}</span>
+        <span className="label-mono">{comments.length ? `${comments.length} · cannot be edited` : "Cannot be edited"}</span>
       </div>
-      <div className="mt-4 grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-        <div className="flex flex-col">
+      <div className="mt-4 flex flex-1 flex-col gap-4">
+        <ul className="max-h-[220px] space-y-2.5 overflow-y-auto pr-1">
+          {recent.length === 0 && <li className="text-[13px] text-text-3">No comments yet.</li>}
+          {recent.map((c) => (
+            <li key={c.id} className="rounded-[10px] bg-surface-2 px-3 py-2 ring-1 ring-line">
+              <p className="text-[13px]">{c.body}</p>
+              <p className="label-mono mt-1 normal-case">
+                {fmtTime(c.created_at)} · {c.author}
+              </p>
+            </li>
+          ))}
+        </ul>
+        <div className="mt-auto flex flex-col">
           <Textarea
             value={body}
             onChange={(e) => setBody(e.target.value)}
@@ -705,17 +709,6 @@ function CommentBox({ onPost, disabled, comments }: { onPost: (body: string) => 
             </Button>
           </div>
         </div>
-        <ul className="max-h-[180px] space-y-3 overflow-y-auto pr-1">
-          {recent.length === 0 && <li className="text-[13px] text-text-3">No comments yet.</li>}
-          {recent.map((c) => (
-            <li key={c.id} className="rounded-[10px] bg-surface-2 px-3 py-2 ring-1 ring-line">
-              <p className="text-[13px]">{c.body}</p>
-              <p className="label-mono mt-1 normal-case">
-                {fmtTime(c.created_at)} · {c.author}
-              </p>
-            </li>
-          ))}
-        </ul>
       </div>
     </Card>
   );
