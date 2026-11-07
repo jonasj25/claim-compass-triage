@@ -210,34 +210,31 @@ function StatusPill({ s, big }: { s: CustomerStatus; big?: boolean }) {
 function Phases({ s }: { s: CustomerStatus }) {
   const decided = s === "accepted" || s === "rejected";
   const steps = [
-    { label: "Received", done: true, current: false, color: "var(--link)" },
-    { label: "Checked", done: true, current: false, color: "var(--link)" },
-    {
-      label: s === "information_needed" ? "Info needed from you" : "With a specialist",
-      done: decided || s === "in_review" || s === "information_needed",
-      current: !decided,
-      color: "var(--wait-dot)",
-    },
-    { label: decided ? CUSTOMER_STATUS_LABEL[s] : "Decision", done: decided, current: decided, color: s === "rejected" ? "var(--action-dot)" : "var(--ok-dot)" },
+    { label: "Received", done: true },
+    { label: "Checked", done: true },
+    { label: s === "information_needed" ? "Info needed from you" : "With a specialist", done: true },
+    { label: decided ? CUSTOMER_STATUS_LABEL[s] : "Decision", done: decided },
   ];
+  const current = decided ? 3 : 2;
   return (
     <ol className="mt-6 grid grid-cols-4 gap-2" aria-label="Progress">
-      {steps.map((st, i) => (
-        <li key={i} className="text-center" aria-current={st.current ? "step" : undefined}>
-          <div
-            className={cn("rounded-full", st.current ? "h-2.5" : "mt-0.5 h-1.5", !st.done && "bg-surface-2 ring-1 ring-line")}
-            style={
-              st.done
-                ? {
-                    background: st.current ? st.color : `color-mix(in oklch, ${st.color} 40%, var(--surface))`,
-                    boxShadow: st.current ? `0 0 0 4px color-mix(in oklch, ${st.color} 18%, transparent)` : undefined,
-                  }
-                : undefined
-            }
-          />
-          <p className={cn("mt-2.5 text-[12.5px]", st.current ? "font-semibold text-foreground" : st.done ? "text-text-2" : "text-text-3")}>{st.label}</p>
-        </li>
-      ))}
+      {steps.map((st, i) => {
+        const now = i === current;
+        return (
+          <li key={i} className="text-center" aria-current={now ? "step" : undefined}>
+            <div className="relative flex h-3 items-center">
+              {now && <span className="absolute inset-x-0 h-3 animate-pulse rounded-full bg-link/25" />}
+              <span
+                className={cn(
+                  "relative block w-full rounded-full",
+                  now ? "h-3 bg-link ring-4 ring-link/20" : st.done ? "h-1.5 bg-link/35" : "h-1.5 bg-surface-2 ring-1 ring-line",
+                )}
+              />
+            </div>
+            <p className={cn("mt-2.5 text-[12.5px]", now ? "font-semibold text-link" : st.done ? "text-text-2" : "text-text-3")}>{st.label}</p>
+          </li>
+        );
+      })}
     </ol>
   );
 }
