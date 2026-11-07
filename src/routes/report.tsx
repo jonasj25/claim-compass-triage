@@ -14,6 +14,7 @@ import {
   extractFromUtterance,
   fieldState,
   interpretReply,
+  parseEuro,
   type AnswerKey,
   type Question,
   type ReportAnswers,
@@ -384,6 +385,39 @@ function FormStep({ q, index, total, answers, set, onBack, onNext }: { q: Questi
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const AGENT_NAME = "Mia";
+// Public ElevenLabs Conversational AI agent "Clearpath – Mia, claims intake" (no API key needed in the browser).
+// It records answers through the client tool update_claim; our page decides what is still missing.
+const ELEVEN_AGENT_ID = "agent_1601m6vwfayef1dtqx31hd971xtr";
+const CLAIM_ENUMS: Partial<Record<AnswerKey, string[]>> = {
+  claim_kind: ["own_damage", "theft", "other", "unsure"],
+  injury: ["yes", "no", "unsure"],
+  other_party: ["yes", "no", "unsure"],
+  fault: ["agree", "disagree", "unsure"],
+  repair_kind: ["standard", "ev_battery", "unsure"],
+  quote_itemized: ["yes", "no", "unsure"],
+  incident_report: ["yes", "no", "unsure"],
+};
+
+/** Keeps only known fields with allowed values from what the voice agent sends. */
+function cleanAgentAnswers(params: Record<string, unknown>): Partial<ReportAnswers> {
+  const out: Partial<ReportAnswers> = {};
+  for (const k of Object.keys(EMPTY_ANSWERS) as AnswerKey[]) {
+    const v = params?.[k];
+    if (v === undefined || v === null || String(v).trim() === "") continue;
+    const str = String(v).trim().slice(0, k === "what_happened" ? 1200 : 120);
+    const allowed = CLAIM_ENUMS[k];
+    if (allowed && !allowed.includes(str)) continue;
+    if (k === "quote_amount") {
+      const n = parseEuro(str);
+      if (n === null) continue;
+      out.quote_amount = String(n);
+      continue;
+    }
+    if (k === "incident_date" && !/^\d{4}-\d{2}-\d{2}$/.test(str)) continue;
+    (out as Record<string, string>)[k] = str;
+  }
+  return out;
+}
 type Phase = "idle" | "speaking" | "listening" | "thinking" | "ended";
 
 const getRecognition = (): any => {
@@ -470,6 +504,8 @@ function Conversation({
   const mic = useRef<{ stream: MediaStream; ctx: AudioContext; analyser: AnalyserNode } | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const recRef = useRef<any>(null);
+  const session = useRef<any>(null);
+  const [viaAgent, setViaAgent] = useState(false);
   const scroller = useRef<HTMLDivElement>(null);
   const mutedRef = useRef(muted);
   mutedRef.current = muted;
@@ -496,6 +532,9 @@ function Conversation({
 
   function shutdown() {
     stopRef.current = true;
+    const sess = session.current;
+    session.current = null;
+    sess?.endSession?.().catch?.(() => undefined);
     audioRef.current?.pause();
     recRef.current?.stop?.();
     window.speechSynthesis?.cancel();
@@ -629,10 +668,64 @@ function Conversation({
     window.setTimeout(onDone, 600);
   };
 
+  // ---- preferred engine: the ElevenLabs voice agent (introduces itself, asks, records via update_claim)
+  const startAgent = async (): Promise<boolean> => {
+    try {
+      const url = "https://esm.sh/@elevenlabs/client";
+      const mod: any = await import(/* @vite-ignore */ url);
+      await navigator.mediaDevices.getUserMedia({ audio: true });
+      setPhase("thinking");
+      const sess = await mod.Conversation.startSession({
+        agentId: ELEVEN_AGENT_ID,
+        connectionType: "websocket",
+        clientTools: {
+          update_claim: async (params: Record<string, unknown>) => {
+            const found = cleanAgentAnswers(params ?? {});
+            const merged = { ...answersRef.current, ...found };
+            answersRef.current = merged;
+            setAnswers(() => merged);
+            const lastCustomer = linesRef.current.map((l) => l.speaker).lastIndexOf("customer") + 1;
+            if (lastCustomer > 0)
+              setHeardIn((h) => {
+                const n = { ...h };
+                for (const k of Object.keys(found) as AnswerKey[]) n[k] = lastCustomer;
+                return n;
+              });
+            const open = activeQuestions(merged).filter((q) => fieldState(q, merged) === "missing");
+            const nq = nextQuestion(merged);
+            if (!nq) return "Saved. Nothing is missing. Close the conversation now.";
+            return `Saved. Still missing: ${open.map((q) => q.label + (q.optional ? " (optional)" : "")).join(", ")}. Ask next: "${nq.ask}"`;
+          },
+        },
+        onMessage: (m: any) => {
+          const text = String(m?.message ?? "").trim();
+          if (!text) return;
+          const speaker: Line["speaker"] = m?.source === "user" || m?.role === "user" ? "customer" : "agent";
+          linesRef.current = [...linesRef.current, { speaker, text }];
+          setLines((l) => [...l, { speaker, text }]);
+        },
+        onModeChange: (m: any) => setPhase(m?.mode === "speaking" ? "speaking" : "listening"),
+        onDisconnect: () => {
+          session.current = null;
+          const done = !nextQuestion(answersRef.current);
+          setPhase(done ? "ended" : "ended");
+          if (done) window.setTimeout(onDone, 800);
+        },
+        onError: () => setNote("The voice connection had a problem. You can continue by typing below."),
+      });
+      session.current = sess;
+      setViaAgent(true);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
   const start = async () => {
     setNote(null);
     stopRef.current = false;
     onStart();
+    if (await startAgent()) return;
     if (eleven || !getRecognition()) {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
@@ -664,6 +757,12 @@ function Conversation({
     const t = typed.trim();
     if (!t) return;
     setTyped("");
+    if (session.current?.sendUserMessage) {
+      linesRef.current = [...linesRef.current, { speaker: "customer", text: t }];
+      setLines((l) => [...l, { speaker: "customer", text: t }]);
+      session.current.sendUserMessage(t);
+      return;
+    }
     if (!linesRef.current.length) {
       onStart();
       setLines(() => [{ speaker: "agent", text: `Hi, I'm ${AGENT_NAME}, the Clearpath claims assistant. ${nextQuestion(answersRef.current)?.ask ?? ""}` }]);
@@ -704,7 +803,7 @@ function Conversation({
           {live ? "Tap the circle to end the conversation." : phase === "ended" ? "Tap the circle to continue where you left off." : "Tap the circle and allow the microphone. Takes about three minutes."}
         </p>
         <div className="mt-3 flex items-center gap-2 text-[12px] text-text-3">
-          <span>{eleven ? "Voice by ElevenLabs" : eleven === false ? "Browser voice" : ""}</span>
+          <span>{viaAgent || eleven ? "Voice by ElevenLabs" : "Voice by ElevenLabs agent"}</span>
           <span>·</span>
           <select aria-label="Your language" value={lang} disabled={live} onChange={(e) => setLang(e.target.value as "en" | "de")} className="rounded-[6px] border border-line bg-surface px-1.5 py-0.5 text-[12px] text-text-2">
             <option value="en">I'll speak English</option>
