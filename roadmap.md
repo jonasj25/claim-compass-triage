@@ -1,8 +1,8 @@
 # Enterprise layout rework
-- [ ] Replace the shell and shared styling without changing batch run.
-- [ ] Restyle persisted reviewer groups as a single tabbed table.
-- [ ] Reorganize case tabs, evidence, customer conversation and decision panel.
-- [ ] Verify actions, keyboard navigation, layout at 1280px and existing tests.
+- [x] Replace the shell and shared styling without changing batch run.
+- [x] Restyle persisted reviewer groups as a single tabbed table.
+- [x] Reorganize case tabs, evidence, customer conversation and decision panel.
+- [x] Verify actions, keyboard navigation, layout at 1280px and existing tests.
 
 # Reviewer dashboard rebuild
 - [x] Replace tiles and queue table with exclusive, assigned reviewer work groups.

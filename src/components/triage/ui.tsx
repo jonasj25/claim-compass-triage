@@ -16,7 +16,17 @@ const TEXT: Record<Recommendation, string> = {
   routine_processing: "text-ok",
 };
 
-export function StatusDot({ rec, closed, className, plain }: { rec: Recommendation; closed?: boolean; className?: string; plain?: boolean }) {
+export function StatusDot({
+  rec,
+  closed,
+  className,
+  plain,
+}: {
+  rec: Recommendation;
+  closed?: boolean;
+  className?: string;
+  plain?: boolean;
+}) {
   if (closed)
     return (
       <span className={cn("inline-flex items-center gap-1.5 text-text-2", className)}>
@@ -26,7 +36,15 @@ export function StatusDot({ rec, closed, className, plain }: { rec: Recommendati
     );
   const pill = "";
   return (
-    <span className={cn("inline-flex items-center gap-2 whitespace-nowrap", TEXT[rec], pill && "rounded-full px-2.5 py-0.5 text-[12.5px] font-medium", pill, className)}>
+    <span
+      className={cn(
+        "inline-flex items-center gap-2 whitespace-nowrap",
+        TEXT[rec],
+        pill && "rounded-full px-2.5 py-0.5 text-[12.5px] font-medium",
+        pill,
+        className,
+      )}
+    >
       <span className={cn("size-1.5 shrink-0 rounded-full", DOT[rec], plain && "size-2.5")} />
       {RECOMMENDATION_LABELS[rec]}
     </span>
@@ -43,7 +61,12 @@ export function Mono({ children, className }: { children: ReactNode; className?:
 
 export function Chip({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <span className={cn("inline-flex items-center rounded-[6px] border border-line/80 bg-surface-2 px-1.5 py-0.5 font-mono text-[10.5px] uppercase tracking-[0.06em] text-text-2", className)}>
+    <span
+      className={cn(
+        "inline-flex items-center rounded-[6px] border border-line/80 bg-surface-2 px-1.5 py-0.5 font-mono text-[10.5px] uppercase tracking-[0.06em] text-text-2",
+        className,
+      )}
+    >
       {children}
     </span>
   );
@@ -61,13 +84,22 @@ export function Avatar({ name }: { name: string | null | undefined }) {
   );
 }
 
-export function PageHeader({ eyebrow, title, sub, right }: { eyebrow?: string; title: string; sub?: ReactNode; right?: ReactNode }) {
+export function PageHeader({
+  eyebrow,
+  title,
+  sub,
+  right,
+}: {
+  eyebrow?: string;
+  title: string;
+  sub?: ReactNode;
+  right?: ReactNode;
+}) {
   return (
     <div className="page-header mb-5 flex flex-wrap items-end justify-between gap-4">
       <div>
-        
         <h1 className="page-title">{title}</h1>
-        {sub && <p className="sr-only">{sub}</p>}
+        {sub && <p className="page-subtitle mt-2 text-text-2">{sub}</p>}
       </div>
       {right}
     </div>
@@ -75,13 +107,44 @@ export function PageHeader({ eyebrow, title, sub, right }: { eyebrow?: string; t
 }
 
 export function Card({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={cn("card-quiet p-4", className)}>{children}</div>;
+  return <div className={cn("card-quiet p-6", className)}>{children}</div>;
 }
 
-export function Kpi({ label, value, sub, tone, onClick, active }: { label: string; value: ReactNode; sub?: ReactNode; tone?: "action" | "wait"; onClick?: () => void; active?: boolean }) {
-  const content = <><span className="num text-[20px] font-semibold leading-none">{value}</span><span className="mt-1 text-[11px] text-text-2">{label}</span>{sub && <span className="mt-1 text-[11px] text-text-2">{sub}</span>}</>;
-  const cls = cn("kpi-item flex h-auto flex-col items-start rounded-none bg-transparent px-4 py-3 text-left", active && "bg-surface-2", tone === "action" && "text-action", tone === "wait" && "text-wait");
-  return onClick ? <Button variant="ghost" onClick={onClick} aria-pressed={!!active} className={cls}>{content}</Button> : <div className={cls}>{content}</div>;
+export function Kpi({
+  label,
+  value,
+  sub,
+  tone,
+  onClick,
+  active,
+}: {
+  label: string;
+  value: ReactNode;
+  sub?: ReactNode;
+  tone?: "action" | "wait";
+  onClick?: () => void;
+  active?: boolean;
+}) {
+  const content = (
+    <>
+      <span className="kpi-value num text-[32px] font-semibold leading-none">{value}</span>
+      <span className="mt-1 text-[11px] text-text-2">{label}</span>
+      {sub && <span className="mt-1 text-[11px] text-text-2">{sub}</span>}
+    </>
+  );
+  const cls = cn(
+    "kpi-item card-quiet flex h-auto flex-col items-start p-5 text-left",
+    active && "bg-surface-2",
+    tone === "action" && "text-action",
+    tone === "wait" && "text-wait",
+  );
+  return onClick ? (
+    <Button variant="ghost" onClick={onClick} aria-pressed={!!active} className={cls}>
+      {content}
+    </Button>
+  ) : (
+    <div className={cls}>{content}</div>
+  );
 }
 
 export function Placeholder({ text }: { text: string }) {
@@ -93,12 +156,20 @@ export function Placeholder({ text }: { text: string }) {
 }
 
 export const fmtEur = (n: number | null | undefined) =>
-  n === null || n === undefined ? null : "€" + n.toLocaleString("en-US", { maximumFractionDigits: 2 });
+  n === null || n === undefined
+    ? null
+    : "€" + n.toLocaleString("en-US", { maximumFractionDigits: 2 });
 
 export const fmtTime = (iso: string | null | undefined) => {
   if (!iso) return "";
   const d = new Date(iso);
   if (!Number.isFinite(d.getTime())) return "";
   const minutes = Math.max(0, Math.floor((Date.now() - d.getTime()) / 60000));
-  return minutes < 1 ? "just now" : minutes < 60 ? `${minutes} min ago` : minutes < 1440 ? `${Math.floor(minutes / 60)} hours ago` : `${Math.floor(minutes / 1440)} days ago`;
+  return minutes < 1
+    ? "just now"
+    : minutes < 60
+      ? `${minutes} min ago`
+      : minutes < 1440
+        ? `${Math.floor(minutes / 60)} hours ago`
+        : `${Math.floor(minutes / 1440)} days ago`;
 };

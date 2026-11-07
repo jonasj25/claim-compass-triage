@@ -227,3 +227,10 @@
 .enterprise-content td { height: 44px; }
 .enterprise-content .tracking-tight { letter-spacing: 0; }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition-duration: 0s !important; animation-duration: 0s !important; } }
+
+/* Enterprise density stays inside the authenticated app; the judging page keeps its shared presentation. */
+.enterprise-content .page-subtitle { display: none; }
+.enterprise-content .card-quiet:not(.p-0):not(aside) { padding: 16px; }
+.enterprise-content .kpi-item { border: 0; border-radius: 0; padding: 12px 16px; background: transparent; }
+.enterprise-content .kpi-value { font-size: 20px; }
+.enterprise-content .kpi-strip > .kpi-item + .kpi-item { border-left: 1px solid var(--line); }
