@@ -33,7 +33,6 @@ import { Chip } from "@/components/triage/ui";
 import { ClaimsProgress } from "@/components/triage/ClaimsProgress";
 import { Unknown } from "@/components/triage/ui";
 import { saveCaseNav } from "@/lib/case-nav";
-import { fmtSecs, handlingQuery } from "@/lib/handling-time";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
@@ -84,7 +83,6 @@ function Dashboard() {
   const { data: policy } = useSuspenseQuery(activePolicyQuery);
   const { data: events } = useSuspenseQuery(dashboardActivityQuery);
   const { data: outreach } = useSuspenseQuery(outreachRemindersQuery);
-  const handling = useQuery(handlingQuery);
   const navigate = useNavigate();
   const [now, setNow] = useState(() => new Date());
   const [collapsed, setCollapsed] = useState<Set<GroupKey>>(() => new Set());
