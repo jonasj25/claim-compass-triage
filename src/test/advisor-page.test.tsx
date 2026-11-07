@@ -23,7 +23,7 @@ globalThis.ResizeObserver ??= class {
 } as unknown as typeof ResizeObserver;
 
 describe("Policy advisor page", () => {
-  it("shows three goal suggestions, writes a memo, and creates drafts that only change the limit", async () => {
+  it("shows one balanced recommendation, writes a memo, and creates drafts that only change the limit", async () => {
     const { Route } = await import("@/routes/_authenticated/advisor");
     const qc = new QueryClient();
     qc.setQueryData(
@@ -51,9 +51,9 @@ describe("Policy advisor page", () => {
         </RoleContext.Provider>
       </QueryClientProvider>,
     );
-    expect(screen.getAllByText("Financial optimum").length).toBeGreaterThan(1);
-    expect(screen.getAllByText("Customer optimum").length).toBeGreaterThan(1);
-    expect(screen.getAllByText("Least reviewer time").length).toBeGreaterThan(1);
+    expect(screen.getByText("Recommended settings")).toBeTruthy();
+    expect(screen.queryByText("Financial optimum")).toBeNull();
+    expect(screen.getByText("Customer wait (days to decision)")).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: /Ask the AI consultant/ }));
     await waitFor(() => expect(screen.getByText("Memo from the AI consultant.")).toBeTruthy());

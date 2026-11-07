@@ -56,7 +56,8 @@ export interface Score extends Levers {
 export interface AdvisorResult {
   claims: number;
   baseline: Score;
-  best: Record<Goal, Score>;
+  best: Record<Goal, Score>; // single-goal extremes (kept for transparency and tests)
+  balanced: Score; // recommended: no worse than today on any measure, best on all three together
   candidates: Score[]; // best (by total) per limit, for the trade-off chart
   relaxes: (s: Levers) => boolean;
   evaluated: number;
@@ -194,10 +195,25 @@ export function advise(
       (s) => s.hours,
     ),
   );
+  // Balanced: only settings that are no worse than today on cost, reviewer hours, customer wait and
+  // expected losses; among those the one with the largest combined improvement (equal weights).
+  const notWorse = all.filter(
+    (s) =>
+      s.risk <= budget &&
+      s.total <= baseline.total * 1.0001 &&
+      s.hours <= baseline.hours * 1.0001 &&
+      s.days <= baseline.days + 1e-9,
+  );
+  const combined = (s: Score) =>
+    (baseline.total ? s.total / baseline.total : 0) +
+    (baseline.hours ? s.hours / baseline.hours : 0) +
+    (baseline.days ? s.days / baseline.days : 0);
+  const balanced = notWorse.length ? pick(notWorse, combined, (s) => s.total) : baseline;
   return {
     claims: open,
     baseline,
     best,
+    balanced,
     candidates,
     relaxes: (s) => s.limit > current,
     evaluated: all.length,
@@ -205,8 +221,14 @@ export function advise(
 }
 
 /** The draft policy a suggestion becomes: only the quote limit changes; locked rules stay. */
-export function draftFrom(policy: Policy, s: Levers, version: string, goal: Goal): Policy {
-  const title = GOALS.find((g) => g.key === goal)?.title ?? goal;
+export function draftFrom(
+  policy: Policy,
+  s: Levers,
+  version: string,
+  goal: Goal | "balanced" = "balanced",
+): Policy {
+  const title =
+    goal === "balanced" ? "balanced" : (GOALS.find((g) => g.key === goal)?.title ?? goal);
   return {
     ...policy,
     version,

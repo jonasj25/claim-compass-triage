@@ -46,3 +46,17 @@ describe("policy advisor", () => {
     expect(d.required_documents).toEqual(BATCH_POLICY_V2.required_documents);
   });
 });
+
+describe("balanced recommendation", () => {
+  it("is never worse than today on cost, reviewer hours, customer wait or expected losses", () => {
+    for (const relax of [false, true]) {
+      const r = advise(VOLUME_CLAIMS, BATCH_POLICY_V2, i, relax);
+      const s = r.balanced;
+      expect(s.total).toBeLessThanOrEqual(r.baseline.total * 1.0001);
+      expect(s.hours).toBeLessThanOrEqual(r.baseline.hours * 1.0001);
+      expect(s.days).toBeLessThanOrEqual(r.baseline.days + 1e-9);
+      expect(s.risk).toBeLessThanOrEqual(r.baseline.risk * 1.0001);
+      if (!relax) expect(s.limit).toBeLessThanOrEqual(1200);
+    }
+  });
+});
