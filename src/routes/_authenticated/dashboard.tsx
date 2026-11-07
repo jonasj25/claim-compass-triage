@@ -316,9 +316,9 @@ function Dashboard() {
   return (
     <div>
       <header className="mb-4 flex items-center justify-between gap-4">
-        <p className="text-[14px] font-medium">
+        <h1 className="m-0 p-0 text-[22px] font-semibold leading-tight tracking-tight">
           {greet}, {me.name.split(" ")[0]}
-        </p>
+        </h1>
         {visible[0] && (
           <Button
             onClick={() => {
