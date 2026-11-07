@@ -24,7 +24,6 @@ export const ROLE_NAV: Record<Role, NavItem[]> = {
   policy_owner: [
     { to: "/policy", label: "Policy" },
     { to: "/impact", label: "Change impact" },
-    { to: "/tests", label: "Test results" },
     { to: "/versions", label: "Versions" },
   ],
   ops_lead: [
