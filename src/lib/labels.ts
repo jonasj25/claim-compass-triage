@@ -19,7 +19,7 @@ export const CHANNEL_LABEL: Record<string, string> = {
 };
 
 export const QUEUE_LABEL: Record<string, string> = {
-  on_you: "On you",
+  on_you: "To review",
   waiting_customer: "Waiting on customer",
   auto_processed: "Auto-processed",
   done: "Done",

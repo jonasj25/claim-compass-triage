@@ -85,7 +85,7 @@ function CaseDetail() {
     const onYou = list
       .filter((c) => !isClosed(c.claim.case_status) && (c.workflow?.queue === "on_you" || (c.workflow?.qa_sample && c.workflow.queue !== "done")))
       .map((c) => c.claim.case_id);
-    if (onYou.includes(caseId)) return { label: "On you", ids: onYou };
+    if (onYou.includes(caseId)) return { label: "To review", ids: onYou };
     return { label: "All claims", ids: list.map((c) => c.claim.case_id) };
   }, [caseId, allCases.data]);
   const pos = nav.ids.indexOf(caseId);

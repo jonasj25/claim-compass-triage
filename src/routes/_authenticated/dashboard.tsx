@@ -116,13 +116,13 @@ function Dashboard() {
             navigate({ to: "/claims/$caseId", params: { caseId: next.claim.case_id } });
           }}
         >
-          Start next case <ArrowRight />
+          {onYou.length ? `Start reviewing · ${onYou.length}` : "All caught up"} {onYou.length > 0 && <ArrowRight />}
         </Button>
       </div>
 
       {/* Live numbers – information only, the tabs below do the filtering */}
       <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <Kpi label="On you" value={onYou.length} sub={`${overdue.length} overdue · SLA 24h`} tone={onYou.length ? "action" : undefined} />
+        <Kpi label="To review" value={onYou.length} sub={`${overdue.length} overdue · SLA 24h`} tone={onYou.length ? "action" : undefined} />
         <Kpi label="Waiting on customer" value={waiting.length} sub="Outreach sent automatically" />
         <Kpi label="Auto-processed" value={auto.length} sub="Routine, not a payment approval" />
         <Kpi

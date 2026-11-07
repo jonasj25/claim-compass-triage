@@ -15,7 +15,7 @@ export const SLA_HOURS = 24;
 export const REMINDER_HOURS = [48, 96];
 
 export const QUEUE_LABELS: Record<Queue, string> = {
-  on_you: "On you",
+  on_you: "To review",
   waiting_customer: "Waiting on customer",
   auto_processed: "Auto-processed",
   done: "Done",
