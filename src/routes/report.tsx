@@ -48,7 +48,7 @@ export const Route = createFileRoute("/report")({
   component: ReportPage,
 });
 
-type Mode = "start" | "form" | "review" | "done";
+type Mode = "start" | "form" | "docs" | "review" | "done";
 type Line = { speaker: "agent" | "customer"; text: string };
 
 
@@ -174,8 +174,13 @@ function ReportPage() {
   const completeAndSubmit = () => {
     const a = latest.current.answers;
     const basicsOk = activeQuestions(a).every((q) => canContinue(q, a));
-    if (basicsOk) void submit();
-    else setMode("review");
+    if (!basicsOk) return setMode("review");
+    // Before the claim is created, offer to add the reports and the quote (never required)
+    const have = new Set(latest.current.uploads.map((u) => u.kind));
+    if (!have.has("incident_report") || !have.has("quote")) {
+      setMode("docs");
+      window.scrollTo({ top: 0 });
+    } else void submit();
   };
 
   return (
@@ -258,6 +263,16 @@ function ReportPage() {
               checkError={formCheck.error}
             />
           </Shell>
+        )}
+
+        {mode === "docs" && (
+          <DocsStep
+            uploads={uploadsCard()}
+            count={uploads.length}
+            busy={busy}
+            error={error}
+            onSend={() => void submit()}
+          />
         )}
 
         {mode === "review" && (
@@ -358,6 +373,30 @@ function Landing({ qs, answers, heardIn, conversation, onForm, uploads }: { qs: 
 
 
 // ------------------------------------------------------------------ layout + checklist
+
+function DocsStep({ uploads, count, busy, error, onSend }: { uploads: ReactNode; count: number; busy: boolean; error: string | null; onSend: () => void }) {
+  return (
+    <div className="mx-auto max-w-[620px] pt-8">
+      <p className="label-mono">Almost done</p>
+      <h1 className="mt-3 text-[30px] font-semibold leading-tight tracking-[-0.02em]">Do you already have any documents?</h1>
+      <p className="mt-3 text-[15px] leading-relaxed text-text-2">
+        A police or incident report and the repair quote from your workshop help us decide faster. Not required: if you don't have them yet, send your claim now and we'll ask you for them later.
+      </p>
+      <div className="mt-6">{uploads}</div>
+      {error && <p className="mt-4 text-[13px] text-action">{error}</p>}
+      <div className="mt-6 flex flex-wrap items-center justify-end gap-3">
+        {count === 0 && (
+          <Button variant="ghost" onClick={onSend} disabled={busy} className="h-11">
+            I don't have them yet, send without
+          </Button>
+        )}
+        <Button onClick={onSend} disabled={busy || count === 0} className="h-11 px-6">
+          {busy ? "Sending…" : count ? `Send my claim with ${count} document${count > 1 ? "s" : ""}` : "Send my claim"} <ArrowRight />
+        </Button>
+      </div>
+    </div>
+  );
+}
 
 function Shell({ children, side }: { children: ReactNode; side: ReactNode }) {
   return (
