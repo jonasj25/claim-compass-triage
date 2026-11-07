@@ -328,8 +328,8 @@ function Dashboard() {
           const body = (
             <>
               <div className="text-[11px] font-medium text-text-2">{k.label}</div>
-              <div className="num mt-1 text-[24px] font-semibold leading-tight">{k.value}</div>
-              <div className="mt-0.5 text-[11px] text-text-2">{k.sub}</div>
+              <div className="num mt-0.5 text-[20px] font-semibold leading-tight">{k.value}</div>
+              <div className="text-[11px] text-text-2">{k.sub}</div>
             </>
           );
           const item = k.caseItem;
@@ -339,12 +339,12 @@ function Dashboard() {
               to="/claims/$caseId"
               params={{ caseId: item.row.claim.case_id }}
               onClick={() => remember(item)}
-              className="card-quiet block p-4 hover:border-text-3/40"
+              className="card-quiet block px-4 py-2.5 hover:border-text-3/40"
             >
               {body}
             </Link>
           ) : (
-            <div key={k.label} className="card-quiet p-4">
+            <div key={k.label} className="card-quiet px-4 py-2.5">
               {body}
             </div>
           );
@@ -352,10 +352,10 @@ function Dashboard() {
         <Link
           to="/claims"
           search={{ status: "waiting_customer" }}
-          className="block rounded-[8px] border border-dashed border-line p-4 text-text-3 hover:text-text-2"
+          className="block rounded-[8px] border border-dashed border-line px-4 py-2.5 text-text-3 hover:text-text-2"
         >
           <div className="text-[11px] font-medium">Running on its own</div>
-          <ul className="mt-1.5 space-y-1 text-[12px]">
+          <ul className="mt-0.5 text-[11px] leading-[1.45]">
             <li>
               <span className="num font-medium text-text-2">{counts.waiting_customer}</span> waiting on customer reply
             </li>
