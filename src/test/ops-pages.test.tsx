@@ -85,8 +85,7 @@ describe("ops lead pages", () => {
     expect(screen.getByText("Handled without a reviewer")).toBeTruthy();
     expect(screen.getByText("Why claims go to a person")).toBeTruthy();
     expect(screen.getAllByText("Injury").length).toBeGreaterThan(0);
-    expect(screen.getByText("Avg handling time")).toBeTruthy();
-    expect(screen.getByText("2 min")).toBeTruthy();
+    expect(screen.queryByText("Avg handling time")).toBeNull();
   });
 
   it("Quality shows the before/after report, mistakes and the override log", async () => {

@@ -9,7 +9,6 @@ import { secondCheckReason } from "@/lib/second-check";
 import { decide, RECOMMENDATION_LABELS, type Policy, type Recommendation } from "@/lib/triage";
 import { Card, Kpi, PageHeader, StatusDot } from "@/components/triage/ui";
 import { HBars, REC_COLOR, SERIES, StackedShare } from "@/components/triage/charts";
-import { handlingQuery, fmtSecs } from "@/lib/handling-time";
 import { AssignmentPanel } from "@/components/triage/AssignmentPanel";
 
 export const Route = createFileRoute("/_authenticated/overview")({
@@ -24,7 +23,7 @@ export const Route = createFileRoute("/_authenticated/overview")({
       { property: "og:title", content: "Workload & flow — Clearpath" },
       {
         property: "og:description",
-        content: "Live claim queues, reviewer workload and handling time.",
+        content: "Live claim queues and reviewer workload.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -50,7 +49,6 @@ const dayKey = (iso: string) => iso.slice(0, 10);
 function Overview() {
   const { data: cases = [], isLoading } = useQuery(casesQuery);
   const { data: policy } = useQuery(activePolicyQuery);
-  const handling = useQuery(handlingQuery);
   const s = useMemo(() => (policy ? stats(cases, policy) : null), [cases, policy]);
 
   if (isLoading || !s || !policy) return <p className="label-mono">Loading</p>;
@@ -63,42 +61,19 @@ function Overview() {
         sub={`Live from ${s.total} claims in the system · active policy ${policy.version.toUpperCase()}`}
       />
 
-      <div className="kpi-strip grid grid-cols-3 gap-0 lg:grid-cols-6">
+      <div className="kpi-strip grid grid-cols-3 gap-0 lg:grid-cols-5">
         <Kpi label="Open claims" value={s.open} sub={`${s.closed} closed`} />
-        <Kpi
-          label={QUEUE_LABELS.on_you}
-          value={s.queue.on_you}
-          tone={s.queue.on_you ? "action" : undefined}
-          sub="need a reviewer"
-        />
+        <Kpi label={QUEUE_LABELS.on_you} value={s.queue.on_you} sub="need a reviewer" />
         <Kpi label="Second checks" value={s.second} sub="auto-processed, near limit" />
         <Kpi
           label={QUEUE_LABELS.waiting_customer}
           value={s.queue.waiting_customer}
-          tone={s.queue.waiting_customer ? "wait" : undefined}
           sub="request sent"
         />
         <Kpi
           label={QUEUE_LABELS.auto_processed}
           value={s.queue.auto_processed}
           sub="no human needed"
-        />
-        <Kpi
-          label="Avg handling time"
-          value={
-            handling.isError
-              ? "Unavailable"
-              : handling.data?.avg != null
-                ? fmtSecs(handling.data.avg)
-                : "–"
-          }
-          sub={
-            handling.isError
-              ? "Could not load handling times"
-              : handling.data?.n
-                ? `${handling.data.n} decisions today`
-                : "No decisions yet today"
-          }
         />
       </div>
 
