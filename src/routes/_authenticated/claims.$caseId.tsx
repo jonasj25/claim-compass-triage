@@ -341,7 +341,7 @@ function CaseDetail() {
           <h2 className="section-title">{stepTitle}</h2>
           <p className="mt-1 text-[13.5px] text-text-2">{stepText}</p>
         </div>
-        {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
+        {actions && <div className="ml-auto flex flex-wrap items-center gap-2">{actions}</div>}
       </div>
 
       {/* 3 · Evidence: checklist and sources side by side, same height */}
@@ -491,7 +491,7 @@ function CaseDetail() {
               const pl = (e.payload ?? {}) as Row;
               return (
                 <li key={e.id} className="relative pb-4 pl-5 last:pb-0">
-                  <span className={cn("absolute -left-[4.5px] top-1.5 size-2 rounded-full", HUMAN_EVENTS.has(e.type) ? "bg-ink" : e.type === "escalated" ? "bg-action-dot" : "bg-text-3")} />
+                  <span className={cn("absolute -left-[4.5px] top-1.5 size-2 rounded-full", HUMAN_EVENTS.has(e.type) && !/engine|system/i.test(String(e.actor ?? "system")) ? "bg-ink" : e.type === "escalated" ? "bg-action-dot" : "bg-text-3")} />
                   <p className="text-[13px]">
                     {EVENT_TEXT[e.type] ?? e.type.replace(/_/g, " ")}
                     {e.type === "override" && pl.from && (
