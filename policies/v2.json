@@ -1,12 +1,12 @@
 {
   "version": "v2",
-  "description": "PLACEHOLDER - identical to v1 until the policy change is announced (Sat 18:00). Edit this file.",
+  "description": "Policy v2 change notice: routine quote limit EUR 1,500 -> EUR 1,200; EV high-voltage battery repairs always need human review",
   "human_review": {
     "require_policy_active": true,
     "allowed_claim_types": ["motor_own_damage"],
     "flag_fields": ["injury_reported", "liability_disputed", "duplicate_flag", "evidence_conflict"],
-    "quote_limit_eur": 1500,
-    "review_repair_types": []
+    "quote_limit_eur": 1200,
+    "review_repair_types": ["ev_high_voltage_battery"]
   },
   "required_documents": ["incident_report_present", "itemized_quote_present"]
 }

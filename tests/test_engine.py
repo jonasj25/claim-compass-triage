@@ -34,6 +34,29 @@ def test_hand_labelled_edge_cases_v1():
     assert not bad, bad
 
 
+def test_labelled_cases_v2():
+    """Hand-written expected_v2 labels (v2 change notice). Closed claims must keep their v1 decision."""
+    for name in ["dev_cases.csv", "synthetic_edge_cases.csv"]:
+        rows = list(csv.DictReader(open(os.path.join(ROOT, "data", name), encoding="utf-8-sig")))
+        bad = []
+        for r in rows:
+            res = evaluate(normalise(r), P1, P2)
+            if res["recommendation_v2"] != r["expected_v2"]:
+                bad.append((name, r["case_id"], res["recommendation_v2"], r["expected_v2"]))
+        assert not bad, bad
+
+
+def test_v2_rules():
+    assert P2["human_review"]["quote_limit_eur"] == 1200
+    assert decide(base(quote_eur="1200"), P2)[0] == "routine_processing"
+    assert decide(base(quote_eur="1201"), P2)[0] == "human_review"
+    assert decide(base(repair_type="ev_high_voltage_battery", quote_eur="100"), P2)[0] == "human_review"
+    # EV review beats a missing document
+    assert decide(base(repair_type="ev_high_voltage_battery", itemized_quote_present="False"), P2)[0] == "human_review"
+    # repair_type is now used, so a blank one is an absent fact
+    assert decide(base(repair_type=""), P2)[0] == "request_information"
+
+
 def test_boundary_is_strictly_greater():
     assert decide(base(quote_eur="1500"), P1)[0] == "routine_processing"
     assert decide(base(quote_eur="1500.01"), P1)[0] == "human_review"

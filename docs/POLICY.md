@@ -20,17 +20,21 @@ Key points:
 - v1 ignores `repair_type` (EV battery work is routine under v1).
 - `case_status` does not change the v1 decision. It matters for the policy change: closed cases keep their v1 decision.
 
-## v2 (announced Sat 18:00)
+## v2 (change notice, released Sat 18:00)
 
-_To be filled in at 18:00._ Edit `policies/v2.json`, then add an `expected_v2` column to the labelled data and run the report.
+Two changes. All other v1 rules and their order stay in force.
 
-Hypotheses from the data (do **not** hardcode before the announcement):
+1. The routine quote limit falls from €1,500 to €1,200. Exactly €1,200 is still routine; €1,201 needs human review.
+2. Any claim with `repair_type = ev_high_voltage_battery` needs human review, whatever the quote. This known trigger beats missing documents.
 
-- the quote limit may drop to €1,200 (PRA-002 = €1,200, PRA-003 = €1,201, DEV-010 says "original €1,500 boundary")
-- `ev_high_voltage_battery` repairs may require human review (DEV-011, PRA-005, PRA-006, PRA-010)
-- closed cases PRA-009 (€1,350) and PRA-010 (EV) would change under either rule. They must stay frozen.
+Effective for all open claims (after being processed by v1). Closed claims keep their historical v1 decision and must not be rewritten. Judges do not count closed claims in the v2 accuracy score; they check that closed claims still show their v1 decision.
 
-Questions for the mentor at 18:00:
+Consequence of our blank-field rule: `repair_type` is now a field the policy uses, so a blank repair type is an absent fact → request information (unless another known trigger requires human review).
 
-1. Does `needs_recheck` mean "the recommendation changed", or also "the changed rule touched the case but the outcome stayed the same"?
-2. How should a blank `case_status` be treated? (Current choice: as open, so it is rechecked rather than silently frozen.)
+`needs_recheck` = open claim whose next-step recommendation changes between v1 and v2 (the notice: "identify open claims whose next-step recommendation changes").
+
+Where v2 lives:
+- `policies/v2.json` → Python batch (`engine/triage.py`) and the website's `/batch` page
+- The app's database → create it on the Policy page (limit 1200, tick "The repair is EV high-voltage battery work"), then activate it on Change impact
+
+Labels: `expected_v2` in `data/dev_cases.csv` and `data/synthetic_edge_cases.csv`, written by hand from the notice. `python engine/report.py data/dev_cases.csv` shows the before/after comparison.
