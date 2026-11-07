@@ -3,6 +3,7 @@ import { Avatar, Chip, StatusDot, Unknown, fmtEur } from "./ui";
 import type { CaseRow } from "@/lib/data";
 import { isClosed } from "@/lib/csv";
 import { cn } from "@/lib/utils";
+import { saveCaseNav } from "@/lib/case-nav";
 
 const ageLabel = (iso: string | null) => {
   if (!iso) return "";
@@ -17,7 +18,7 @@ export function contextLine(c: CaseRow) {
   return c.decision.explanation ?? "";
 }
 
-export function ClaimsTable({ rows }: { rows: CaseRow[] }) {
+export function ClaimsTable({ rows, navLabel = "Claims" }: { rows: CaseRow[]; navLabel?: string }) {
   if (!rows.length) return <p className="py-12 text-center text-text-2">No cases here.</p>;
   return (
     <div className="overflow-x-auto">
@@ -38,7 +39,13 @@ export function ClaimsTable({ rows }: { rows: CaseRow[] }) {
               <tr key={c.claim.case_id} className="relative h-14 border-b border-line/70 last:border-0 hover:bg-white/80">
                 <td className="whitespace-nowrap px-3 font-mono text-[12px]">
                   {/* The link's overlay covers the whole row, so the full-summary tooltip lives here. */}
-                  <Link to="/claims/$caseId" params={{ caseId: c.claim.case_id }} title={c.claim.claim_summary ?? undefined} className="after:absolute after:inset-0 focus-visible:outline-none">
+                  <Link
+                    to="/claims/$caseId"
+                    params={{ caseId: c.claim.case_id }}
+                    title={c.claim.claim_summary ?? undefined}
+                    onClick={() => saveCaseNav(navLabel, rows.map((r) => r.claim.case_id))}
+                    className="after:absolute after:inset-0 focus-visible:outline-none"
+                  >
                     {c.claim.case_id}
                   </Link>
                 </td>

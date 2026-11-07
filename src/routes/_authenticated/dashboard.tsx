@@ -7,6 +7,7 @@ import { useRole } from "@/lib/role";
 import { Button } from "@/components/ui/button";
 import { Card, Kpi } from "@/components/triage/ui";
 import { ClaimsTable } from "@/components/triage/ClaimsTable";
+import { saveCaseNav } from "@/lib/case-nav";
 import type { Queue } from "@/lib/lifecycle";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
@@ -45,7 +46,9 @@ function Dashboard() {
           disabled={!mine.length && !onYou.length}
           onClick={() => {
             const next = mine[0] ?? onYou[0];
-            if (next) navigate({ to: "/claims/$caseId", params: { caseId: next.claim.case_id } });
+            if (!next) return;
+            saveCaseNav("On you", (mine.length ? [...mine, ...onYou.filter((c) => !mine.includes(c))] : onYou).map((c) => c.claim.case_id));
+            navigate({ to: "/claims/$caseId", params: { caseId: next.claim.case_id } });
           }}
         >
           Start next case <ArrowRight />
@@ -64,7 +67,7 @@ function Dashboard() {
           <h2 className="section-title">{filter ? filter.replace("_", " ").replace(/^\w/, (s) => s.toUpperCase()) : "On you"}</h2>
           <span className="label-mono">{rows.length} of {data.length} cases</span>
         </div>
-        <ClaimsTable rows={rows} />
+        <ClaimsTable rows={rows} navLabel={filter ? filter.replace("_", " ").replace(/^\w/, (x) => x.toUpperCase()) : "On you"} />
       </Card>
     </div>
   );

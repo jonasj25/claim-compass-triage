@@ -1,10 +1,11 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useRef, useState, type ReactNode } from "react";
-import { ArrowLeft, ArrowRight, Check, Lock, MessageSquare, PhoneCall, Send, UserPlus, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { ArrowLeft, ArrowRight, Check, ChevronLeft, Lock, MessageSquare, PhoneCall, Send, UserPlus, X } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { activePolicyQuery, caseDetailQuery } from "@/lib/data";
+import { activePolicyQuery, caseDetailQuery, casesQuery } from "@/lib/data";
+import { readCaseNav } from "@/lib/case-nav";
 import { decide, FIELD_LABELS, POLICY_V1, RECOMMENDATION_LABELS, type Claim, type Recommendation } from "@/lib/triage";
 import { isClosed } from "@/lib/csv";
 import { queueFor, SLA_HOURS } from "@/lib/lifecycle";
@@ -15,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { cn } from "@/lib/utils";
 import type { TranscriptLine, FormField, IntakeDocument } from "@/lib/intake";
 
@@ -66,7 +68,41 @@ function CaseDetail() {
 
   useEffect(() => {
     opened.current = Date.now();
+    setHl(null);
   }, [caseId]);
+
+  // ---------- step through the list the case was opened from (like a task queue) ----------
+  const allCases = useQuery(casesQuery);
+  const navigate = useNavigate();
+  const nav = useMemo(() => {
+    const stored = readCaseNav();
+    if (stored && stored.ids.includes(caseId)) return stored;
+    const list = allCases.data ?? [];
+    const onYou = list
+      .filter((c) => !isClosed(c.claim.case_status) && (c.workflow?.queue === "on_you" || (c.workflow?.qa_sample && c.workflow.queue !== "done")))
+      .map((c) => c.claim.case_id);
+    if (onYou.includes(caseId)) return { label: "On you", ids: onYou };
+    return { label: "All claims", ids: list.map((c) => c.claim.case_id) };
+  }, [caseId, allCases.data]);
+  const pos = nav.ids.indexOf(caseId);
+  const prevId = pos > 0 ? nav.ids[pos - 1] : null;
+  const nextId = pos >= 0 && pos < nav.ids.length - 1 ? nav.ids[pos + 1] : null;
+  const goTo = (id: string | null) => {
+    if (id) navigate({ to: "/claims/$caseId", params: { caseId: id } });
+  };
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (overrideOpen || e.metaKey || e.ctrlKey || e.altKey) return;
+      const t = e.target as HTMLElement | null;
+      if (t && (t.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(t.tagName))) return;
+      if (e.key === "j" || e.key === "J") goTo(nextId);
+      if (e.key === "k" || e.key === "K") goTo(prevId);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nextId, prevId, overrideOpen]);
 
   if (isLoading) return <p className="label-mono">Loading</p>;
   if (!data?.claim) return <p className="text-text-2">Case not found.</p>;
@@ -273,9 +309,27 @@ function CaseDetail() {
 
   return (
     <div>
-      <Link to="/claims" className="mb-5 inline-flex items-center gap-1.5 text-[13px] text-text-2 hover:text-foreground">
-        <ArrowLeft className="size-4" strokeWidth={1.5} /> Back to my queue
-      </Link>
+      {/* 0 · Move through the queue */}
+      <nav aria-label="Case navigation" className="mb-5 flex flex-wrap items-center gap-3">
+        <Button asChild variant="outline" className="bg-white">
+          <Link to="/claims">
+            <ArrowLeft /> Back to my queue
+          </Link>
+        </Button>
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          {pos >= 0 && (
+            <span className="label-mono mr-1">
+              {nav.label} · Case {pos + 1} of {nav.ids.length}
+            </span>
+          )}
+          <Button variant="outline" className="bg-white" disabled={!prevId} onClick={() => goTo(prevId)} title="Previous case (K)">
+            <ChevronLeft /> Previous <Kbd>K</Kbd>
+          </Button>
+          <Button disabled={!nextId} onClick={() => goTo(nextId)} title="Next case (J)">
+            {nextId ? "Next case" : "Last case"} <Kbd dark>J</Kbd> <ArrowRight />
+          </Button>
+        </div>
+      </nav>
 
       {/* 1 · Verdict and short description */}
       <div className={cn("card-quiet mb-5 p-7", tone)}>
@@ -358,6 +412,8 @@ function CaseDetail() {
               const src = refOf(c.field);
               return (
                 <li key={c.key}>
+                  <HoverCard openDelay={120} closeDelay={60}>
+                  <HoverCardTrigger asChild>
                   <button
                     onClick={() => setHl(c.field)}
                     className={cn("flex w-full items-center gap-3 rounded-[8px] px-2 py-2.5 text-left hover:bg-white/70", hl === c.field && "bg-white ring-1 ring-line")}
@@ -373,8 +429,17 @@ function CaseDetail() {
                       {c.status === "pass" ? <Check className="size-4" strokeWidth={1.5} /> : c.status === "fail" ? <X className="size-4" strokeWidth={2} /> : <span className="text-[11px]">?</span>}
                     </span>
                     <span className={cn("flex-1 text-[13.5px]", c.status === "fail" && "font-semibold", c.status === "pass" && "text-text-2")}>{c.note}</span>
-                    {src && <span className="label-mono hidden text-[10px] sm:inline">{src.ref}</span>}
+                    {src ? (
+                      <span className="label-mono hidden text-[10px] sm:inline">{src.ref}</span>
+                    ) : (
+                      <span className="label-mono hidden text-[10px] text-text-3 sm:inline">no source</span>
+                    )}
                   </button>
+                  </HoverCardTrigger>
+                  <HoverCardContent side="top" align="start" className="w-80 rounded-[12px] border-line p-4 text-[13px] shadow-[0_8px_24px_rgba(0,0,0,.08)]">
+                    <SourcePeek status={c.status} stage={c.stage} label={FIELD_LABELS[c.field] ?? c.field} src={src} doc={src ? docs.find((d) => d.name === src.ref) : undefined} />
+                  </HoverCardContent>
+                  </HoverCard>
                 </li>
               );
             })}
@@ -677,4 +742,68 @@ function reasonLabel(code: unknown) {
 function relTime(d: Date) {
   const h = Math.abs(d.getTime() - Date.now()) / 3600e3;
   return h < 1 ? `${Math.max(1, Math.round(h * 60))}m` : h < 48 ? `${Math.round(h)}h` : `${Math.round(h / 24)}d`;
+}
+
+function Kbd({ children, dark }: { children: ReactNode; dark?: boolean }) {
+  return (
+    <kbd
+      className={cn(
+        "ml-0.5 inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-[4px] px-1 font-mono text-[10px] font-medium",
+        dark ? "bg-white/15 text-white/80 ring-1 ring-white/25" : "bg-surface-2 text-text-2 ring-1 ring-line",
+      )}
+    >
+      {children}
+    </kbd>
+  );
+}
+
+const SOURCE_LABEL: Record<string, string> = {
+  transcript: "Call transcript",
+  form: "Online form",
+  document: "Document",
+  system: "System check",
+  csv: "CSV import",
+};
+
+/** Hover card on a checklist row: where the fact comes from, or why it is missing. */
+function SourcePeek({ status, stage, label, src, doc }: { status: string; stage: string; label: string; src?: Row; doc?: IntakeDocument }) {
+  const head =
+    status === "pass"
+      ? { text: "Confirmed", cls: "text-text-2" }
+      : status === "unknown"
+        ? { text: "Unknown · not provided", cls: "text-text-2" }
+        : stage === "R2"
+          ? { text: "Missing", cls: "text-wait" }
+          : { text: "Review trigger", cls: "text-action" };
+  return (
+    <div className="space-y-2">
+      <div className="flex items-baseline justify-between gap-3">
+        <span className="font-medium">{label}</span>
+        <span className={cn("label-mono", head.cls)}>{head.text}</span>
+      </div>
+      {src ? (
+        <>
+          <p className="label-mono">
+            {SOURCE_LABEL[src.source_type] ?? src.source_type} · {src.ref}
+          </p>
+          {src.quote && <p className="rounded-[8px] bg-surface-2 px-2.5 py-2 text-[13px] leading-snug ring-1 ring-line">“{src.quote}”</p>}
+          {doc && (
+            <p className="text-[12px] text-text-2">
+              {doc.name}: {doc.status === "unknown" ? "unknown" : doc.note}
+            </p>
+          )}
+          {src.confidence === "unconfirmed" && (
+            <p className="text-[12px] text-text-2">
+              <Unknown>unconfirmed</Unknown> Captured but not yet confirmed by the customer.
+            </p>
+          )}
+        </>
+      ) : (
+        <p className="text-[12.5px] text-text-2">No source is recorded for this field.</p>
+      )}
+      {status === "unknown" && <p className="text-[12.5px] text-text-2">Left blank, so the system does not guess. It has to be requested.</p>}
+      {status === "fail" && stage === "R2" && <p className="text-[12.5px] text-text-2">Not received yet. The customer is asked for it.</p>}
+      <p className="label-mono pt-1 text-text-3">Click to show it in Sources</p>
+    </div>
+  );
 }

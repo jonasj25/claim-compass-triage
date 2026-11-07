@@ -50,7 +50,7 @@ function Claims() {
             })}
           </div>
         </div>
-        <ClaimsTable rows={rows} />
+        <ClaimsTable rows={rows} navLabel={TABS.find((t) => t.key === tab)?.label ?? "Claims"} />
       </Card>
     </div>
   );
