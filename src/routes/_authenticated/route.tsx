@@ -92,10 +92,10 @@ function AppShell() {
     navigate({ to: ROLE_HOME[r] });
   };
 
-  // Sidebar: collapsed icon rail by default, expandable with labels (remembered per browser).
-  const [expanded, setExpanded] = useState(false);
+  // Sidebar: expanded with labels by default, collapsible to an icon rail (remembered per browser).
+  const [expanded, setExpanded] = useState(true);
   useEffect(() => {
-    try { setExpanded(localStorage.getItem(NAV_KEY) === "1"); } catch { /* storage unavailable */ }
+    try { setExpanded(localStorage.getItem(NAV_KEY) !== "0"); } catch { /* storage unavailable */ }
   }, []);
   const toggleNav = () => setExpanded((v) => {
     try { localStorage.setItem(NAV_KEY, v ? "0" : "1"); } catch { /* storage unavailable */ }
