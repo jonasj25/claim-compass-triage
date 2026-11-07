@@ -10,6 +10,7 @@ import { decide, RECOMMENDATION_LABELS, type Policy, type Recommendation } from 
 import { Card, Kpi, PageHeader, StatusDot } from "@/components/triage/ui";
 import { HBars, REC_COLOR, SERIES, StackedShare } from "@/components/triage/charts";
 import { handlingQuery, fmtSecs } from "@/lib/handling-time";
+import { AssignmentPanel } from "@/components/triage/AssignmentPanel";
 
 export const Route = createFileRoute("/_authenticated/overview")({
   head: () => ({
@@ -179,7 +180,10 @@ function Overview() {
             </ResponsiveContainer>
           </div>
         </Card>
+      </div>
 
+      <div className="mt-6">
+        <AssignmentPanel cases={cases} />
       </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_1.2fr]">

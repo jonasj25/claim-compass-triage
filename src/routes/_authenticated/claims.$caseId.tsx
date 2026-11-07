@@ -566,6 +566,16 @@ function CaseDetail() {
           {status}
         </span>
         <div className="ml-auto flex items-center gap-2">
+          {!closed &&
+            (workflow?.assignee ? (
+              <span className="text-[11px] text-text-2">
+                Assigned to <span className="font-medium text-foreground">{workflow.assignee === me.name ? "you" : workflow.assignee}</span>
+              </span>
+            ) : (
+              <Button size="sm" variant="outline" className="h-8 bg-white text-[12px]" disabled={busy} onClick={() => void assignMe()}>
+                Assign to me
+              </Button>
+            ))}
           <span className="text-[11px] text-text-2">
             Updated {fmtTime(workflow?.updated_at ?? data.claim.received_at)}
           </span>

@@ -2,7 +2,7 @@ import type { Recommendation } from "./triage";
 
 export type Queue = "on_you" | "waiting_customer" | "auto_processed" | "done";
 
-export const REVIEWERS = ["Mara Klein", "Jonas Weber", "Lea Hoffmann"] as const;
+export const REVIEWERS = ["Mara Klein", "Jonas Weber", "Lea Hoffmann", "Ben Krause", "Aylin Demir", "Noah Fischer", "Clara Wolf"] as const;
 
 export function queueFor(rec: Recommendation, closed: boolean): Queue {
   if (closed) return "done";

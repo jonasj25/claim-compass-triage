@@ -1,14 +1,9 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useSuspenseQuery } from "@tanstack/react-query";
+import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { assignCases } from "@/lib/assignment";
 import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  ArrowRight,
-  CheckCircle2,
-  ChevronDown,
-  Phone,
-  Search,
-  TriangleAlert,
-} from "lucide-react";
+import { ArrowRight, CheckCircle2, ChevronDown, Phone, Search, TriangleAlert } from "lucide-react";
 import { activePolicyQuery, casesQuery } from "@/lib/data";
 import { dashboardActivityQuery, outreachRemindersQuery } from "@/lib/dashboard-activity";
 import {
@@ -96,6 +91,8 @@ function Dashboard() {
   const [task, setTask] = useState<"all" | WorkTab>("all");
   const [channel, setChannel] = useState("all");
   const [sort, setSort] = useState<Sort>("oldest");
+  const [scopePick, setScope] = useState<"mine" | "unassigned" | "all" | null>(null);
+  const qc = useQueryClient();
   const links = useRef(new Map<string, HTMLAnchorElement>());
   useEffect(() => {
     setNow(new Date());
@@ -121,9 +118,25 @@ function Dashboard() {
     [work],
   );
 
+  // Whose cases: mine by default when I have any, otherwise everyone.
+  const mineCount = work.ordered.filter((i) => i.row.workflow?.assignee === me.name).length;
+  const unassignedCount = work.ordered.filter((i) => !i.row.workflow?.assignee).length;
+  const scope = scopePick ?? (mineCount > 0 ? "mine" : "all");
+  const assignToMe = async (caseId: string) => {
+    try {
+      await assignCases([caseId], me.name, me.name);
+      await qc.invalidateQueries({ queryKey: ["cases"] });
+      toast(`${caseId} assigned to you`);
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+  };
+
   const term = search.trim().toLowerCase();
   const matches = (item: WorkItem) => {
     const { row } = item;
+    if (scope === "mine" && row.workflow?.assignee !== me.name) return false;
+    if (scope === "unassigned" && row.workflow?.assignee) return false;
     if (task !== "all" && workTab(item) !== task) return false;
     if (channel !== "all" && row.intake?.channel !== channel) return false;
     if (!term) return true;
@@ -150,10 +163,16 @@ function Dashboard() {
   })).filter((g) => g.items.length);
   const visible = groups.flatMap((g) => g.items);
   const filtering = !!term || task !== "all" || channel !== "all";
+  const scopes = [
+    ["mine", "Mine", mineCount],
+    ["unassigned", "Unassigned", unassignedCount],
+    ["all", "Everyone", work.ordered.length],
+  ] as const;
   const reset = () => {
     setSearch("");
     setTask("all");
     setChannel("all");
+    setScope("all");
   };
 
   const ids = visible.map((item) => item.row.claim.case_id);
@@ -268,17 +287,41 @@ function Dashboard() {
             {kpis.map((k) => {
               const body = (
                 <>
-                  <div className={cn("num text-[20px] font-semibold", k.label === "To review" && total > 0 && "text-action")}>{k.value}</div>
+                  <div
+                    className={cn(
+                      "num text-[20px] font-semibold",
+                      k.label === "To review" && total > 0 && "text-action",
+                    )}
+                  >
+                    {k.value}
+                  </div>
                   <div className="text-[11px] font-medium text-foreground">{k.label}</div>
                   <div className="text-[11px] text-text-2">{k.sub}</div>
                 </>
               );
               return k.to ? (
-                <Link key={k.label} to="/claims" search={k.to} className="px-5 first:pl-0 hover:opacity-80">{body}</Link>
+                <Link
+                  key={k.label}
+                  to="/claims"
+                  search={k.to}
+                  className="px-5 first:pl-0 hover:opacity-80"
+                >
+                  {body}
+                </Link>
               ) : k.label === "Oldest open case" && oldest ? (
-                <Link key={k.label} to="/claims/$caseId" params={{ caseId: oldest.row.claim.case_id }} onClick={() => remember(oldest)} className="px-5 first:pl-0 hover:opacity-80">{body}</Link>
+                <Link
+                  key={k.label}
+                  to="/claims/$caseId"
+                  params={{ caseId: oldest.row.claim.case_id }}
+                  onClick={() => remember(oldest)}
+                  className="px-5 first:pl-0 hover:opacity-80"
+                >
+                  {body}
+                </Link>
               ) : (
-                <div key={k.label} className="px-5 first:pl-0">{body}</div>
+                <div key={k.label} className="px-5 first:pl-0">
+                  {body}
+                </div>
               );
             })}
           </div>
@@ -323,6 +366,29 @@ function Dashboard() {
           ))}
         </div>
         <div className="flex flex-wrap items-center gap-2 border-b border-line p-3">
+          <div
+            role="radiogroup"
+            aria-label="Whose cases"
+            className="flex items-center gap-0.5 rounded-full bg-surface-2 p-0.5 text-[12px] ring-1 ring-line"
+          >
+            {scopes.map(([key, label, n]) => (
+              <button
+                key={key}
+                type="button"
+                role="radio"
+                aria-checked={scope === key}
+                onClick={() => setScope(key)}
+                className={cn(
+                  "rounded-full px-3 py-1",
+                  scope === key
+                    ? "bg-white font-medium shadow-[var(--shadow-lift)]"
+                    : "text-text-2",
+                )}
+              >
+                {label} <span className="num text-text-3">{n}</span>
+              </button>
+            ))}
+          </div>
           <label className="relative min-w-[220px] flex-1">
             <Search className="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-text-3" />
             <Input
@@ -372,13 +438,7 @@ function Dashboard() {
           <table className="w-full table-fixed text-left text-[13px]">
             <thead>
               <tr className="border-b border-line">
-                {[
-                  "Case ID",
-                  "Trigger",
-                  "Summary",
-                  "Amount",
-                  "Received",
-                ].map((h, i) => (
+                {["Case ID", "Trigger", "Summary", "Amount", "Assignee", "Received"].map((h, i) => (
                   <th
                     key={h}
                     className={cn(
@@ -388,6 +448,7 @@ function Dashboard() {
                         "w-[220px]",
                         "",
                         "w-[90px] text-right",
+                        "w-[130px]",
                         "w-[100px]",
                       ][i],
                     )}
@@ -401,7 +462,7 @@ function Dashboard() {
               <tbody key={group.key}>
                 {task === "all" && (
                   <tr className="border-b border-line bg-surface-2">
-                    <td colSpan={5} className="h-8 px-3 text-[11px] font-semibold text-text-2">
+                    <td colSpan={6} className="h-8 px-3 text-[11px] font-semibold text-text-2">
                       {group.label} · {group.items.length}
                     </td>
                   </tr>
@@ -458,6 +519,22 @@ function Dashboard() {
                       </td>
                       <td className="num px-3 py-2 text-right">
                         {row.claim.quote_eur === null ? <Unknown /> : money(row.claim.quote_eur)}
+                      </td>
+                      <td className="px-3 py-2 text-[12px]">
+                        {row.workflow?.assignee ? (
+                          <span className="block truncate text-text-2">
+                            {row.workflow.assignee === me.name ? "You" : row.workflow.assignee}
+                          </span>
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="relative z-10 h-7 bg-white px-2 text-[11.5px]"
+                            onClick={() => void assignToMe(id)}
+                          >
+                            Assign to me
+                          </Button>
+                        )}
                       </td>
                       <td className="px-3 py-2 text-[11px] text-text-2">
                         {waited ? `${waited} ago` : <Unknown />}

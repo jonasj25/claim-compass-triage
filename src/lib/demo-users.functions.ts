@@ -1,10 +1,14 @@
 import { createServerFn } from "@tanstack/react-start";
 
-// Fixed hackathon demo accounts. Only these five can be created here.
+// Fixed hackathon demo accounts. Only these can be created here.
 export const DEMO_USERS = [
   { email: "mara@demo.com", name: "Mara Klein", role: "reviewer" },
   { email: "jonas@demo.com", name: "Jonas Weber", role: "reviewer" },
   { email: "lea@demo.com", name: "Lea Hoffmann", role: "reviewer" },
+  { email: "ben@demo.com", name: "Ben Krause", role: "reviewer" },
+  { email: "aylin@demo.com", name: "Aylin Demir", role: "reviewer" },
+  { email: "noah@demo.com", name: "Noah Fischer", role: "reviewer" },
+  { email: "clara@demo.com", name: "Clara Wolf", role: "reviewer" },
   { email: "tobias@demo.com", name: "Tobias Brandt", role: "policy_owner" },
   { email: "sofia@demo.com", name: "Sofia Lang", role: "ops_lead" },
 ] as const;

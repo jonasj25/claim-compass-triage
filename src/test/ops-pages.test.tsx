@@ -5,6 +5,7 @@ import { parseClaimsCsv } from "@/lib/csv";
 import { SEED_CLAIMS_CSV } from "@/lib/seed-claims";
 import { decide, POLICY_V1 } from "@/lib/triage";
 import { queueFor } from "@/lib/lifecycle";
+import { RoleContext } from "@/lib/role";
 
 vi.mock("@tanstack/react-router", async (orig) => ({
   ...(await orig<typeof import("@tanstack/react-router")>()),
@@ -67,9 +68,12 @@ async function renderPage(path: string) {
   );
   qc.setQueryData(["outcomes"], []);
   const Page = mod.Route.options.component as React.ComponentType;
+  const me = { id: "u", name: "Sofia Lang", email: "s@demo.com", role: "ops_lead" as const };
   return render(
     <QueryClientProvider client={qc}>
-      <Page />
+      <RoleContext.Provider value={{ me, role: "ops_lead", setRole: () => {} }}>
+        <Page />
+      </RoleContext.Provider>
     </QueryClientProvider>,
   );
 }
