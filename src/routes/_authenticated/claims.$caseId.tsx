@@ -564,6 +564,53 @@ function CaseDetail() {
   const recLabel = (v: unknown) =>
     RECOMMENDATION_LABELS[v as Recommendation] ?? (v ? String(v) : "?");
   const unknownChecks = live.checklist.filter((c) => c.status === "unknown");
+  // What the case is about, shown at the top of Overview (same facts as the Evidence checklist)
+  const autoLimit = policy.human_review.quote_limit_eur;
+  const problems: { key: string; label: string; text: string; tone: "action" | "wait" | "info"; Icon: typeof TriangleAlert }[] = [
+    ...live.checklist
+      .filter((c) => c.status === "fail" && c.stage === "R1")
+      .map((c) => ({
+        key: c.key,
+        label:
+          c.key === "quote_limit" && autoLimit !== null && autoLimit !== undefined && claim.quote_eur !== null
+            ? `€${(claim.quote_eur - autoLimit).toLocaleString("en-US")} over auto-limit`
+            : humanize(c.note),
+        text:
+          c.key === "quote_limit" && autoLimit !== null && autoLimit !== undefined && claim.quote_eur !== null
+            ? `quote €${claim.quote_eur.toLocaleString("en-US")}, auto-limit €${autoLimit.toLocaleString("en-US")} (policy ${version})`
+            : "a person has to decide",
+        tone: "action" as const,
+        Icon: TriangleAlert,
+      })),
+    ...live.checklist
+      .filter((c) => c.status === "fail" && c.stage !== "R1")
+      .map((c) => ({ key: c.key, label: humanize(c.note), text: "ask the customer for it", tone: "wait" as const, Icon: FileQuestion })),
+    ...live.checklist
+      .filter((c) => c.status === "unknown")
+      .map((c) => ({
+        key: c.key,
+        label: `${cap(FIELD_LABELS[c.field] ?? c.field.replace(/_/g, " "))} unknown`,
+        text: "we never guess, the customer is asked",
+        tone: "wait" as const,
+        Icon: FileQuestion,
+      })),
+    ...(nearLimit ? [{ key: "near_limit", label: "Near the auto-limit", text: nearLimit, tone: "wait" as const, Icon: TriangleAlert }] : []),
+    ...(recheck
+      ? [{
+          key: "policy_change",
+          label: "Policy change",
+          text:
+            pc.from_version && pc.to_version
+              ? `${pc.from_version} said ${recLabel(pc.before)}, ${pc.to_version} says ${recLabel(pc.after)}`
+              : `the result changed under policy ${version}`,
+          tone: "info" as const,
+          Icon: RefreshCw,
+        }]
+      : []),
+    ...(qa && !nearLimit
+      ? [{ key: "qa", label: "Random QA sample", text: "picked at random to check that the rules still work", tone: "info" as const, Icon: ListChecks }]
+      : []),
+  ];
   const cap = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
   const ruleLabel = (id: unknown) => {
     const r = String(id ?? "").split(".").pop()?.toUpperCase();
@@ -697,6 +744,51 @@ function CaseDetail() {
           </div>
           {mainTab === "Overview" && (
             <>
+              {problems.length > 0 && (
+                <div
+                  className={cn(
+                    "mb-4 rounded-[8px] border px-5 py-4",
+                    problems.some((p) => p.tone === "action")
+                      ? "border-action-border bg-action-tint"
+                      : problems.some((p) => p.tone === "wait")
+                        ? "border-wait-border bg-wait-tint"
+                        : "border-line bg-surface",
+                  )}
+                >
+                  <div className="flex flex-wrap items-baseline justify-between gap-2">
+                    <h2 className="section-title">
+                      {closed || queue === "done" || confirmed
+                        ? "What was flagged"
+                        : isWaiting
+                          ? "What we are waiting for"
+                          : "Why this case needs you"}
+                    </h2>
+                    <button
+                      type="button"
+                      onClick={() => setMainTab("Evidence")}
+                      className="text-[12px] text-link hover:underline"
+                    >
+                      Show in evidence →
+                    </button>
+                  </div>
+                  <ul className="mt-2 space-y-1.5">
+                    {problems.map((p) => (
+                      <li key={p.key} className="flex items-start gap-2 text-[13px]">
+                        <p.Icon
+                          className={cn(
+                            "mt-0.5 size-4 shrink-0",
+                            p.tone === "action" ? "text-action" : p.tone === "wait" ? "text-wait" : "text-link",
+                          )}
+                        />
+                        <span>
+                          <strong className="font-semibold">{p.label}</strong>
+                          {p.text ? <span className="text-text-2"> – {p.text}</span> : null}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
               <div className="mb-4 grid items-stretch gap-4 md:grid-cols-2">
                 <Card>
                   <h2 className="section-title mb-3">Case details</h2>
@@ -741,51 +833,6 @@ function CaseDetail() {
                   <p className="mt-3 text-[13px] leading-relaxed">
                     {claim.claim_summary ?? "The incident summary is unknown."}
                   </p>
-                  <h3 className="mt-4 text-[12px] font-semibold">Case triggers</h3>
-                  <ul className="mt-2 space-y-2 text-[12px] text-text-2">
-                    {nearLimit && (
-                      <li>
-                        <strong className="text-wait">
-                          <TriangleAlert className="mr-1 inline size-3" />
-                          Near limit.
-                        </strong>{" "}
-                        {nearLimit}
-                      </li>
-                    )}
-                    {triggers.map((c) => (
-                      <li key={c.key}>
-                        <strong className="text-foreground">
-                          {cap(FIELD_LABELS[c.field] ?? c.field.replace(/_/g, " "))}:
-                        </strong>{" "}
-                        {humanize(c.note)}
-                      </li>
-                    ))}
-                    {unknownChecks.map((c) => (
-                      <li key={c.key}>
-                        <strong className="text-foreground">
-                          {cap(FIELD_LABELS[c.field] ?? c.field.replace(/_/g, " "))}:
-                        </strong>{" "}
-                        unknown – we never guess, so the customer is asked.
-                      </li>
-                    ))}
-                    {qa && !nearLimit && (
-                      <li>
-                        <strong className="text-foreground">Random QA sample:</strong> picked at
-                        random to check that the rules still work.
-                      </li>
-                    )}
-                    {recheck && (
-                      <li>
-                        <strong className="text-foreground">Policy change:</strong>{" "}
-                        {pc.from_version && pc.to_version
-                          ? `${pc.from_version} said ${recLabel(pc.before)}, ${pc.to_version} says ${recLabel(pc.after)}. Check the result under the new rules.`
-                          : `the result changed under policy ${version}. Check it under the new rules.`}
-                      </li>
-                    )}
-                    {!triggers.length && !unknownChecks.length && !qa && !recheck && !nearLimit && (
-                      <li>All checks passed.</li>
-                    )}
-                  </ul>
                   <p className="mt-4 border-t border-line pt-3 text-[12px] text-text-2">
                     {closed
                       ? "Closed – the decision is frozen."
@@ -1062,15 +1109,17 @@ function CaseDetail() {
                 type="button"
                 disabled={busy || !portalUrl}
                 onClick={() => void callCustomer()}
-                aria-label="Call customer"
+                aria-label="Let Mia call the customer"
                 title={portalUrl ? "Call the customer with Mia" : "No plate or email on file to reach the customer's claim page"}
                 className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[oklch(0.62_0.17_150)] text-white shadow-sm transition-transform hover:scale-105 disabled:opacity-40 disabled:hover:scale-100"
               >
                 <Phone className="size-[18px] fill-white" strokeWidth={1.5} />
               </button>
               <div className="min-w-0 flex-1">
-                <p className="section-title leading-tight">Or call {data.intake?.customer_name ?? "the customer"}</p>
-                <p className="text-[12.5px] text-text-2">via Mia (voice agent)</p>
+                <p className="section-title leading-tight">
+                  Or let Mia call {data.intake?.customer_name ?? "the customer"}
+                </p>
+                <p className="text-[12.5px] text-text-2">Our voice agent calls them and asks for what is missing</p>
               </div>
               {portalUrl && (
                 <a href={portalUrl} target="_blank" rel="noreferrer" className="shrink-0 text-[11.5px] text-link hover:underline">
