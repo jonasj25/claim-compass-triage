@@ -24,7 +24,10 @@ import {
   ShieldCheck,
   Calculator,
   Settings,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
+import type { ReactNode } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -55,6 +58,7 @@ export const Route = createFileRoute("/_authenticated")({
 });
 
 const ROLE_KEY = "triage.demoRole";
+const NAV_KEY = "triage.navExpanded";
 
 function AppShell() {
   const { user } = Route.useRouteContext();
@@ -88,6 +92,26 @@ function AppShell() {
     navigate({ to: ROLE_HOME[r] });
   };
 
+  // Sidebar: collapsed icon rail by default, expandable with labels (remembered per browser).
+  const [expanded, setExpanded] = useState(false);
+  useEffect(() => {
+    try { setExpanded(localStorage.getItem(NAV_KEY) === "1"); } catch { /* storage unavailable */ }
+  }, []);
+  const toggleNav = () => setExpanded((v) => {
+    try { localStorage.setItem(NAV_KEY, v ? "0" : "1"); } catch { /* storage unavailable */ }
+    return !v;
+  });
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === "b") {
+        e.preventDefault();
+        toggleNav();
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, []);
+
   if (!meQuery.data || !role) {
     return <div className="flex min-h-screen items-center justify-center label-mono">Loading</div>;
   }
@@ -95,9 +119,9 @@ function AppShell() {
   return (
     <RoleContext.Provider value={{ me: meQuery.data, role, setRole }}>
       <TooltipProvider delayDuration={150}>
-        <div className="min-h-screen pl-14">
+        <div className={cn("min-h-screen transition-[padding] duration-200 motion-reduce:transition-none", expanded ? "pl-56" : "pl-14")}>
           <TopBar />
-          <SideNav />
+          <SideNav expanded={expanded} onToggle={toggleNav} />
           <div className="mx-auto max-w-[1440px] p-6">
             <main className="enterprise-content min-w-0">
               <Outlet />
@@ -187,7 +211,7 @@ function TopBar() {
   );
 }
 
-function SideNav() {
+function SideNav({ expanded, onToggle }: { expanded: boolean; onToggle: () => void }) {
   const { role, me } = useRole();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const qc = useQueryClient();
@@ -244,83 +268,67 @@ function SideNav() {
     "/overview": ChartNoAxesCombined,
     "/quality": ShieldCheck,
     "/business-case": Calculator,
+    "/import": Upload,
+    "/batch": Play,
   };
-  const railClass = (active: boolean) =>
-    cn(
-      "flex size-9 items-center justify-center rounded-md",
-      active ? "bg-link/10 text-link" : "text-text-2 hover:bg-surface-2",
+  const isMac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
+  // One entry in the sidebar: icon only with a hover label when collapsed, icon + label when expanded.
+  const item = (key: string, label: string, Icon: typeof ListTodo, opts: { to?: string; onClick?: () => void; active?: boolean; hint?: string }) => {
+    const cls = cn(
+      "flex h-9 items-center rounded-md text-[13px] transition-colors",
+      expanded ? "w-full justify-start gap-2.5 px-2.5" : "size-9 justify-center",
+      opts.active ? "bg-link/10 font-medium text-link" : "text-text-2 hover:bg-surface-2 hover:text-foreground",
     );
-  const railLink = (to: string, label: string, Icon: typeof ListTodo) => (
-    <Tooltip key={to}>
-      <TooltipTrigger asChild>
-        <Button
-          asChild
-          variant="ghost"
-          className={railClass(path === to || (to === "/dashboard" && path.startsWith("/claims/")))}
-        >
-          <Link to={to} aria-label={label}>
-            <Icon className="size-4" strokeWidth={1.5} />
-          </Link>
-        </Button>
-      </TooltipTrigger>
-      <TooltipContent side="right">{label}</TooltipContent>
-    </Tooltip>
-  );
+    const inner: ReactNode = (
+      <>
+        <Icon className="size-4 shrink-0" strokeWidth={1.5} />
+        {expanded && <span className="truncate">{label}</span>}
+        {expanded && opts.hint && <span className="ml-auto font-mono text-[10px] text-text-3">{opts.hint}</span>}
+      </>
+    );
+    const el = opts.to ? (
+      <Link key={key} to={opts.to} aria-label={label} className={cls}>{inner}</Link>
+    ) : (
+      <button key={key} type="button" onClick={opts.onClick} aria-label={label} className={cls}>{inner}</button>
+    );
+    if (expanded) return el;
+    return (
+      <Tooltip key={key}>
+        <TooltipTrigger asChild>{el}</TooltipTrigger>
+        <TooltipContent side="right">{label}{opts.hint ? ` (${opts.hint})` : ""}</TooltipContent>
+      </Tooltip>
+    );
+  };
+  const section = (label: string) =>
+    expanded ? <p className="label-mono mb-1 mt-3 w-full px-2.5 text-[10px]">{label}</p> : <div className="my-2 w-7 border-t border-line" />;
+  const navItem = (to: string, label: string) =>
+    item(to, label, icons[to] ?? Files, { to, active: path === to || (to === "/dashboard" && path.startsWith("/claims/")) });
   return (
     <>
       <nav
         aria-label="Main"
-        className="fixed inset-y-0 left-0 z-40 flex w-14 flex-col items-center gap-2 border-r border-line bg-surface py-3"
-      >
-        <Link to={ROLE_HOME[role]} aria-label="Clearpath home" className="mb-4">
-          <Logo className="size-7" />
-        </Link>
-        {items.map((it) =>
-          railLink(it.to, it.to === "/dashboard" ? "Workstream" : it.label, icons[it.to] ?? Files),
+        className={cn(
+          "fixed inset-y-0 left-0 z-40 flex flex-col gap-1 overflow-hidden border-r border-line bg-surface py-3 transition-[width] duration-200 motion-reduce:transition-none",
+          expanded ? "w-56 items-stretch px-3" : "w-14 items-center",
         )}
-        <div className="my-2 w-7 border-t border-line" />
-        {railLink("/import", "Import CSV", Upload)}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              className={railClass(false)}
-              onClick={exportCsv}
-              aria-label="Export results CSV"
-            >
-              <Download className="size-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="right">Export results CSV</TooltipContent>
-        </Tooltip>
-        {railLink("/batch", "Batch run (judges)", Play)}
+      >
+        <Link to={ROLE_HOME[role]} aria-label="Clearpath home" className={cn("mb-3 flex items-center gap-2.5", expanded && "px-1")}>
+          <Logo className="size-7 shrink-0" />
+          {expanded && <span className="text-[14px] font-semibold">Clearpath</span>}
+        </Link>
+        {expanded && <p className="label-mono mb-1 w-full px-2.5 text-[10px]">{ROLE_LABELS[role]}</p>}
+        {items.map((it) => navItem(it.to, it.to === "/dashboard" ? "Workstream" : it.label))}
+        {section("Data")}
+        {navItem("/import", "Import CSV")}
+        {item("export", "Export results CSV", Download, { onClick: exportCsv })}
+        {navItem("/batch", "Batch run (judges)")}
         <div className="mt-auto" />
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              className={railClass(false)}
-              onClick={() => setSettingsOpen(true)}
-              aria-label="Settings"
-            >
-              <Settings className="size-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="right">Settings</TooltipContent>
-        </Tooltip>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              className={railClass(false)}
-              onClick={signOut}
-              aria-label="Sign out"
-            >
-              <LogOut className="size-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="right">Sign out</TooltipContent>
-        </Tooltip>
+        {item("toggle", expanded ? "Collapse sidebar" : "Expand sidebar", expanded ? PanelLeftClose : PanelLeftOpen, {
+          onClick: onToggle,
+          hint: isMac ? "⌘B" : "Ctrl+B",
+        })}
+        {item("settings", "Settings", Settings, { onClick: () => setSettingsOpen(true) })}
+        {item("signout", "Sign out", LogOut, { onClick: signOut })}
       </nav>
       <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
         <DialogContent>
