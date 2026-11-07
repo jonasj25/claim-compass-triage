@@ -83,7 +83,7 @@ export const FIELD_LABELS: Record<string, string> = {
 export const RECOMMENDATION_LABELS: Record<Recommendation, string> = {
   routine_processing: "Auto-processed",
   request_information: "Request info",
-  human_review: "Human review",
+  human_review: "To review",
 };
 
 const label = (f: string) => FIELD_LABELS[f] ?? f.replace(/_/g, " ");

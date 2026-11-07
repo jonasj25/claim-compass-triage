@@ -194,7 +194,7 @@ function Dashboard() {
 }
 
 const TILE_COLORS = {
-  // same red family as the "Human review" recommendation: this is the tile that needs a person
+  // same red family as the "To review" recommendation: this is the tile that needs a person
   red: { bg: "bg-[linear-gradient(135deg,oklch(0.985_0.014_35),oklch(0.955_0.038_30))]", chip: "bg-[oklch(0.93_0.05_32)] text-action", blob: "bg-[oklch(0.86_0.08_32/0.5)]", bar: "bg-action-dot", track: "bg-[oklch(0.9_0.045_32)]", hover: "hover:ring-[oklch(0.84_0.07_32)]", ring: "ring-[oklch(0.72_0.14_34)]" },
   orange: { bg: "bg-[linear-gradient(135deg,oklch(0.985_0.015_75),oklch(0.96_0.035_65))]", chip: "bg-[oklch(0.94_0.045_65)] text-[oklch(0.58_0.15_50)]", blob: "bg-[oklch(0.9_0.06_65/0.5)]", bar: "", track: "", hover: "hover:ring-[oklch(0.88_0.06_62)]", ring: "ring-[oklch(0.78_0.11_58)]" },
   green: { bg: "bg-[linear-gradient(135deg,oklch(0.98_0.02_155),oklch(0.955_0.045_158))]", chip: "bg-[oklch(0.92_0.06_155)] text-[oklch(0.48_0.13_155)]", blob: "bg-[oklch(0.88_0.08_155/0.5)]", bar: "", track: "", hover: "hover:ring-[oklch(0.86_0.07_155)]", ring: "ring-[oklch(0.7_0.11_155)]" },

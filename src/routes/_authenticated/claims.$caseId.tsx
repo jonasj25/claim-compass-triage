@@ -290,7 +290,7 @@ function CaseDetail() {
         {assignBtn}
         {overrideBtn("Override")}
         <Button disabled={busy} onClick={() => confirm(true)} title="Confirm (C)">
-          <Check /> {recheck ? `Confirm ${version} result` : "Confirm human review"}
+          <Check /> {recheck ? `Confirm ${version} result` : "Confirm review"}
           {nextId && " & next"} <Kbd dark>C</Kbd>
         </Button>
       </>
