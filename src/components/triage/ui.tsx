@@ -25,7 +25,7 @@ export function StatusDot({ rec, closed, className, plain }: { rec: Recommendati
     );
   const pill = plain ? "" : rec === "human_review" ? "pill-action" : rec === "request_information" ? "pill-wait" : "";
   return (
-    <span className={cn("inline-flex items-center gap-2", TEXT[rec], pill && "rounded-full px-2.5 py-0.5 text-[12.5px] font-medium", pill, className)}>
+    <span className={cn("inline-flex items-center gap-2 whitespace-nowrap", TEXT[rec], pill && "rounded-full px-2.5 py-0.5 text-[12.5px] font-medium", pill, className)}>
       <span className={cn("size-1.5 shrink-0 rounded-full", DOT[rec], plain && "size-2.5")} />
       {RECOMMENDATION_LABELS[rec]}
     </span>
@@ -51,8 +51,8 @@ export function Chip({ children, className }: { children: ReactNode; className?:
 export function Avatar({ name }: { name: string | null | undefined }) {
   if (!name) return <span className="text-text-3">Unassigned</span>;
   return (
-    <span className="inline-flex items-center gap-2">
-      <span className="inline-flex size-6 items-center justify-center rounded-full bg-gradient-to-br from-[oklch(0.95_0.03_245)] to-[oklch(0.88_0.06_258)] font-mono text-[10px] font-medium text-[oklch(0.38_0.1_262)] ring-1 ring-white">
+    <span className="inline-flex items-center gap-2 whitespace-nowrap">
+      <span className="inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[oklch(0.95_0.03_245)] to-[oklch(0.88_0.06_258)] font-mono text-[10px] font-medium text-[oklch(0.38_0.1_262)] ring-1 ring-white">
         {initials(name)}
       </span>
       <span className="text-[13px]">{name}</span>
