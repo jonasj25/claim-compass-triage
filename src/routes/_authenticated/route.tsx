@@ -150,6 +150,7 @@ function AppShell() {
 
 function TopBar() {
   const { me, role, setRole } = useRole();
+  const [profileOpen, setProfileOpen] = useState(false);
   const policy = useQuery(activePolicyQuery);
   const cases = useQuery(casesQuery);
   // Single reviewer: the dot means "there is something to review", not "assigned to you".
@@ -222,13 +223,17 @@ function TopBar() {
           <Bell className="size-4" />
           {onMe && <span className="absolute right-1 top-1 size-1.5 rounded-full bg-action-dot" />}
         </Button>
-        <span
+        <button
+          type="button"
           title={me.name}
-          className="flex size-7 items-center justify-center rounded-full bg-surface-2 font-mono text-[10px] ring-1 ring-line"
+          aria-label="Profile"
+          onClick={() => setProfileOpen(true)}
+          className="flex size-7 items-center justify-center rounded-full bg-surface-2 font-mono text-[10px] ring-1 ring-line hover:ring-text-3"
         >
           {initials(me.name)}
-        </span>
+        </button>
       </div>
+      <AccountDialog title="Profile" open={profileOpen} onOpenChange={setProfileOpen} />
     </header>
   );
 }
@@ -392,27 +397,52 @@ function SideNav({ expanded, onToggle }: { expanded: boolean; onToggle: () => vo
         {item("settings", "Settings", Settings, { onClick: () => setSettingsOpen(true) })}
         {item("signout", "Sign out", LogOut, { onClick: signOut })}
       </nav>
-      <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Account settings</DialogTitle>
-          </DialogHeader>
-          <dl className="space-y-3">
-            <div>
-              <dt className="text-text-2">Name</dt>
-              <dd>{me.name}</dd>
-            </div>
-            <div>
-              <dt className="text-text-2">Email</dt>
-              <dd>{me.email}</dd>
-            </div>
-          </dl>
-          <Button variant="outline" onClick={signOut}>
-            <LogOut className="size-4" />
-            Sign out
-          </Button>
-        </DialogContent>
-      </Dialog>
+      <AccountDialog title="Account settings" open={settingsOpen} onOpenChange={setSettingsOpen} />
     </>
+  );
+}
+
+/** Name, email and sign out. Opened from Settings in the sidebar and from the avatar in the top bar. */
+function AccountDialog({
+  title,
+  open,
+  onOpenChange,
+}: {
+  title: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const { me } = useRole();
+  const qc = useQueryClient();
+  const navigate = useNavigate();
+  const signOut = async () => {
+    await qc.cancelQueries();
+    qc.clear();
+    localStorage.removeItem(ROLE_KEY);
+    await supabase.auth.signOut();
+    void navigate({ to: "/", replace: true });
+  };
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+        </DialogHeader>
+        <dl className="space-y-3">
+          <div>
+            <dt className="text-text-2">Name</dt>
+            <dd>{me.name}</dd>
+          </div>
+          <div>
+            <dt className="text-text-2">Email</dt>
+            <dd>{me.email}</dd>
+          </div>
+        </dl>
+        <Button variant="outline" onClick={signOut}>
+          <LogOut className="size-4" />
+          Sign out
+        </Button>
+      </DialogContent>
+    </Dialog>
   );
 }
