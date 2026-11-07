@@ -429,7 +429,13 @@ function VoiceIntake({
   linesRef.current = lines;
   const scroller = useRef<HTMLDivElement>(null);
 
-  const nextQuestion = (a: ReportAnswers) => activeQuestions(a).find((q) => fieldState(q, a) === "missing" && !q.optional) ?? activeQuestions(a).find((q) => fieldState(q, a) === "missing");
+  // By voice the story comes first, then whatever is still missing
+  const nextQuestion = (a: ReportAnswers) => {
+    const open = activeQuestions(a)
+      .filter((q) => fieldState(q, a) === "missing")
+      .sort((x, y) => Number(y.key === "what_happened") - Number(x.key === "what_happened"));
+    return open.find((q) => !q.optional) ?? open[0];
+  };
   const pending = nextQuestion(answers);
 
   const say = useCallback(
@@ -472,7 +478,8 @@ function VoiceIntake({
     const before = answersRef.current;
     const asked = nextQuestion(before);
     const lineNo = linesRef.current.length + 1;
-    const found = { ...extractFromUtterance(clean), ...(asked ? interpretReply(asked, clean) : {}) };
+    const heard = extractFromUtterance(clean);
+    const found = { ...(asked ? interpretReply(asked, clean) : {}), ...heard };
     // The first free-form story becomes "what happened" if nothing else filled it
     if (!before.what_happened && clean.split(/\s+/).length >= 6 && !found.what_happened) found.what_happened = clean;
     const merged = { ...before, ...found };

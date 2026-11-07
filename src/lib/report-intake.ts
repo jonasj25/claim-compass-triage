@@ -303,6 +303,9 @@ export function interpretReply(q: Question, text: string, today = new Date()): P
     const m = spoken.match(/[\w.+-]+@[\w-]+\.[\w.]+/);
     return m ? { email: m[0] } : {};
   }
+  // Free-text answers are only taken from short replies; a long story is left to extractFromUtterance
+  const words = raw.split(/\s+/).length;
+  if ((q.key === "name" || q.key === "plate" || q.key === "policy_number") && words > 6) return {};
   if (q.key === "policy_number") {
     if (unsure || no) return {};
     return { policy_number: raw.replace(/^(it'?s|it is|my policy number is)\s+/i, "").replace(/\s+/g, "").toUpperCase() };

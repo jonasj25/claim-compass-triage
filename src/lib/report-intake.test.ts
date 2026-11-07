@@ -42,3 +42,10 @@ describe("customer report intake", () => {
     expect(decide({ ...base, ...toClaimFields({ ...a, injury: "yes" }) }, POLICY_V1).rule_id).toBe("v1.R1");
   });
 });
+
+describe("voice replies", () => {
+  it("does not take a whole story as a name", () => {
+    expect(interpretReply(q("name"), "Yesterday I reversed into a pole in a car park and dented the bumper")).toEqual({});
+    expect(interpretReply(q("name"), "Anna Schmidt")).toEqual({ name: "Anna Schmidt" });
+  });
+});
