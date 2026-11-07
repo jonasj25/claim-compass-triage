@@ -104,7 +104,15 @@ export function buildWorkstream(cases: CaseRow[], policy: Policy, events: WorkEv
     const replied = !!(needsHuman && reply && rerun && stamp(rerun.created_at) >= stamp(reply.created_at) &&
       (!resolved || stamp(reply.created_at) > stamp(resolved.created_at)));
     const flagged = needsHuman ? buildChecklist(claim, policy).filter((check) => check.stage === "R1" && check.status === "fail") : [];
-    const riskWhy = flagged.map((check) => humanize(check.note)).join(" · ");
+    // Trigger text; the quote limit reads as "€2,200 over auto-limit" (the limit that decides automation).
+    const autoLimit = policy.human_review.quote_limit_eur;
+    const riskWhy = flagged
+      .map((check) =>
+        check.key === "quote_limit" && autoLimit !== null && autoLimit !== undefined && claim.quote_eur !== null
+          ? `${money(claim.quote_eur - autoLimit)} over auto-limit`
+          : humanize(check.note),
+      )
+      .join(" · ");
     const policyEvent = last(["policy_change"]);
     const p = policyEvent?.payload;
     const label = (v: unknown) => (typeof v === "string" && v in RECOMMENDATION_LABELS ? RECOMMENDATION_LABELS[v as keyof typeof RECOMMENDATION_LABELS] : null);

@@ -106,4 +106,8 @@ describe("reviewer workstream", () => {
     const s = claimStatuses(cases, new Set(work.ordered.map((i) => i.row.claim.case_id)));
     expect(Object.fromEntries(s)).toEqual({ review: "to_review", auto: "auto_processed", wait: "waiting_customer", done: "done" });
   });
+  it("shows the quote limit trigger as the amount over the auto-limit", () => {
+    const big = row("big"); big.claim.injury_reported = false; big.claim.quote_eur = 3400;
+    expect(stream([big]).ordered[0]?.why).toBe("€1,900 over auto-limit");
+  });
 });
