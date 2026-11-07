@@ -57,3 +57,24 @@ describe("importClaims", () => {
     expect(wf.filter((w) => w.qa_sample).map((w) => w.case_id)).toEqual(["DEV-010", "PRA-004"]);
   });
 });
+
+describe("optional customer columns", () => {
+  it("stores customer_name, plate and received_at from extra CSV columns", async () => {
+    writes.length = 0;
+    const csv =
+      "case_id,case_status,claim_summary,policy_active_on_incident,claim_type,repair_type,quote_eur,incident_report_present,itemized_quote_present,injury_reported,liability_disputed,duplicate_flag,evidence_conflict,customer_name,plate,received_at\n" +
+      "CLM-0001,open,Parking scrape.,True,motor_own_damage,standard,540,True,True,False,False,False,False,Anna Becker,M-AK 1000,2026-11-03T09:15:00Z\n" +
+      "CLM-0002,open,Mirror broken.,True,motor_own_damage,standard,380,True,True,False,False,False,False,,,not-a-date\n";
+    await importClaims(parseClaimsCsv(csv), POLICY_V1, "Mara Klein");
+    const intake = writes
+      .filter((w) => w.table === "claim_intake")
+      .flatMap((w) => w.payload as Record<string, unknown>[]);
+    expect(intake[0]).toMatchObject({
+      customer_name: "Anna Becker",
+      plate: "M-AK 1000",
+      received_at: "2026-11-03T09:15:00.000Z",
+    });
+    expect(intake[1]).toMatchObject({ customer_name: null, plate: null });
+    expect(Number.isNaN(Date.parse(String(intake[1].received_at)))).toBe(false); // bad date falls back to now
+  });
+});

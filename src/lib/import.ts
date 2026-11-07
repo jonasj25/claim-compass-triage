@@ -5,6 +5,13 @@ import { queueFor, type Queue } from "./lifecycle";
 import { secondCheckReason } from "./second-check";
 import { buildCsvFacts, buildDocuments } from "./intake";
 
+// Optional extra CSV columns (ignored by the judging batch): customer_name, plate, received_at (ISO date).
+const text = (v: string | undefined) => (v ?? "").trim() || null;
+const receivedAt = (c: ParsedClaim, fallback: string) => {
+  const v = text(c.raw.received_at);
+  return v && !Number.isNaN(Date.parse(v)) ? new Date(v).toISOString() : fallback;
+};
+
 const chunk = <T,>(a: T[], n = 200) => Array.from({ length: Math.ceil(a.length / n) }, (_, i) => a.slice(i * n, i * n + n));
 
 /** One line per row of the imported file, for the "this import" window. */
@@ -52,7 +59,7 @@ export async function importClaims(claims: ParsedClaim[], policy: Policy, actor:
       policy_active_on_incident: c.policy_active_on_incident, claim_type: c.claim_type, repair_type: c.repair_type,
       quote_eur: c.quote_eur, incident_report_present: c.incident_report_present, itemized_quote_present: c.itemized_quote_present,
       injury_reported: c.injury_reported, liability_disputed: c.liability_disputed, duplicate_flag: c.duplicate_flag,
-      evidence_conflict: c.evidence_conflict, raw: { ...extras, row: c.row }, received_at: now,
+      evidence_conflict: c.evidence_conflict, raw: { ...extras, row: c.row }, received_at: receivedAt(c, now),
     })));
     if (res.error) throw res.error;
     await supabase.from("decisions").update({ is_current: false }).in("case_id", caseIds).eq("is_current", true);
@@ -67,7 +74,8 @@ export async function importClaims(claims: ParsedClaim[], policy: Policy, actor:
     })));
     if (res.error) throw res.error;
     res = await supabase.from("claim_intake").upsert(part.map(({ c }) => ({
-      case_id: c.case_id, channel: "csv_import", received_at: now, documents: buildDocuments(c) as never,
+      case_id: c.case_id, channel: "csv_import", received_at: receivedAt(c, now), documents: buildDocuments(c) as never,
+      customer_name: text(c.raw.customer_name), plate: text(c.raw.plate),
     })));
     if (res.error) throw res.error;
     res = await supabase.from("fact_sources").insert(part.flatMap(({ c }) => buildCsvFacts(c, c.row).map((f) => ({ case_id: c.case_id, ...f }))));
