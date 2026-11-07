@@ -269,6 +269,8 @@ export const addClaimInfo = createServerFn({ method: "POST" })
         updated_at: now,
       }).eq("case_id", data.case_id),
     );
+    // Now needs a person: assign a reviewer straight away (lowest load; non-fatal).
+    if (queue === "on_you" || second) await tryAutoAssign(db, [data.case_id]);
     must(
       await db.from("case_events").insert([
         { case_id: data.case_id, type: "documents_received", actor: "Customer · online follow-up", payload: { fields } },
