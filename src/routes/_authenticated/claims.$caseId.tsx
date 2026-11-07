@@ -538,6 +538,7 @@ function CaseDetail() {
       );
       await must(event("assigned", { assignee: name === "unassigned" ? null : name }));
     }, "Assignee updated");
+  const cap = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
   const tasks = [
     ...triggers.map((c) => ({
       key: c.key,
@@ -611,7 +612,6 @@ function CaseDetail() {
       ? [{ key: "qa", label: "Random QA sample", text: "picked at random to check that the rules still work", tone: "info" as const, Icon: ListChecks }]
       : []),
   ];
-  const cap = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
   const ruleLabel = (id: unknown) => {
     const r = String(id ?? "").split(".").pop()?.toUpperCase();
     const name =
