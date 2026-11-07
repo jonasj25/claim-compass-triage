@@ -495,11 +495,12 @@ function Dashboard() {
                         "w-[150px]",
                         "w-[220px]",
                         "",
-                        // Amount, Priority, Assignee, Received: same width, all left-aligned, so the gaps match
-                        "w-[120px]",
-                        "w-[120px]",
-                        "w-[120px]",
-                        "w-[120px]",
+                        // Amount stays right-aligned where it was; the three columns after it are centred
+                        // so the gaps between them look even (same total width as before)
+                        "w-[90px] text-right",
+                        "w-[100px] text-center",
+                        "w-[130px] text-center",
+                        "w-[90px] text-center",
                       ][i],
                     )}
                   >
@@ -574,10 +575,10 @@ function Dashboard() {
                       >
                         {row.claim.claim_summary ?? <Unknown />}
                       </td>
-                      <td className="num px-3 py-2">
+                      <td className="num px-3 py-2 text-right">
                         {row.claim.quote_eur === null ? <Unknown /> : money(row.claim.quote_eur)}
                       </td>
-                      <td className="px-3 py-2">
+                      <td className="px-3 py-2 text-center">
                         <span
                           title={p.why}
                           className={cn(
@@ -592,7 +593,7 @@ function Dashboard() {
                           {p.level}
                         </span>
                       </td>
-                      <td className="px-3 py-2 text-[12px]">
+                      <td className="px-3 py-2 text-center text-[12px]">
                         {row.workflow?.assignee ? (
                           <span className="block truncate text-text-2">
                             {row.workflow.assignee === me.name ? "You" : row.workflow.assignee}
@@ -608,7 +609,7 @@ function Dashboard() {
                           </Button>
                         )}
                       </td>
-                      <td className="px-3 py-2 text-[11px] text-text-2">
+                      <td className="px-3 py-2 text-center text-[11px] text-text-2">
                         {waited ? `${waited} ago` : <Unknown />}
                       </td>
                     </tr>
