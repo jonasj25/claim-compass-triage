@@ -10,6 +10,7 @@ vi.mock("@/integrations/supabase/client", () => ({ supabase: { from: () => ({ in
 vi.mock("@tanstack/react-router", async (orig) => ({
   ...(await orig<typeof import("@tanstack/react-router")>()),
   useNavigate: () => vi.fn(),
+  Link: ({ children }: { children: React.ReactNode }) => <a>{children}</a>,
 }));
 
 describe("New policy version form", () => {
@@ -45,5 +46,57 @@ describe("New policy version form", () => {
     expect(row.config.version).toBe("v2");
     expect(row.config.human_review.quote_limit_eur).toBe(1200);
     expect(row.config.human_review.review_repair_types).toEqual(["ev_high_voltage_battery"]);
+  });
+});
+
+describe("Policy page", () => {
+  const me = {
+    id: "u1",
+    name: "Tobias Brandt",
+    email: "tobias@demo.com",
+    role: "policy_owner" as const,
+  };
+  const renderWith = async (policy: typeof POLICY_V1) => {
+    const { Route } = await import("@/routes/_authenticated/policy");
+    const qc = new QueryClient();
+    qc.setQueryData(["policy", "active"], policy);
+    qc.setQueryData(["policy", "versions"], [{ id: "v1", status: "active", description: null }]);
+    const Page = Route.options.component as React.ComponentType;
+    return render(
+      <QueryClientProvider client={qc}>
+        <RoleContext.Provider value={{ me, role: "policy_owner", setRole: () => {} }}>
+          <Page />
+        </RoleContext.Provider>
+      </QueryClientProvider>,
+    );
+  };
+
+  it("shows a one-sentence summary and compact chips, no JSON", async () => {
+    await renderWith(POLICY_V1);
+    expect(
+      screen.getByText(
+        /A claim goes to a person if there is a red flag or the quote is over €1,500\./,
+      ),
+    ).toBeTruthy();
+    expect(screen.getByText("Quote over €1,500")).toBeTruthy();
+    expect(screen.getAllByText("Injury").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Itemized quote").length).toBeGreaterThan(0);
+    expect(screen.getByText("Show 9 fields")).toBeTruthy();
+    expect(document.body.textContent).not.toContain("quote_limit_eur");
+  });
+
+  it("reads correctly for a changed policy", async () => {
+    await renderWith({
+      ...POLICY_V1,
+      version: "v2",
+      human_review: {
+        ...POLICY_V1.human_review,
+        quote_limit_eur: 1200,
+        review_repair_types: ["ev_high_voltage_battery"],
+      },
+    });
+    expect(screen.getByText(/quote is over €1,200 or it involves EV battery work\./)).toBeTruthy();
+    expect(screen.getByText("EV battery")).toBeTruthy();
+    expect(screen.getByText("v2.R1")).toBeTruthy();
   });
 });
