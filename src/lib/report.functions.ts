@@ -362,7 +362,7 @@ export const getClaimStatus = createServerFn({ method: "POST" })
       missing_fields: (dec.data?.missing_fields as string[] | undefined) ?? [],
       queue: (wf.data?.queue as string | undefined) ?? null,
       incoming_call: pending ? { requested_at: lastReq!.created_at, missing_items: ((lastReq!.payload?.missing_items as string[]) ?? []) } : null,
-      row: Object.fromEntries(CSV_COLUMNS.map((c) => [c, claim[c] ?? null])),
+      row: Object.fromEntries(CSV_COLUMNS.map((c) => [c, claim[c] ?? null])) as Record<string, string | number | boolean | null>,
     };
   });
 
