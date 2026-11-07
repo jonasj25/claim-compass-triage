@@ -205,6 +205,9 @@ export interface AddInfoInput {
   email: string;
   answers: Partial<ReportAnswers>;
   files?: { incident_report?: string; quote?: string };
+  /** "call" when the answers came from Mia's follow-up call */
+  via?: "portal" | "call";
+  transcript?: { speaker: "agent" | "customer"; text: string }[];
 }
 
 /**
@@ -216,7 +219,14 @@ export const addClaimInfo = createServerFn({ method: "POST" })
     if (!d?.case_id || !d?.email) throw new Error("Missing reference");
     const answers: Partial<ReportAnswers> = {};
     for (const k of Object.keys(EMPTY_ANSWERS) as AnswerKey[]) if (d.answers?.[k] !== undefined) answers[k] = clip(d.answers[k], 120) as never;
-    return { case_id: clip(d.case_id, 40), email: clip(d.email, 120).toLowerCase(), answers, files: d.files ?? {} };
+    return {
+      case_id: clip(d.case_id, 40),
+      email: clip(d.email, 120).toLowerCase(),
+      answers,
+      files: d.files ?? {},
+      via: d.via === "call" ? ("call" as const) : ("portal" as const),
+      transcript: (d.transcript ?? []).slice(0, 60).map((l) => ({ speaker: l.speaker === "agent" ? "agent" : "customer", text: clip(l.text, 400) })),
+    };
   })
   .handler(async ({ data }): Promise<ReportResult> => {
     const { supabaseAdmin: db } = await import("@/integrations/supabase/client.server");
@@ -252,7 +262,14 @@ export const addClaimInfo = createServerFn({ method: "POST" })
       must(await db.from("claim_intake").update({ documents: docs as never }).eq("case_id", data.case_id));
       must(
         await db.from("fact_sources").insert(
-          fields.map((field) => ({ case_id: data.case_id, field, source_type: "form", ref: "customer follow-up", quote: `${field} = ${String((changes as Record<string, unknown>)[field])}`, confidence: "confirmed" })),
+          fields.map((field) => ({
+            case_id: data.case_id,
+            field,
+            source_type: data.via === "call" ? "transcript" : "form",
+            ref: data.via === "call" ? "follow-up call" : "customer follow-up",
+            quote: `${field} = ${String((changes as Record<string, unknown>)[field])}`,
+            confidence: "confirmed",
+          })),
         ),
       );
     }
@@ -273,7 +290,10 @@ export const addClaimInfo = createServerFn({ method: "POST" })
     if (queue === "on_you" || second) await tryAutoAssign(db, [data.case_id]);
     must(
       await db.from("case_events").insert([
-        { case_id: data.case_id, type: "documents_received", actor: "Customer · online follow-up", payload: { fields } },
+        ...(data.via === "call"
+          ? [{ case_id: data.case_id, type: "call_logged", actor: "Mia · voice agent", payload: { channel: "portal_call", fields, transcript: data.transcript } }]
+          : []),
+        { case_id: data.case_id, type: "documents_received", actor: data.via === "call" ? "Customer · call with Mia" : "Customer · online follow-up", payload: { fields } },
         { case_id: data.case_id, type: "retriaged", actor: "Rules engine", payload: { recommendation: d.recommendation, rule_id: d.rule_id, policy_version: policy.version } },
         ...(queue === "waiting_customer" ? [{ case_id: data.case_id, type: "outreach_sent", actor: "Rules engine", payload: { channel: "email", missing_items: d.missing_fields } }] : []),
         ...(second ? [{ case_id: data.case_id, type: "second_check_flagged", actor: "Rules engine", payload: { reason: second, policy_version: policy.version } }] : []),
@@ -283,4 +303,72 @@ export const addClaimInfo = createServerFn({ method: "POST" })
 
     const row = Object.fromEntries(CSV_COLUMNS.map((c) => [c, (claim as Record<string, unknown>)[c] ?? null]));
     return { case_id: data.case_id, recommendation: d.recommendation, rule_id: d.rule_id, policy_version: policy.version, missing_fields: d.missing_fields, reasons: d.reasons, row };
+  });
+
+// ---------------------------------------------------------------- customer claim page (portal)
+
+export interface ClaimStatus {
+  case_id: string;
+  name: string | null;
+  summary: string | null;
+  recommendation: Recommendation | null;
+  rule_id: string | null;
+  policy_version: string | null;
+  missing_fields: string[];
+  queue: string | null;
+  /** A reviewer started a call that the customer has not answered or ended yet */
+  incoming_call: { requested_at: string; missing_items: string[] } | null;
+  row: Record<string, unknown>;
+}
+
+async function ownClaim(db: any, case_id: string, email: string) {
+  const cur = await db.from("claims").select("*").eq("case_id", case_id).single();
+  const raw = ((cur.data?.raw ?? {}) as Record<string, unknown>) || {};
+  if (cur.error || !cur.data || raw.source !== "customer_report" || String(raw.customer_email ?? "").toLowerCase() !== email.toLowerCase())
+    throw new Error("Claim not found");
+  return cur.data as Record<string, unknown>;
+}
+
+export const getClaimStatus = createServerFn({ method: "POST" })
+  .inputValidator((d: { case_id: string; email: string }) => ({ case_id: clip(d?.case_id, 40), email: clip(d?.email, 120) }))
+  .handler(async ({ data }): Promise<ClaimStatus> => {
+    const { supabaseAdmin: db } = await import("@/integrations/supabase/client.server");
+    const claim = await ownClaim(db, data.case_id, data.email);
+    const [dec, wf, intake, events] = await Promise.all([
+      db.from("decisions").select("*").eq("case_id", data.case_id).eq("is_current", true).maybeSingle(),
+      db.from("case_workflow").select("queue").eq("case_id", data.case_id).maybeSingle(),
+      db.from("claim_intake").select("customer_name").eq("case_id", data.case_id).maybeSingle(),
+      db.from("case_events").select("type,created_at,payload").eq("case_id", data.case_id).in("type", ["call_requested", "call_ended", "call_logged"]).order("created_at", { ascending: false }).limit(10),
+    ]);
+    const evs = (events.data ?? []) as { type: string; created_at: string; payload: Record<string, unknown> | null }[];
+    const lastReq = evs.find((e) => e.type === "call_requested");
+    const lastEnd = evs.find((e) => e.type === "call_ended" || e.type === "call_logged");
+    const pending = lastReq && (!lastEnd || lastEnd.created_at < lastReq.created_at) && dec.data?.recommendation === "request_information";
+    return {
+      case_id: data.case_id,
+      name: (intake.data?.customer_name as string | null) ?? null,
+      summary: (claim.claim_summary as string | null) ?? null,
+      recommendation: (dec.data?.recommendation as Recommendation | undefined) ?? null,
+      rule_id: (dec.data?.rule_id as string | undefined) ?? null,
+      policy_version: (dec.data?.policy_version as string | undefined) ?? null,
+      missing_fields: (dec.data?.missing_fields as string[] | undefined) ?? [],
+      queue: (wf.data?.queue as string | undefined) ?? null,
+      incoming_call: pending ? { requested_at: lastReq!.created_at, missing_items: ((lastReq!.payload?.missing_items as string[]) ?? []) } : null,
+      row: Object.fromEntries(CSV_COLUMNS.map((c) => [c, claim[c] ?? null])),
+    };
+  });
+
+/** The customer declined or hung up before anything was recorded. */
+export const endClaimCall = createServerFn({ method: "POST" })
+  .inputValidator((d: { case_id: string; email: string; outcome: "declined" | "no_answer_given" }) => ({
+    case_id: clip(d?.case_id, 40),
+    email: clip(d?.email, 120),
+    outcome: d?.outcome === "declined" ? ("declined" as const) : ("no_answer_given" as const),
+  }))
+  .handler(async ({ data }) => {
+    const { supabaseAdmin: db } = await import("@/integrations/supabase/client.server");
+    await ownClaim(db, data.case_id, data.email);
+    const r = await db.from("case_events").insert({ case_id: data.case_id, type: "call_ended", actor: "Customer", payload: { outcome: data.outcome } });
+    if (r.error) throw new Error(r.error.message);
+    return { ok: true };
   });

@@ -17,6 +17,8 @@ import {
   parseEuro,
   FIELD_QUESTIONS,
   QUESTIONS,
+  CUSTOMER_MISSING,
+  cleanAgentAnswers,
   toCsvRow,
   type AnswerKey,
   type Question,
@@ -24,6 +26,7 @@ import {
 } from "@/lib/report-intake";
 import { addClaimInfo, submitClaimReport, type ReportResult } from "@/lib/report.functions";
 import { speakText, transcribeAudio, voiceStatus } from "@/lib/voice.functions";
+import { VoiceOrb, type Phase } from "@/components/triage/VoiceOrb";
 
 // Public page (no sign-in): a customer reports a motor claim, by form or by voice.
 // What they say only fills answers they confirm; the recommendation comes from the rules engine on submit.
@@ -44,16 +47,6 @@ export const Route = createFileRoute("/report")({
 type Mode = "start" | "form" | "review" | "done";
 type Line = { speaker: "agent" | "customer"; text: string };
 
-const CUSTOMER_MISSING: Record<string, string> = {
-  incident_report_present: "Your incident or police report",
-  itemized_quote_present: "A repair quote that lists each part and the labour",
-  quote_eur: "The amount of your repair quote",
-  policy_active_on_incident: "Your policy number",
-  claim_type: "What kind of claim this is",
-  injury_reported: "Whether anyone was injured",
-  liability_disputed: "Whether you and the other party agree on who caused it",
-  repair_type: "What needs repairing",
-};
 
 const emailOk = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
 
@@ -426,41 +419,6 @@ const AGENT_NAME = "Mia";
 // Public ElevenLabs Conversational AI agent "Clearpath – Mia, claims intake" (no API key needed in the browser).
 // It records answers through the client tool update_claim; our page decides what is still missing.
 const ELEVEN_AGENT_ID = "agent_1601m6vwfayef1dtqx31hd971xtr";
-const CLAIM_ENUMS: Partial<Record<AnswerKey, string[]>> = {
-  claim_kind: ["own_damage", "theft", "other", "unsure"],
-  injury: ["yes", "no", "unsure"],
-  other_party: ["yes", "no", "unsure"],
-  fault: ["agree", "disagree", "unsure"],
-  repair_kind: ["standard", "ev_battery", "unsure"],
-  quote_itemized: ["yes", "no", "unsure"],
-  incident_report: ["yes", "no", "unsure"],
-};
-
-/** Keeps only known fields with allowed values from what the voice agent sends. */
-function cleanAgentAnswers(params: Record<string, unknown>): Partial<ReportAnswers> {
-  const out: Partial<ReportAnswers> = {};
-  for (const k of Object.keys(EMPTY_ANSWERS) as AnswerKey[]) {
-    const v = params?.[k];
-    if (v === undefined || v === null || String(v).trim() === "") continue;
-    const str = String(v).trim().slice(0, k === "what_happened" ? 1200 : 120);
-    const allowed = CLAIM_ENUMS[k];
-    if (allowed && !allowed.includes(str)) continue;
-    if (k === "quote_amount") {
-      if (/^(unsure|unknown|none|no quote)$/i.test(str)) {
-        out.quote_amount = "unsure";
-        continue;
-      }
-      const n = parseEuro(str);
-      if (n === null) continue;
-      out.quote_amount = String(n);
-      continue;
-    }
-    if (k === "incident_date" && !/^\d{4}-\d{2}-\d{2}$/.test(str)) continue;
-    (out as Record<string, string>)[k] = str;
-  }
-  return out;
-}
-type Phase = "idle" | "speaking" | "listening" | "thinking" | "ended";
 
 const getRecognition = (): any => {
   if (typeof window === "undefined") return null;
@@ -512,77 +470,6 @@ function recordAnswer(stream: MediaStream, analyser: AnalyserNode, stopRef: { cu
     }, 60);
     rec.start(250);
   });
-}
-
-/** Flowing colour orb in the spirit of ElevenLabs' voice orb, drawn on a canvas. Reacts to loudness. */
-function VoiceOrb({ phase, level }: { phase: Phase; level: () => number }) {
-  const ref = useRef<HTMLCanvasElement>(null);
-  const phaseRef = useRef(phase);
-  phaseRef.current = phase;
-  const levelRef = useRef(level);
-  levelRef.current = level;
-  useEffect(() => {
-    const canvas = ref.current;
-    const ctx = canvas?.getContext("2d");
-    if (!canvas || !ctx) return;
-    const dpr = Math.min(2, window.devicePixelRatio || 1);
-    const size = 176;
-    canvas.width = size * dpr;
-    canvas.height = size * dpr;
-    ctx.scale(dpr, dpr);
-    const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-    const blobs = [
-      { c: "42,78,239", r: 0.62, sx: 0.00031, sy: 0.00023, p: 0 },
-      { c: "56,189,248", r: 0.55, sx: 0.00027, sy: 0.00037, p: 1.7 },
-      { c: "139,92,246", r: 0.5, sx: 0.00041, sy: 0.00019, p: 3.1 },
-      { c: "186,230,253", r: 0.48, sx: 0.00022, sy: 0.00033, p: 4.6 },
-    ];
-    let t = 0;
-    let last = performance.now();
-    let smooth = 0;
-    let raf = 0;
-    const draw = (now: number) => {
-      const ph = phaseRef.current;
-      const live = ph === "speaking" || ph === "listening" || ph === "thinking";
-      const target = live ? Math.max(0, Math.min(1, levelRef.current() || 0)) : 0;
-      smooth += (target - smooth) * 0.18;
-      const speed = reduce ? 0.2 : ph === "speaking" ? 2.4 + smooth * 4 : ph === "listening" ? 1.5 + smooth * 4 : ph === "thinking" ? 1.8 : 0.6;
-      t += (now - last) * speed;
-      last = now;
-      const R = size / 2;
-      ctx.clearRect(0, 0, size, size);
-      ctx.save();
-      ctx.beginPath();
-      ctx.arc(R, R, R * (0.93 + smooth * 0.07), 0, Math.PI * 2);
-      ctx.clip();
-      ctx.fillStyle = "#EEF4FF";
-      ctx.fillRect(0, 0, size, size);
-      ctx.filter = "blur(14px)";
-      for (const b of blobs) {
-        const x = R + Math.cos(t * b.sx + b.p) * R * (0.45 + smooth * 0.15);
-        const y = R + Math.sin(t * b.sy + b.p * 1.3) * R * (0.45 + smooth * 0.15);
-        const rad = R * b.r * (1 + smooth * 0.25);
-        const g = ctx.createRadialGradient(x, y, 0, x, y, rad);
-        g.addColorStop(0, `rgba(${b.c},0.95)`);
-        g.addColorStop(1, `rgba(${b.c},0)`);
-        ctx.fillStyle = g;
-        ctx.beginPath();
-        ctx.arc(x, y, rad, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      ctx.filter = "none";
-      const shine = ctx.createRadialGradient(R * 0.7, R * 0.55, 0, R * 0.7, R * 0.55, R);
-      shine.addColorStop(0, "rgba(255,255,255,0.45)");
-      shine.addColorStop(1, "rgba(255,255,255,0)");
-      ctx.fillStyle = shine;
-      ctx.fillRect(0, 0, size, size);
-      ctx.restore();
-      raf = requestAnimationFrame(draw);
-    };
-    raf = requestAnimationFrame(draw);
-    return () => cancelAnimationFrame(raf);
-  }, []);
-  return <canvas ref={ref} aria-hidden="true" className="size-44 rounded-full" style={{ width: 176, height: 176 }} />;
 }
 
 function Conversation({
@@ -1200,6 +1087,11 @@ function Done({ result, setResult, name, email }: { result: ReportResult; setRes
             <Link to="/claims/$caseId" params={{ caseId: result.case_id }}>
               Open in reviewer workspace <ArrowRight />
             </Link>
+          </Button>
+          <Button asChild variant="outline">
+            <a href={`/claim/${result.case_id}?e=${encodeURIComponent(email)}`} target="_blank" rel="noreferrer">
+              Your claim page
+            </a>
           </Button>
           <Button variant="ghost" onClick={download}>
             <FileText /> Download CSV row

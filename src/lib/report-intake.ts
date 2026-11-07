@@ -363,3 +363,51 @@ export function toCsvRow(claim: Record<string, unknown>): string {
   };
   return `${CSV_COLUMNS.join(",")}\n${CSV_COLUMNS.map((c) => cell(claim[c])).join(",")}`;
 }
+
+export const CUSTOMER_MISSING: Record<string, string> = {
+  incident_report_present: "Your incident or police report",
+  itemized_quote_present: "A repair quote that lists each part and the labour",
+  quote_eur: "The amount of your repair quote",
+  policy_active_on_incident: "Your policy number",
+  claim_type: "What kind of claim this is",
+  injury_reported: "Whether anyone was injured",
+  liability_disputed: "Whether you and the other party agree on who caused it",
+  repair_type: "What needs repairing",
+};
+
+export const CLAIM_ENUMS: Partial<Record<AnswerKey, string[]>> = {
+  claim_kind: ["own_damage", "theft", "other", "unsure"],
+  injury: ["yes", "no", "unsure"],
+  other_party: ["yes", "no", "unsure"],
+  fault: ["agree", "disagree", "unsure"],
+  repair_kind: ["standard", "ev_battery", "unsure"],
+  quote_itemized: ["yes", "no", "unsure"],
+  incident_report: ["yes", "no", "unsure"],
+};
+
+/** Keeps only known fields with allowed values from what the voice agent sends. */
+/** Keeps only known fields with allowed values from what the voice agent sends. */
+export function cleanAgentAnswers(params: Record<string, unknown>): Partial<ReportAnswers> {
+  const out: Partial<ReportAnswers> = {};
+  for (const k of Object.keys(EMPTY_ANSWERS) as AnswerKey[]) {
+    const v = params?.[k];
+    if (v === undefined || v === null || String(v).trim() === "") continue;
+    const str = String(v).trim().slice(0, k === "what_happened" ? 1200 : 120);
+    const allowed = CLAIM_ENUMS[k];
+    if (allowed && !allowed.includes(str)) continue;
+    if (k === "quote_amount") {
+      if (/^(unsure|unknown|none|no quote)$/i.test(str)) {
+        out.quote_amount = "unsure";
+        continue;
+      }
+      const n = parseEuro(str);
+      if (n === null) continue;
+      out.quote_amount = String(n);
+      continue;
+    }
+    if (k === "incident_date" && !/^\d{4}-\d{2}-\d{2}$/.test(str)) continue;
+    (out as Record<string, string>)[k] = str;
+  }
+  return out;
+}
+

@@ -119,6 +119,8 @@ const EVENT_TEXT: Record<string, string> = {
   outreach_sent: "Request sent to customer",
   reminder_sent: "Reminder sent",
   call_logged: "Phone call logged",
+  call_requested: "Call to the customer started (Mia, voice agent)",
+  call_ended: "Call with the customer ended",
   documents_received: "Documents received",
   retriaged: "Re-triaged",
   escalated: "Escalated to a reviewer",
@@ -364,6 +366,14 @@ function CaseDetail() {
     );
   const call = () =>
     run(() => must(event("call_logged", { channel: "phone" })), "Phone call logged");
+  // Mia calls the customer in their claim portal and asks only for what is missing
+  const callCustomer = () =>
+    run(
+      () => must(event("call_requested", { channel: "portal", missing_items: (decision?.missing_fields as string[] | undefined) ?? [] })),
+      "Calling the customer… their claim page is ringing",
+    );
+  const portalEmail = String(((data?.claim as Row | undefined)?.raw as Row | undefined)?.customer_email ?? "");
+  const portalUrl = portalEmail ? `/claim/${caseId}?e=${encodeURIComponent(portalEmail)}` : null;
 
   const saveOverride = async (next: Recommendation, reasonCode: string, reasonText: string) => {
     await run(async () => {
@@ -1250,6 +1260,8 @@ function CaseDetail() {
                 onDeny={() => openChat("deny")}
                 onRequest={() => openChat("request")}
                 onReminder={() => openChat("reminder")}
+                onCall={portalUrl ? () => void callCustomer() : undefined}
+                portalUrl={portalUrl}
                 onConfirm={() => void confirm(true)}
                 onOverride={() =>
                   setOverrideOpen(rec === "human_review" ? "routine_processing" : "human_review")
@@ -1285,6 +1297,8 @@ function DecisionPanel({
   onDeny,
   onRequest,
   onReminder,
+  onCall,
+  portalUrl,
   onConfirm,
   onOverride,
 }: {
@@ -1296,6 +1310,8 @@ function DecisionPanel({
   onDeny: () => void;
   onRequest: () => void;
   onReminder: () => void;
+  onCall?: () => void;
+  portalUrl?: string | null;
   onConfirm: () => void;
   onOverride: () => void;
 }) {
@@ -1348,9 +1364,19 @@ function DecisionPanel({
     return (
       <>
         {head("Waiting on customer", "A request was sent. The case is checked again automatically when they reply.")}
+        {onCall && (
+          <Button className="mb-2 w-full" disabled={busy} onClick={onCall}>
+            <PhoneCall className="size-4" /> Call customer (Mia)
+          </Button>
+        )}
         <Button variant="outline" className="w-full" disabled={busy} onClick={onReminder}>
           <BellRing className="size-4" /> Send reminder
         </Button>
+        {portalUrl && (
+          <a href={portalUrl} target="_blank" rel="noreferrer" className="mt-2 block text-center text-[11.5px] text-link hover:underline">
+            Open the customer's claim page (demo)
+          </a>
+        )}
         {change}
       </>
     );
