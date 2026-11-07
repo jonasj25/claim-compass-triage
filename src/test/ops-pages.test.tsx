@@ -48,6 +48,7 @@ async function renderPage(path: string) {
   const qc = new QueryClient();
   qc.setQueryData(["cases"], cases);
   qc.setQueryData(["policy", "active"], POLICY_V1);
+  qc.setQueryData(["handling-today"], { n: 4, avg: 120 });
   qc.setQueryData(
     ["overrides"],
     [
@@ -80,6 +81,8 @@ describe("ops lead pages", () => {
     expect(screen.getByText("Handled without a reviewer")).toBeTruthy();
     expect(screen.getByText("Why claims go to a person")).toBeTruthy();
     expect(screen.getAllByText("Injury").length).toBeGreaterThan(0);
+    expect(screen.getByText("Avg handling time")).toBeTruthy();
+    expect(screen.getByText("2 min")).toBeTruthy();
   });
 
   it("Quality shows the before/after report, mistakes and the override log", async () => {

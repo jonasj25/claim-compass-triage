@@ -1,265 +1,172 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
-import { AlertTriangle, ArrowRight, Clock, Users, Zap, type LucideIcon } from "lucide-react";
-import type { ReactNode } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { casesQuery, type CaseRow } from "@/lib/data";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useSuspenseQuery } from "@tanstack/react-query";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { AlertTriangle, ArrowRight, ChevronDown } from "lucide-react";
+import { activePolicyQuery, casesQuery } from "@/lib/data";
+import { dashboardActivityQuery } from "@/lib/dashboard-activity";
+import { buildWorkstream, doneToday, money, WORK_GROUPS, type GroupKey, type WorkItem } from "@/lib/reviewer-workstream";
 import { useRole } from "@/lib/role";
 import { isClosed } from "@/lib/csv";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/triage/ui";
-import { ClaimsTable } from "@/components/triage/ClaimsTable";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Progress } from "@/components/ui/progress";
+import { Chip } from "@/components/triage/ui";
 import { saveCaseNav } from "@/lib/case-nav";
+import { secondCheckReason } from "@/lib/second-check";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
-  head: () => ({
-    meta: [
-      { title: "Dashboard — Clearpath" },
-      { name: "description", content: "Today's numbers and every claim, filtered by what needs doing." },
-    ],
-  }),
+  head: () => ({ meta: [
+    { title: "Reviewer dashboard — Clearpath" },
+    { name: "description", content: "Your daily claims workstream, ordered by the work that needs you." },
+    { property: "og:title", content: "Reviewer dashboard — Clearpath" },
+    { property: "og:description", content: "A personal workstream of overdue claims, risks and quality checks." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary" },
+  ] }),
+  loader: async ({ context }) => {
+    await Promise.all([
+      context.queryClient.ensureQueryData(casesQuery),
+      context.queryClient.ensureQueryData(activePolicyQuery),
+      context.queryClient.ensureQueryData(dashboardActivityQuery),
+    ]);
+  },
   component: Dashboard,
 });
 
-type TabKey = "to_review" | "policy_change" | "waiting_customer" | "auto_processed" | "done" | "all";
-
-const TAB_KEY = "clearpath.dashboardTab";
-const toReview = (c: CaseRow) => !!c.workflow && c.workflow.queue !== "done" && (c.workflow.queue === "on_you" || c.workflow.qa_sample);
-
-const TABS: { key: TabKey; label: string; test: (c: CaseRow) => boolean; hideWhenEmpty?: boolean }[] = [
-  { key: "to_review", label: "To review", test: toReview },
-  { key: "policy_change", label: "Policy change", test: (c) => !!c.decision?.needs_recheck && !isClosed(c.claim.case_status), hideWhenEmpty: true },
-  { key: "waiting_customer", label: "Waiting on customer", test: (c) => c.workflow?.queue === "waiting_customer" },
-  { key: "auto_processed", label: "Auto-processed", test: (c) => c.workflow?.queue === "auto_processed" },
-  { key: "done", label: "Done", test: (c) => c.workflow?.queue === "done" },
-  { key: "all", label: "All", test: () => true },
-];
-
-// Average reviewer handling time today, from confirmations and overrides (both store handling_seconds)
-const handlingQuery = {
-  queryKey: ["handling-today"],
-  queryFn: async () => {
-    const since = new Date();
-    since.setHours(0, 0, 0, 0);
-    const [ev, ov] = await Promise.all([
-      supabase.from("case_events").select("payload").in("type", ["confirmed", "qa_confirmed"]).gte("created_at", since.toISOString()),
-      supabase.from("overrides").select("handling_seconds").gte("created_at", since.toISOString()),
-    ]);
-    const secs = [
-      ...((ev.data ?? []) as { payload: { handling_seconds?: number } | null }[]).map((e) => e.payload?.handling_seconds),
-      ...((ov.data ?? []) as { handling_seconds: number | null }[]).map((o) => o.handling_seconds),
-    ].filter((n): n is number => typeof n === "number" && n > 0);
-    return { n: secs.length, avg: secs.length ? Math.round(secs.reduce((a, b) => a + b, 0) / secs.length) : null };
-  },
-  refetchInterval: 30_000,
-};
-
-const fmtSecs = (s: number) => (s < 90 ? `${s}s` : `${Math.round(s / 60)} min`);
-
-function readTab(): TabKey {
-  try {
-    const v = sessionStorage.getItem(TAB_KEY) as TabKey | null;
-    return v && TABS.some((t) => t.key === v) ? v : "to_review";
-  } catch {
-    return "to_review";
-  }
+function age(receivedAt: string | null, now: Date) {
+  if (!receivedAt || !Number.isFinite(Date.parse(receivedAt))) return "unknown age";
+  const hours = Math.max(0, Math.floor((now.getTime() - Date.parse(receivedAt)) / 3_600_000));
+  return hours < 1 ? "<1h" : hours < 24 ? `${hours}h` : `${Math.floor(hours / 24)}d`;
 }
 
 function Dashboard() {
   const { me } = useRole();
-  const { data = [] } = useQuery(casesQuery);
-  const handling = useQuery(handlingQuery);
+  const { data } = useSuspenseQuery(casesQuery);
+  const { data: policy } = useSuspenseQuery(activePolicyQuery);
+  const { data: events } = useSuspenseQuery(dashboardActivityQuery);
   const navigate = useNavigate();
-  const [tab, setTabState] = useState<TabKey>(readTab);
-  const setTab = (t: TabKey) => {
-    setTabState(t);
-    try {
-      sessionStorage.setItem(TAB_KEY, t);
-    } catch {
-      // per-tab convenience only
-    }
+  const [now, setNow] = useState(() => new Date());
+  const [collapsed, setCollapsed] = useState<Set<GroupKey>>(() => new Set());
+  const [selected, setSelected] = useState<string | null>(null);
+  const links = useRef(new Map<string, HTMLAnchorElement>());
+  useEffect(() => {
+    setNow(new Date());
+    const timer = window.setInterval(() => setNow(new Date()), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
+  const { groups, ordered } = useMemo(() => buildWorkstream(data, policy, me.name, events, now), [data, policy, me.name, events, now]);
+  const ids = ordered.map((item) => item.row.claim.case_id);
+  const labels = Object.fromEntries(ordered.map((item) => [item.row.claim.case_id, WORK_GROUPS.find((group) => group.key === item.group)?.label ?? "Workstream"]));
+  const remember = (item: WorkItem) => saveCaseNav(labels[item.row.claim.case_id], ids, labels);
+  const open = (item: WorkItem) => {
+    remember(item);
+    void navigate({ to: "/claims/$caseId", params: { caseId: item.row.claim.case_id } });
   };
-
-  const onYou = data.filter(toReview);
-  const overdue = onYou.filter((c) => c.workflow?.sla_due_at && new Date(c.workflow.sla_due_at) < new Date());
-  const waiting = data.filter((c) => c.workflow?.queue === "waiting_customer");
-  const auto = data.filter((c) => c.workflow?.queue === "auto_processed");
-  const hour = new Date().getHours();
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.metaKey || event.ctrlKey || event.altKey || event.defaultPrevented ||
+        (event.target instanceof HTMLElement && (event.target.isContentEditable || event.target.closest("input, textarea, select, [role=dialog]")))) return;
+      const key = event.key.toLowerCase();
+      if (!["j", "k", "enter"].includes(key) || !ordered.length) return;
+      if (key === "enter") {
+        if (!selected || !(event.target instanceof HTMLElement) || !event.target.closest("[data-work-case]")) return;
+        const item = ordered.find((item) => item.row.claim.case_id === selected);
+        if (item) { event.preventDefault(); open(item); }
+        return;
+      }
+      event.preventDefault();
+      const visible = ordered.filter((item) => !collapsed.has(item.group));
+      if (!visible.length) return;
+      const current = visible.findIndex((item) => item.row.claim.case_id === selected);
+      const index = current < 0 ? (key === "j" ? 0 : visible.length - 1) : Math.max(0, Math.min(visible.length - 1, current + (key === "j" ? 1 : -1)));
+      const id = visible[index]?.row.claim.case_id;
+      if (!id) return;
+      setSelected(id);
+      links.current.get(id)?.focus();
+      links.current.get(id)?.scrollIntoView({ block: "nearest" });
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  });
+  const completed = doneToday(events, me.name, now);
+  const overdue = ordered.filter((item) => item.overdue).length;
+  const workIds = new Set(ids);
+  const autonomous = data.filter((row) => !isClosed(row.claim.case_status) && row.claim.case_status?.toLowerCase() !== "done" && !workIds.has(row.claim.case_id));
+  const waiting = autonomous.filter((row) => row.workflow?.queue === "waiting_customer").length;
+  const auto = autonomous.filter((row) => row.workflow?.queue === "auto_processed" && !row.workflow.qa_sample &&
+    !row.decision?.needs_recheck && row.decision && !secondCheckReason(row.claim, policy, row.decision.recommendation)).length;
+  const hour = now.getHours();
   const greet = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
-  const mine = onYou
-    .filter((c) => c.workflow?.assignee === me.name)
-    .sort((a, b) => (a.claim.received_at ?? "").localeCompare(b.claim.received_at ?? ""));
-
-  const visibleTabs = TABS.filter((t) => !t.hideWhenEmpty || data.some(t.test));
-  const current = visibleTabs.find((t) => t.key === tab) ?? visibleTabs[0];
-  const rows = data.filter(current.test);
 
   return (
     <div>
-      <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="label-mono mb-2">{new Date().toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" })}</p>
-          <h1 className="page-title">
-            {greet}, {me.name.split(" ")[0]}
-          </h1>
-          <p className="mt-2 text-text-2">
-            {onYou.length} cases need you. {overdue.length} {overdue.length === 1 ? "is" : "are"} past their SLA.
-          </p>
+      <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
+        <div className="min-w-0">
+          <p className="label-mono mb-2 tracking-normal">{now.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" })}</p>
+          <h1 className="page-title break-words tracking-normal">{greet}, {me.name.split(" ")[0]}</h1>
+          <p className="mt-2 text-text-2">{ordered.length ? `${ordered.length} cases need you today · ${overdue} overdue · about ${Math.ceil(ordered.length * 1.5)} min` : "Nothing needs you right now."}</p>
         </div>
-        <Button
-          disabled={!mine.length && !onYou.length}
-          onClick={() => {
-            const next = mine[0] ?? onYou[0];
-            if (!next) return;
-            saveCaseNav("To review", (mine.length ? [...mine, ...onYou.filter((c) => !mine.includes(c))] : onYou).map((c) => c.claim.case_id));
-            navigate({ to: "/claims/$caseId", params: { caseId: next.claim.case_id } });
-          }}
-        >
-          {onYou.length ? `Start reviewing · ${onYou.length}` : "All caught up"} {onYou.length > 0 && <ArrowRight />}
-        </Button>
+        {ordered[0] && <Button onClick={() => { const first = ordered[0]; if (first) open(first); }}>Start reviewing <ArrowRight className="size-4" /></Button>}
+      </header>
+
+      <div className="mb-8 flex items-center gap-5 border-b border-line pb-6">
+        <p className="shrink-0 font-mono text-xs text-text-2">Done today: {completed} · Left: {ordered.length}</p>
+        <Progress aria-label="Today's review progress" value={completed + ordered.length ? completed / (completed + ordered.length) * 100 : 0} className="h-1 max-w-sm flex-1 bg-line" />
       </div>
 
-      {/* Live numbers; each tile selects the same filter as its tab below */}
-      <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <StatTile
-          color="red"
-          icon={AlertTriangle}
-          label="To review"
-          value={onYou.length}
-          sub={`${overdue.length} overdue · SLA 24h`}
-          progress={onYou.length ? overdue.length / onYou.length : 0}
-          progressLabel={`${overdue.length} of ${onYou.length} past their SLA`}
-          onClick={() => setTab("to_review")}
-          active={current.key === "to_review"}
-        />
-        <StatTile
-          color="orange"
-          icon={Users}
-          label="Waiting on customer"
-          value={waiting.length}
-          sub="Outreach sent automatically."
-          onClick={() => setTab("waiting_customer")}
-          active={current.key === "waiting_customer"}
-        />
-        <StatTile
-          color="green"
-          icon={Zap}
-          label="Auto-processed"
-          value={auto.length}
-          sub="Not a payment approval."
-          onClick={() => setTab("auto_processed")}
-          active={current.key === "auto_processed"}
-        />
-        <StatTile
-          color="purple"
-          icon={Clock}
-          label="Avg handling time"
-          value={handling.data?.avg ? fmtSecs(handling.data.avg) : "–"}
-          sub={handling.data?.n ? `${handling.data.n} ${handling.data.n === 1 ? "decision" : "decisions"} today.` : "No decisions yet today."}
-          onClick={() => setTab("done")}
-          active={current.key === "done"}
-        />
+      <div aria-label="Reviewer workstream" className="space-y-7">
+        {groups.map((group) => (
+          <Collapsible key={group.key} open={!collapsed.has(group.key)} onOpenChange={(isOpen) => setCollapsed((current) => {
+            const next = new Set(current); if (isOpen) next.delete(group.key); else next.add(group.key); return next;
+          })}>
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" className={cn("mb-2 h-auto w-full justify-start whitespace-normal px-0 py-2 text-left hover:bg-transparent", group.key === "overdue" && "text-action")}>
+                <ChevronDown className={cn("size-4 shrink-0 transition-transform motion-reduce:transition-none", collapsed.has(group.key) && "-rotate-90")} />
+                <span className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                  <span className="font-mono text-xs uppercase">{group.label} · {group.items.length}</span>
+                  <span className={cn("text-xs font-normal text-text-2", group.key === "overdue" && "text-action")}>— {group.instruction}</span>
+                </span>
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="space-y-2">
+                {group.items.map((item) => {
+                  const { row } = item;
+                  const id = row.claim.case_id;
+                  return (
+                    <Link key={id} to="/claims/$caseId" params={{ caseId: id }} data-work-case={id}
+                      ref={(element) => { if (element) links.current.set(id, element); else links.current.delete(id); }}
+                      onFocus={() => setSelected(id)} onClick={() => remember(item)}
+                      className={cn("card-quiet grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2 p-4 text-sm outline-none hover:border-line focus-visible:ring-2 focus-visible:ring-ring md:grid-cols-[100px_minmax(0,1fr)_90px_45px]", item.overdue && "border-action-border bg-action-tint", selected === id && "ring-1 ring-ring")}>
+                      <span className="font-mono text-xs">{id}</span>
+                      <span className="col-span-2 row-start-2 min-w-0 md:col-span-1 md:col-start-2 md:row-span-2 md:row-start-1">
+                        <span className="block truncate font-medium">{row.claim.claim_summary || "Claim summary unknown"}</span>
+                        <span className={cn("mt-1 block text-xs leading-relaxed", item.nearLimit ? "text-wait" : "text-text-2")}>{item.why}</span>
+                        <span className="mt-2 flex flex-wrap items-center gap-1.5">
+                          {item.nearLimit && <span className="inline-flex items-center gap-1 rounded-md border border-wait-border bg-wait-tint px-2 py-0.5 text-xs font-medium text-wait"><AlertTriangle className="size-3" />Near limit</span>}
+                          {item.qa && <Chip className="tracking-normal">QA sample</Chip>}
+                          {row.workflow?.assignee === null && <Chip className="tracking-normal">Unassigned</Chip>}
+                          {row.decision?.needs_recheck && <Chip className="tracking-normal">Policy {row.decision.policy_version}</Chip>}
+                          {row.intake?.channel === "phone" && <Chip className="tracking-normal">Phone</Chip>}
+                        </span>
+                      </span>
+                      <span className="num col-start-2 row-start-1 font-mono text-xs text-right md:col-start-3">{row.claim.quote_eur === null ? "unknown" : money(row.claim.quote_eur)}</span>
+                      <span className={cn("col-start-2 row-start-3 font-mono text-xs text-right md:col-start-4 md:row-start-1", item.overdue ? "text-action" : "text-text-2")}>{age(row.claim.received_at, now)}</span>
+                      <span className="row-start-3 text-xs text-text-2 md:col-start-1 md:row-start-2">{row.decision?.recommendation === "routine_processing" ? "Routine" : "Human review"}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+        ))}
       </div>
 
-      <Card className="p-0">
-        <div className="flex flex-wrap items-center justify-between gap-3 px-6 py-4">
-          <div role="tablist" aria-label="Filter claims" className="inline-flex flex-wrap rounded-[11px] bg-[oklch(0.93_0.015_258/0.7)] p-0.5">
-            {visibleTabs.map((t) => {
-              const n = data.filter(t.test).length;
-              const on = t.key === current.key;
-              return (
-                <button
-                  key={t.key}
-                  role="tab"
-                  aria-selected={on}
-                  onClick={() => setTab(t.key)}
-                  className={cn("flex items-center gap-2 rounded-[9px] px-3 py-1.5 text-[13px]", on ? "pill-active font-medium" : "text-text-2 hover:text-foreground")}
-                >
-                  {t.label}
-                  <span className={cn("font-mono text-[11px]", (t.key === "to_review" || t.key === "policy_change") && n > 0 ? "text-action" : "text-text-3")}>{n}</span>
-                </button>
-              );
-            })}
-          </div>
-          <span className="label-mono">
-            {rows.length} of {data.length} cases
-          </span>
-        </div>
-        <ClaimsTable rows={rows} navLabel={current.label} />
-      </Card>
+      <footer className="mt-9 flex flex-wrap items-baseline gap-x-3 gap-y-2 border-t border-line pt-5 text-xs text-text-2">
+        <p>Running on its own: {waiting} waiting on customers, {auto} processed automatically. Nothing to do.</p>
+        <Link to="/claims" className="underline underline-offset-4 hover:text-foreground">See all claims</Link>
+      </footer>
     </div>
-  );
-}
-
-const TILE_COLORS = {
-  // same red family as the "To review" recommendation: this is the tile that needs a person
-  red: { bg: "bg-[linear-gradient(135deg,oklch(0.985_0.014_35),oklch(0.955_0.038_30))]", chip: "bg-[oklch(0.93_0.05_32)] text-action", blob: "bg-[oklch(0.86_0.08_32/0.5)]", bar: "bg-action-dot", track: "bg-[oklch(0.9_0.045_32)]", hover: "hover:ring-[oklch(0.84_0.07_32)]", ring: "ring-[oklch(0.72_0.14_34)]" },
-  orange: { bg: "bg-[linear-gradient(135deg,oklch(0.985_0.015_75),oklch(0.96_0.035_65))]", chip: "bg-[oklch(0.94_0.045_65)] text-[oklch(0.58_0.15_50)]", blob: "bg-[oklch(0.9_0.06_65/0.5)]", bar: "", track: "", hover: "hover:ring-[oklch(0.88_0.06_62)]", ring: "ring-[oklch(0.78_0.11_58)]" },
-  green: { bg: "bg-[linear-gradient(135deg,oklch(0.98_0.02_155),oklch(0.955_0.045_158))]", chip: "bg-[oklch(0.92_0.06_155)] text-[oklch(0.48_0.13_155)]", blob: "bg-[oklch(0.88_0.08_155/0.5)]", bar: "", track: "", hover: "hover:ring-[oklch(0.86_0.07_155)]", ring: "ring-[oklch(0.7_0.11_155)]" },
-  purple: { bg: "bg-[linear-gradient(135deg,oklch(0.978_0.014_295),oklch(0.952_0.03_290))]", chip: "bg-[oklch(0.93_0.035_290)] text-[oklch(0.42_0.12_290)]", blob: "bg-[oklch(0.9_0.05_290/0.5)]", bar: "", track: "", hover: "hover:ring-[oklch(0.87_0.05_290)]", ring: "ring-[oklch(0.72_0.09_290)]" },
-} as const;
-
-function StatTile({
-  color,
-  icon: Icon,
-  label,
-  value,
-  sub,
-  progress,
-  progressLabel,
-  onClick,
-  active,
-}: {
-  color: keyof typeof TILE_COLORS;
-  icon: LucideIcon;
-  label: string;
-  value: ReactNode;
-  sub: ReactNode;
-  progress?: number;
-  progressLabel?: string;
-  onClick: () => void;
-  active: boolean;
-}) {
-  const c = TILE_COLORS[color];
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={active}
-      className={cn(
-        // Hover stays in place: the frame takes the tile's colour, the shadow deepens and the glow grows softly
-        "group relative flex cursor-pointer flex-col items-start overflow-hidden rounded-[16px] p-5 text-left outline-none ring-1 ring-white/80",
-        "shadow-[0_1px_2px_oklch(0.35_0.05_262/0.05)] transition-[box-shadow] duration-300 ease-out hover:shadow-[var(--shadow-lift)]",
-        "focus-visible:ring-2",
-        c.bg,
-        c.hover,
-        active && cn("shadow-[var(--shadow-lift)] ring-2 hover:ring-2", c.ring),
-      )}
-    >
-      {/* soft decorative glow in the corner */}
-      <span
-        aria-hidden
-        className={cn(
-          "pointer-events-none absolute -bottom-12 -right-10 size-36 rounded-full opacity-80 blur-2xl transition-[transform,opacity] duration-500 ease-out group-hover:scale-125 group-hover:opacity-100",
-          active && "scale-125 opacity-100",
-          c.blob,
-        )}
-      />
-      <span className="relative flex items-center gap-2.5">
-        <span className={cn("inline-flex size-7 items-center justify-center rounded-[8px] transition-transform duration-300 ease-out group-hover:scale-110", c.chip)}>
-          <Icon className="size-4" strokeWidth={1.8} />
-        </span>
-        <span className="font-mono text-[11.5px] uppercase tracking-[0.06em] text-foreground/80">{label}</span>
-      </span>
-      <span className="num relative mt-3 text-[34px] font-semibold leading-none tracking-tight text-foreground">{value}</span>
-      <span className="relative mt-2 text-[12.5px] text-text-2">{sub}</span>
-      {progress !== undefined && (
-        <span className={cn("relative mt-3 h-1 w-full overflow-hidden rounded-full", c.track)} role="img" aria-label={progressLabel}>
-          <span className={cn("block h-full rounded-full transition-[width] duration-500", c.bar)} style={{ width: `${Math.round(Math.min(1, Math.max(0, progress)) * 100)}%` }} />
-        </span>
-      )}
-    </button>
   );
 }
