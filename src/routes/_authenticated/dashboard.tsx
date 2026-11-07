@@ -231,10 +231,6 @@ function Dashboard() {
               [total, "To review"],
               [work.ordered.filter((i) => workTab(i) === "Overdue").length, "Overdue"],
               [work.ordered.filter((i) => !i.row.workflow?.assignee).length, "Unassigned"],
-              [
-                `~${work.ordered.reduce((n, i) => n + (i.group === "double_check" ? 1 : 3), 0)} min`,
-                "Estimated effort",
-              ],
             ].map(([v, label]) => (
               <div key={label} className="px-5 first:pl-0">
                 <div className="num text-[20px] font-semibold">{v}</div>
