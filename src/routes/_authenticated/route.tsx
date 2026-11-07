@@ -26,6 +26,7 @@ import {
   Settings,
   PanelLeftClose,
   PanelLeftOpen,
+  Sparkles,
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { toast } from "sonner";
@@ -264,6 +265,7 @@ function SideNav({ expanded, onToggle }: { expanded: boolean; onToggle: () => vo
     "/claims": Files,
     "/policy": SlidersHorizontal,
     "/impact": GitCompareArrows,
+    "/advisor": Sparkles,
     "/versions": History,
     "/overview": ChartNoAxesCombined,
     "/quality": ShieldCheck,

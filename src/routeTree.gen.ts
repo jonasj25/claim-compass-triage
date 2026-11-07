@@ -12,6 +12,8 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as BatchRouteImport } from './routes/batch'
+import { Route as ReportRouteImport } from './routes/report'
+import { Route as AuthenticatedAdvisorRouteImport } from './routes/_authenticated/advisor'
 import { Route as AuthenticatedBusinessCaseRouteImport } from './routes/_authenticated/business-case'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedImpactRouteImport } from './routes/_authenticated/impact'
@@ -37,6 +39,16 @@ const BatchRoute = BatchRouteImport.update({
   id: '/batch',
   path: '/batch',
   getParentRoute: () => rootRouteImport,
+} as any)
+const ReportRoute = ReportRouteImport.update({
+  id: '/report',
+  path: '/report',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedAdvisorRoute = AuthenticatedAdvisorRouteImport.update({
+  id: '/advisor',
+  path: '/advisor',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedBusinessCaseRoute =
   AuthenticatedBusinessCaseRouteImport.update({
@@ -101,6 +113,8 @@ const AuthenticatedClaimsCaseIdRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/batch': typeof BatchRoute
+  '/report': typeof ReportRoute
+  '/advisor': typeof AuthenticatedAdvisorRoute
   '/business-case': typeof AuthenticatedBusinessCaseRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/impact': typeof AuthenticatedImpactRoute
@@ -116,6 +130,8 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/batch': typeof BatchRoute
+  '/report': typeof ReportRoute
+  '/advisor': typeof AuthenticatedAdvisorRoute
   '/business-case': typeof AuthenticatedBusinessCaseRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/impact': typeof AuthenticatedImpactRoute
@@ -133,6 +149,8 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/batch': typeof BatchRoute
+  '/report': typeof ReportRoute
+  '/_authenticated/advisor': typeof AuthenticatedAdvisorRoute
   '/_authenticated/business-case': typeof AuthenticatedBusinessCaseRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/impact': typeof AuthenticatedImpactRoute
@@ -150,6 +168,8 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/batch'
+    | '/report'
+    | '/advisor'
     | '/business-case'
     | '/dashboard'
     | '/impact'
@@ -165,6 +185,8 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/batch'
+    | '/report'
+    | '/advisor'
     | '/business-case'
     | '/dashboard'
     | '/impact'
@@ -181,6 +203,8 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/batch'
+    | '/report'
+    | '/_authenticated/advisor'
     | '/_authenticated/business-case'
     | '/_authenticated/dashboard'
     | '/_authenticated/impact'
@@ -198,6 +222,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   BatchRoute: typeof BatchRoute
+  ReportRoute: typeof ReportRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -222,6 +247,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/batch'
       preLoaderRoute: typeof BatchRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/report': {
+      id: '/report'
+      path: '/report'
+      fullPath: '/report'
+      preLoaderRoute: typeof ReportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/advisor': {
+      id: '/_authenticated/advisor'
+      path: '/advisor'
+      fullPath: '/advisor'
+      preLoaderRoute: typeof AuthenticatedAdvisorRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/business-case': {
       id: '/_authenticated/business-case'
@@ -304,6 +343,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedAdvisorRoute: typeof AuthenticatedAdvisorRoute
   AuthenticatedBusinessCaseRoute: typeof AuthenticatedBusinessCaseRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedImpactRoute: typeof AuthenticatedImpactRoute
@@ -318,6 +358,7 @@ interface AuthenticatedRouteRouteChildren {
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedAdvisorRoute: AuthenticatedAdvisorRoute,
   AuthenticatedBusinessCaseRoute: AuthenticatedBusinessCaseRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedImpactRoute: AuthenticatedImpactRoute,
@@ -338,6 +379,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   BatchRoute: BatchRoute,
+  ReportRoute: ReportRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
