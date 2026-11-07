@@ -44,6 +44,10 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/_authenticated/business-case")({
   head: () => ({
     meta: [
+{ property: "og:title", content: "Business case — Clearpath" },
+{ property: "og:description", content: "Clearpath claims workspace: review evidence, policy decisions and case activity." },
+{ property: "og:type", content: "website" },
+{ name: "twitter:card", content: "summary" },
       { title: "Business case — Clearpath" },
       {
         name: "description",
@@ -144,7 +148,7 @@ function BusinessCase() {
               onClick={() => setSource(k)}
               className={cn(
                 "rounded-full px-3 py-1",
-                source === k ? "bg-white font-medium shadow-[var(--shadow-lift)]" : "text-text-2",
+                source === k ? "bg-surface font-medium shadow-[var(--shadow-lift)]" : "text-text-2",
               )}
             >
               {label}
@@ -153,7 +157,7 @@ function BusinessCase() {
         </div>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="kpi-strip grid grid-cols-4 gap-0">
         <Kpi
           label="Net benefit per year"
           value={eurCompact(econ.netPerYear)}
@@ -490,7 +494,7 @@ function BusinessCase() {
           <Button
             variant="outline"
             size="sm"
-            className="bg-white"
+            className="bg-surface"
             disabled={!changed}
             onClick={() => setInputs(defaultInputs())}
           >
@@ -580,7 +584,7 @@ function AssumptionRow({
             const n = Number(e.target.value);
             if (Number.isFinite(n)) onChange(a.unit === "share" ? n / 100 : n);
           }}
-          className="h-8 w-28 bg-white text-right font-mono"
+          className="h-8 w-28 bg-surface text-right font-mono"
         />
         <span className="w-20 text-[12px] text-text-2">
           {a.unit === "share" ? "%" : a.unit === "of claim" ? "× claim" : a.unit}

@@ -1,13 +1,47 @@
-import { createFileRoute, Link, Outlet, redirect, useNavigate, useRouterState } from "@tanstack/react-router";
+import {
+  createFileRoute,
+  Link,
+  Outlet,
+  redirect,
+  useNavigate,
+  useRouterState,
+} from "@tanstack/react-router";
 import { Logo } from "@/components/triage/Logo";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
-import { Bell, Download, LogOut, Play, Upload } from "lucide-react";
+import {
+  Bell,
+  Download,
+  LogOut,
+  Play,
+  Upload,
+  ListTodo,
+  Files,
+  SlidersHorizontal,
+  GitCompareArrows,
+  History,
+  ChartNoAxesCombined,
+  ShieldCheck,
+  Calculator,
+  Settings,
+} from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { RoleContext, useRole, ROLE_HOME, ROLE_LABELS, ROLE_NAV, initials, type Me, type Role } from "@/lib/role";
+import {
+  RoleContext,
+  useRole,
+  ROLE_HOME,
+  ROLE_LABELS,
+  ROLE_NAV,
+  initials,
+  type Me,
+  type Role,
+} from "@/lib/role";
 import { activePolicyQuery, casesQuery } from "@/lib/data";
 import { toCsv } from "@/lib/csv";
+import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated")({
@@ -35,7 +69,7 @@ function AppShell() {
         id: user.id,
         name: p.data?.name || user.email || "User",
         email: p.data?.email || user.email || "",
-        role: ((r.data?.[0]?.role as Role) ?? "reviewer"),
+        role: (r.data?.[0]?.role as Role) ?? "reviewer",
       };
     },
   });
@@ -60,15 +94,17 @@ function AppShell() {
 
   return (
     <RoleContext.Provider value={{ me: meQuery.data, role, setRole }}>
-      <div className="min-h-screen">
-        <TopBar />
-        <div className="mx-auto flex max-w-[1360px] gap-8 px-8 py-8">
+      <TooltipProvider delayDuration={150}>
+        <div className="min-h-screen pl-14">
+          <TopBar />
           <SideNav />
-          <main className="min-w-0 flex-1">
-            <Outlet />
-          </main>
+          <div className="mx-auto max-w-[1440px] p-6">
+            <main className="enterprise-content min-w-0">
+              <Outlet />
+            </main>
+          </div>
         </div>
-      </div>
+      </TooltipProvider>
     </RoleContext.Provider>
   );
 }
@@ -78,75 +114,91 @@ function TopBar() {
   const policy = useQuery(activePolicyQuery);
   const cases = useQuery(casesQuery);
   const onMe = (cases.data ?? []).some(
-    (c) => c.workflow && (c.workflow.queue === "on_you" || c.workflow.qa_sample) && c.workflow.assignee === me.name,
+    (c) =>
+      c.workflow &&
+      (c.workflow.queue === "on_you" || c.workflow.qa_sample) &&
+      c.workflow.assignee === me.name,
   );
-  const qc = useQueryClient();
+  const path = useRouterState({ select: (s) => s.location.pathname });
+  const title = path.startsWith("/claims/")
+    ? `Workstream › ${decodeURIComponent(path.split("/").pop() ?? "")}`
+    : path === "/dashboard"
+      ? "Workstream"
+      : (Object.values(ROLE_NAV)
+          .flat()
+          .find((it) => it.to === path)?.label ??
+        (path === "/import" ? "Import CSV" : "Clearpath"));
   const navigate = useNavigate();
-
-  const signOut = async () => {
-    await qc.cancelQueries();
-    qc.clear();
-    localStorage.removeItem(ROLE_KEY);
-    await supabase.auth.signOut();
-    navigate({ to: "/", replace: true });
-  };
-
   return (
-    <header className="topbar-glass sticky top-0 z-30 border-b border-white/70">
-      <div className="mx-auto grid h-14 max-w-[1360px] grid-cols-[1fr_auto_1fr] items-center px-8">
-        <Link to={ROLE_HOME[role]} className="flex items-center gap-2.5">
-          <Logo />
-          <span className="flex flex-col leading-none">
-            <span className="text-[15px] font-semibold tracking-tight">Clearpath</span>
-            <span className="label-mono mt-1 text-[9.5px]">Motor claims</span>
-          </span>
-        </Link>
-
-        <div role="tablist" aria-label="Role" className="flex rounded-full border border-white/80 bg-[oklch(0.93_0.015_258/0.6)] p-0.5 backdrop-blur">
+    <header className="sticky top-0 z-30 flex h-[52px] items-center justify-between gap-4 border-b border-line bg-surface px-6">
+      <div className="flex min-w-0 items-center gap-3">
+        <span className="text-[13px] font-semibold">Clearpath</span>
+        <span className="text-text-3">/</span>
+        <span className="truncate text-[13px] text-text-2">{title}</span>
+      </div>
+      <div className="flex shrink-0 items-center gap-3">
+        <div
+          role="tablist"
+          aria-label="Role"
+          className="flex rounded-md border border-line bg-surface-2 p-0.5"
+        >
           {(Object.keys(ROLE_LABELS) as Role[]).map((r) => (
-            <button
+            <Button
               key={r}
               role="tab"
               aria-selected={r === role}
+              variant="ghost"
+              size="sm"
               onClick={() => setRole(r)}
               className={cn(
-                "rounded-full px-3.5 py-1 text-[13px] font-medium transition-shadow",
-                r === role ? "pill-active" : "text-text-2 hover:text-foreground",
+                "h-7 rounded px-2 text-[11px]",
+                r === role ? "bg-surface text-foreground" : "text-text-2",
               )}
             >
               {ROLE_LABELS[r]}
-            </button>
+            </Button>
           ))}
         </div>
-
-        <div className="flex items-center justify-end gap-4">
-          <span className="rounded-full border border-white/90 bg-surface/70 px-2.5 py-0.5 shadow-[var(--shadow-lift)] font-mono text-[11px] uppercase tracking-[0.06em] text-text-2">
-            Policy {policy.data?.version ?? "…"}
-          </span>
-          <button aria-label={onMe ? "Something needs you" : "Notifications"} className="relative text-text-2 hover:text-foreground">
-            <Bell className="size-4" strokeWidth={1.5} />
-            {onMe && <span className="absolute -right-0.5 -top-0.5 size-2 rounded-full bg-action-dot ring-2 ring-background" />}
-          </button>
-          <div className="flex items-center gap-2">
-            <span className="inline-flex size-7 items-center justify-center rounded-full bg-gradient-to-br from-[oklch(0.95_0.03_245)] to-[oklch(0.86_0.07_258)] font-mono text-[10px] font-medium text-[oklch(0.38_0.1_262)] ring-2 ring-white">
-              {initials(me.name)}
-            </span>
-            <div className="hidden leading-tight lg:block">
-              <div className="text-[13px] font-medium">{me.name}</div>
-              <div className="text-[11px] text-text-2">{ROLE_LABELS[role]}</div>
-            </div>
-          </div>
-          <button onClick={signOut} aria-label="Sign out" className="text-text-2 hover:text-foreground">
-            <LogOut className="size-4" strokeWidth={1.5} />
-          </button>
-        </div>
+        <span className="rounded-md border border-line px-2 py-1 font-mono text-[11px] text-text-2">
+          Policy {policy.data?.version ?? "…"}
+        </span>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="relative size-8"
+          title="Notifications"
+          aria-label="Notifications"
+          onClick={() => {
+            if (role === "reviewer") void navigate({ to: "/dashboard" });
+            toast(onMe ? "Your assigned cases are in the workstream" : "No new notifications");
+          }}
+        >
+          <Bell className="size-4" />
+          {onMe && <span className="absolute right-1 top-1 size-1.5 rounded-full bg-action-dot" />}
+        </Button>
+        <span
+          title={me.name}
+          className="flex size-7 items-center justify-center rounded-full bg-surface-2 font-mono text-[10px] ring-1 ring-line"
+        >
+          {initials(me.name)}
+        </span>
       </div>
     </header>
   );
 }
 
 function SideNav() {
-  const { role } = useRole();
+  const { role, me } = useRole();
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const qc = useQueryClient();
+  const navigate = useNavigate();
+  const signOut = async () => {
+    await qc.cancelQueries();
+    qc.clear();
+    localStorage.removeItem(ROLE_KEY);
+    await supabase.auth.signOut();
+    void navigate({ to: "/", replace: true });
+  };
   const path = useRouterState({ select: (s) => s.location.pathname });
   const cases = useQuery(casesQuery);
   const items = useMemo(() => ROLE_NAV[role], [role]);
@@ -163,7 +215,17 @@ function SideNav() {
       queue: c.workflow?.queue,
       assignee: c.workflow?.assignee,
     }));
-    const csv = toCsv(rows, ["case_id", "case_status", "recommendation", "rule_id", "policy_version", "missing_fields", "explanation", "queue", "assignee"]);
+    const csv = toCsv(rows, [
+      "case_id",
+      "case_status",
+      "recommendation",
+      "rule_id",
+      "policy_version",
+      "missing_fields",
+      "explanation",
+      "queue",
+      "assignee",
+    ]);
     const url = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
     const a = document.createElement("a");
     a.href = url;
@@ -173,34 +235,114 @@ function SideNav() {
     toast(`Exported ${rows.length} cases`);
   };
 
-  const linkCls = (active: boolean) =>
+  const icons: Record<string, typeof ListTodo> = {
+    "/dashboard": ListTodo,
+    "/claims": Files,
+    "/policy": SlidersHorizontal,
+    "/impact": GitCompareArrows,
+    "/versions": History,
+    "/overview": ChartNoAxesCombined,
+    "/quality": ShieldCheck,
+    "/business-case": Calculator,
+  };
+  const railClass = (active: boolean) =>
     cn(
-      "flex h-9 items-center gap-2 rounded-[10px] px-3 text-[13px]",
-      active ? "pill-active font-medium" : "text-text-2 hover:bg-white/50 hover:text-foreground",
+      "flex size-9 items-center justify-center rounded-md",
+      active ? "bg-link/10 text-link" : "text-text-2 hover:bg-surface-2",
     );
-
-  return (
-    <nav aria-label="Main" className="glass-panel sticky top-22 hidden h-fit w-52 shrink-0 p-3 md:block">
-      <p className="label-mono mb-2 px-3">{ROLE_LABELS[role]}</p>
-      <div className="flex flex-col gap-0.5">
-        {items.map((it) => (
-          <Link key={it.to} to={it.to} className={linkCls(path === it.to || (it.to === "/dashboard" && path.startsWith("/claims/")))}>
-            {it.label}
+  const railLink = (to: string, label: string, Icon: typeof ListTodo) => (
+    <Tooltip key={to}>
+      <TooltipTrigger asChild>
+        <Button
+          asChild
+          variant="ghost"
+          className={railClass(path === to || (to === "/dashboard" && path.startsWith("/claims/")))}
+        >
+          <Link to={to} aria-label={label}>
+            <Icon className="size-4" strokeWidth={1.5} />
           </Link>
-        ))}
-      </div>
-      <p className="label-mono mb-2 mt-8 px-3">Data</p>
-      <div className="flex flex-col gap-0.5">
-        <Link to="/import" className={linkCls(path === "/import")}>
-          <Upload className="size-4" strokeWidth={1.5} /> Import CSV
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent side="right">{label}</TooltipContent>
+    </Tooltip>
+  );
+  return (
+    <>
+      <nav
+        aria-label="Main"
+        className="fixed inset-y-0 left-0 z-40 flex w-14 flex-col items-center gap-2 border-r border-line bg-surface py-3"
+      >
+        <Link to={ROLE_HOME[role]} aria-label="Clearpath home" className="mb-4">
+          <Logo className="size-7" />
         </Link>
-        <button onClick={exportCsv} className={linkCls(false)}>
-          <Download className="size-4" strokeWidth={1.5} /> Export results CSV
-        </button>
-        <Link to="/batch" className={linkCls(false)}>
-          <Play className="size-4" strokeWidth={1.5} /> Batch run (judges)
-        </Link>
-      </div>
-    </nav>
+        {items.map((it) =>
+          railLink(it.to, it.to === "/dashboard" ? "Workstream" : it.label, icons[it.to] ?? Files),
+        )}
+        <div className="my-2 w-7 border-t border-line" />
+        {railLink("/import", "Import CSV", Upload)}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              className={railClass(false)}
+              onClick={exportCsv}
+              aria-label="Export results CSV"
+            >
+              <Download className="size-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="right">Export results CSV</TooltipContent>
+        </Tooltip>
+        {railLink("/batch", "Batch run (judges)", Play)}
+        <div className="mt-auto" />
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              className={railClass(false)}
+              onClick={() => setSettingsOpen(true)}
+              aria-label="Settings"
+            >
+              <Settings className="size-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="right">Settings</TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              className={railClass(false)}
+              onClick={signOut}
+              aria-label="Sign out"
+            >
+              <LogOut className="size-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="right">Sign out</TooltipContent>
+        </Tooltip>
+      </nav>
+      <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Account settings</DialogTitle>
+          </DialogHeader>
+          <dl className="space-y-3">
+            <div>
+              <dt className="text-text-2">Name</dt>
+              <dd>{me.name}</dd>
+            </div>
+            <div>
+              <dt className="text-text-2">Email</dt>
+              <dd>{me.email}</dd>
+            </div>
+          </dl>
+          <Button variant="outline" onClick={signOut}>
+            <LogOut className="size-4" />
+            Sign out
+          </Button>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

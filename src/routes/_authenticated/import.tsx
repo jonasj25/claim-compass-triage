@@ -14,7 +14,11 @@ import { Card, PageHeader } from "@/components/triage/ui";
 import { ImportResultDialog } from "@/components/triage/ImportResultDialog";
 
 export const Route = createFileRoute("/_authenticated/import")({
-  head: () => ({ meta: [{ title: "Import CSV — Clearpath" }, { name: "description", content: "Upload a claims CSV and triage it with the active policy." }] }),
+  head: () => ({ meta: [
+{ property: "og:title", content: "Import CSV — Clearpath" },
+{ property: "og:description", content: "Clearpath claims workspace: review evidence, policy decisions and case activity." },
+{ property: "og:type", content: "website" },
+{ name: "twitter:card", content: "summary" },{ title: "Import CSV — Clearpath" }, { name: "description", content: "Upload a claims CSV and triage it with the active policy." }] }),
   component: ImportPage,
 });
 

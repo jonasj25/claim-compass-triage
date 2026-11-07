@@ -3,10 +3,25 @@
 // accept/deny close it for good. Everything is stored append-only in case_events.
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { BellRing, CircleCheck, FileQuestion, Lock, Mail, MessageSquareText, Send, CircleX } from "lucide-react";
+import {
+  BellRing,
+  CircleCheck,
+  FileQuestion,
+  Lock,
+  Mail,
+  MessageSquareText,
+  Send,
+  CircleX,
+} from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { FIELD_LABELS, RECOMMENDATION_LABELS, type Claim, type Policy, type Recommendation } from "@/lib/triage";
+import {
+  FIELD_LABELS,
+  RECOMMENDATION_LABELS,
+  type Claim,
+  type Policy,
+  type Recommendation,
+} from "@/lib/triage";
 import { QUEUE_LABELS, type Queue } from "@/lib/lifecycle";
 import { SimulateReplyDialog } from "./SimulateReplyDialog";
 import { Button } from "@/components/ui/button";
@@ -19,14 +34,37 @@ type Row = Record<string, any>;
 export type TemplateKey = "accept" | "deny" | "request" | "reminder" | "message";
 
 const DENY_REASONS: { key: string; label: string; text: string }[] = [
-  { key: "policy_active", label: "Policy not active", text: "your insurance policy was not active on the date of the incident." },
-  { key: "claim_type", label: "Not covered (claim type)", text: "this type of claim is not covered by your motor own-damage policy." },
-  { key: "duplicate_flag", label: "Duplicate claim", text: "we have already received a claim for the same incident, so this submission is a duplicate." },
-  { key: "evidence_conflict", label: "Contradicting evidence", text: "the evidence provided contradicts the reported incident, for example the date on the photos." },
-  { key: "not_covered", label: "Not covered (other)", text: "the damage is not covered under the terms of your policy." },
+  {
+    key: "policy_active",
+    label: "Policy not active",
+    text: "your insurance policy was not active on the date of the incident.",
+  },
+  {
+    key: "claim_type",
+    label: "Not covered (claim type)",
+    text: "this type of claim is not covered by your motor own-damage policy.",
+  },
+  {
+    key: "duplicate_flag",
+    label: "Duplicate claim",
+    text: "we have already received a claim for the same incident, so this submission is a duplicate.",
+  },
+  {
+    key: "evidence_conflict",
+    label: "Contradicting evidence",
+    text: "the evidence provided contradicts the reported incident, for example the date on the photos.",
+  },
+  {
+    key: "not_covered",
+    label: "Not covered (other)",
+    text: "the damage is not covered under the terms of your policy.",
+  },
 ];
 
-const TEMPLATES: Record<TemplateKey, { label: string; icon: typeof Send; closes?: "accepted" | "denied"; tone: string }> = {
+const TEMPLATES: Record<
+  TemplateKey,
+  { label: string; icon: typeof Send; closes?: "accepted" | "denied"; tone: string }
+> = {
   accept: { label: "Accept claim", icon: CircleCheck, closes: "accepted", tone: "text-ok" },
   deny: { label: "Deny claim", icon: CircleX, closes: "denied", tone: "text-action" },
   request: { label: "Request documents", icon: FileQuestion, tone: "text-wait" },
@@ -76,6 +114,8 @@ export function CustomerChat({
   className,
   claim,
   policy,
+  initialTemplate,
+  onRequestSent,
 }: {
   caseId: string;
   customer: string | null;
@@ -95,25 +135,35 @@ export function CustomerChat({
   /** Needed for the demo "customer reply → re-check" flow. */
   claim?: Claim;
   policy?: Policy;
+  initialTemplate?: TemplateKey;
+  onRequestSent?: () => void;
 }) {
   const qc = useQueryClient();
   const recommended: TemplateKey[] =
-    queue === "waiting_customer" ? ["reminder", "request"] : rec === "request_information" ? ["request"] : ["accept", "deny"];
-  const [tpl, setTpl] = useState<TemplateKey>(recommended[0]);
-  const [denyKey, setDenyKey] = useState<string>(DENY_REASONS.find((r) => r.key === failedTrigger)?.key ?? "not_covered");
+    queue === "waiting_customer"
+      ? ["reminder", "request"]
+      : rec === "request_information"
+        ? ["request"]
+        : ["accept", "deny"];
+  const [tpl, setTpl] = useState<TemplateKey>(initialTemplate ?? recommended[0]);
+  const [denyKey, setDenyKey] = useState<string>(
+    DENY_REASONS.find((r) => r.key === failedTrigger)?.key ?? "not_covered",
+  );
   const channel = "email" as const; // email only
   const [body, setBody] = useState("");
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
   const threadRef = useRef<HTMLDivElement>(null);
 
-  const missing = missingFields.length ? missingFields.map((f) => FIELD_LABELS[f] ?? f.replace(/_/g, " ")).join(" and ") : "the missing documents";
+  const missing = missingFields.length
+    ? missingFields.map((f) => FIELD_LABELS[f] ?? f.replace(/_/g, " ")).join(" and ")
+    : "the missing documents";
   const vars = useMemo(
     () => ({
       customer: customer ?? "customer",
       case_id: caseId,
       plate: plate ?? "(plate unknown)",
-      amount: quote === null ? "the quoted amount" : fmtEur(quote) ?? "",
+      amount: quote === null ? "the quoted amount" : (fmtEur(quote) ?? ""),
       reason: DENY_REASONS.find((r) => r.key === denyKey)?.text ?? "",
       missing,
       reviewer,
@@ -127,13 +177,22 @@ export function CustomerChat({
     setConfirming(false);
   }, [tpl, vars]);
   useEffect(() => {
-    setTpl(recommended[0]);
+    setTpl(initialTemplate ?? recommended[0]);
     setDenyKey(DENY_REASONS.find((r) => r.key === failedTrigger)?.key ?? "not_covered");
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [caseId]);
+  }, [caseId, initialTemplate]);
 
   const thread = events
-    .filter((e) => ["message_sent", "message_received", "outreach_sent", "reminder_sent", "closed", "retriaged"].includes(e.type))
+    .filter((e) =>
+      [
+        "message_sent",
+        "message_received",
+        "outreach_sent",
+        "reminder_sent",
+        "closed",
+        "retriaged",
+      ].includes(e.type),
+    )
     .sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)));
 
   useEffect(() => {
@@ -145,7 +204,14 @@ export function CustomerChat({
     if (error) throw error;
   };
   const ev = (type: string, payload: Record<string, unknown>) =>
-    supabase.from("case_events").insert({ case_id: caseId, type, actor: reviewer, payload: { policy_version: version, ...payload } as any });
+    supabase
+      .from("case_events")
+      .insert({
+        case_id: caseId,
+        type,
+        actor: reviewer,
+        payload: { policy_version: version, ...payload } as any,
+      });
 
   const send = async () => {
     const t = TEMPLATES[tpl];
@@ -156,24 +222,56 @@ export function CustomerChat({
     setBusy(true);
     try {
       const now = new Date().toISOString();
-      const reasonLabel = tpl === "deny" ? DENY_REASONS.find((r) => r.key === denyKey)?.label : undefined;
-      await must(ev("message_sent", { direction: "out", channel, template: tpl, body: body.trim(), to: customer, reason: reasonLabel }));
+      const reasonLabel =
+        tpl === "deny" ? DENY_REASONS.find((r) => r.key === denyKey)?.label : undefined;
+      await must(
+        ev("message_sent", {
+          direction: "out",
+          channel,
+          template: tpl,
+          body: body.trim(),
+          to: customer,
+          reason: reasonLabel,
+        }),
+      );
       if (tpl === "request") {
         await must(ev("outreach_sent", { channel, missing_items: missingFields, manual: true }));
-        await must(supabase.from("case_workflow").update({ queue: "waiting_customer", qa_sample: false, updated_at: now }).eq("case_id", caseId));
+        await must(
+          supabase
+            .from("case_workflow")
+            .update({ queue: "waiting_customer", qa_sample: false, updated_at: now })
+            .eq("case_id", caseId),
+        );
       }
       if (tpl === "reminder") await must(ev("reminder_sent", { channel, manual: true }));
       if (t.closes) {
         await must(
-          supabase.from("outcomes").insert({ case_id: caseId, decision_id: decisionId, final_outcome: t.closes, correct_next_step: rec, recorded_by: reviewer }),
+          supabase
+            .from("outcomes")
+            .insert({
+              case_id: caseId,
+              decision_id: decisionId,
+              final_outcome: t.closes,
+              correct_next_step: rec,
+              recorded_by: reviewer,
+            }),
         );
         await must(supabase.from("claims").update({ case_status: "closed" }).eq("case_id", caseId));
-        await must(supabase.from("case_workflow").update({ queue: "done", qa_sample: false, updated_at: now }).eq("case_id", caseId));
+        await must(
+          supabase
+            .from("case_workflow")
+            .update({ queue: "done", qa_sample: false, updated_at: now })
+            .eq("case_id", caseId),
+        );
         await must(ev("closed", { outcome: t.closes, reason: reasonLabel }));
       }
-      await Promise.all([qc.invalidateQueries({ queryKey: ["case", caseId] }), qc.invalidateQueries({ queryKey: ["cases"] })]);
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["case", caseId] }),
+        qc.invalidateQueries({ queryKey: ["cases"] }),
+      ]);
       toast(t.closes ? `Message sent · claim ${t.closes} and closed` : "Message sent (simulated)");
       setConfirming(false);
+      if (tpl === "request") onRequestSent?.();
     } catch (e) {
       toast(`Could not send: ${(e as Error).message}`);
     } finally {
@@ -188,11 +286,17 @@ export function CustomerChat({
     <div className={cn("card-quiet mb-5 overflow-hidden", className)}>
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line/70 px-7 py-4">
         <div className="flex items-center gap-3">
-          <span className="inline-flex size-9 items-center justify-center rounded-full bg-gradient-to-br from-[oklch(0.95_0.03_245)] to-[oklch(0.86_0.07_258)] font-mono text-[11px] font-medium text-[oklch(0.38_0.1_262)] ring-2 ring-white">
-            {(customer ?? "?").split(" ").map((p) => p[0]).join("").slice(0, 2)}
+          <span className="inline-flex size-9 items-center justify-center rounded-full bg-surface-2 font-mono text-[11px] font-medium text-text-2 ring-1 ring-line">
+            {(customer ?? "?")
+              .split(" ")
+              .map((p) => p[0])
+              .join("")
+              .slice(0, 2)}
           </span>
           <div>
-            <h2 className="section-title leading-tight">Customer · {customer ?? "Unknown customer"}</h2>
+            <h2 className="section-title leading-tight">
+              Customer · {customer ?? "Unknown customer"}
+            </h2>
             <p className="label-mono mt-0.5">
               {caseId} · {plate ?? "no plate"} · simulated email
             </p>
@@ -205,60 +309,90 @@ export function CustomerChat({
         ) : (
           <span className="flex flex-wrap items-center gap-3 text-[12.5px] text-text-2">
             {queue === "waiting_customer" && claim && policy && (
-              <SimulateReplyDialog caseId={caseId} claim={claim} policy={policy} customer={customer} actor={reviewer} />
+              <SimulateReplyDialog
+                caseId={caseId}
+                claim={claim}
+                policy={policy}
+                customer={customer}
+                actor={reviewer}
+              />
             )}
-            Templates are filled from the claim data. No AI.
           </span>
         )}
       </div>
 
       <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
         {/* thread */}
-        <div ref={threadRef} className="max-h-[420px] min-h-[220px] space-y-3 overflow-y-auto border-line/70 bg-white/30 px-7 py-5 lg:border-r">
-          {thread.length === 0 && <p className="py-10 text-center text-[13px] text-text-3">No messages yet. Pick a template on the right.</p>}
+        <div
+          ref={threadRef}
+          className="max-h-[420px] min-h-[220px] space-y-3 overflow-y-auto border-line/70 bg-surface-2 px-7 py-5 lg:border-r"
+        >
+          {thread.length === 0 && (
+            <p className="py-10 text-center text-[13px] text-text-3">No messages yet.</p>
+          )}
           {thread.map((e) => {
             const p = (e.payload ?? {}) as Row;
             if (e.type === "message_sent" && p.body)
               return (
                 <div key={e.id} className="ml-auto max-w-[92%]">
-                  <div className="whitespace-pre-line rounded-[16px] rounded-br-[4px] bg-[oklch(0.55_0.17_262)] px-4 py-3 text-[13px] leading-relaxed text-white shadow-[var(--shadow-lift)]">
+                  <div className="whitespace-pre-line rounded-[6px] rounded-br-[4px] bg-link px-4 py-3 text-[13px] leading-relaxed text-primary-foreground shadow-none">
                     {p.body}
                   </div>
                   <p className="label-mono mt-1 text-right normal-case">
                     {fmtTime(e.created_at)} · {e.actor} · {p.channel === "sms" ? "SMS" : "Email"}
-                    {p.template && p.template !== "message" ? ` · ${TEMPLATES[p.template as TemplateKey]?.label ?? p.template}` : ""}
+                    {p.template && p.template !== "message"
+                      ? ` · ${TEMPLATES[p.template as TemplateKey]?.label ?? p.template}`
+                      : ""}
                   </p>
                 </div>
               );
             if (e.type === "message_received")
               return (
                 <div key={e.id} className="max-w-[92%]">
-                  <div className="whitespace-pre-line rounded-[16px] rounded-bl-[4px] bg-white px-4 py-3 text-[13px] leading-relaxed ring-1 ring-line">{p.body}</div>
-                  <p className="label-mono mt-1 normal-case">{fmtTime(e.created_at)} · {customer}</p>
+                  <div className="whitespace-pre-line rounded-[6px] rounded-bl-[4px] bg-surface px-4 py-3 text-[13px] leading-relaxed ring-1 ring-line">
+                    {p.body}
+                  </div>
+                  <p className="label-mono mt-1 normal-case">
+                    {fmtTime(e.created_at)} · {customer}
+                  </p>
                 </div>
               );
             if (e.type === "retriaged")
               return (
-                <p key={e.id} className="flex items-center justify-center gap-1.5 py-1 text-center text-[12px] text-text-2">
-                  <CircleCheck className="size-3" /> Documents received · re-checked under {String(p.policy_version ?? "").toUpperCase()} →{" "}
+                <p
+                  key={e.id}
+                  className="flex items-center justify-center gap-1.5 py-1 text-center text-[12px] text-text-2"
+                >
+                  <CircleCheck className="size-3" /> Documents received · re-checked under{" "}
+                  {String(p.policy_version ?? "").toUpperCase()} →{" "}
                   <strong className="font-medium text-foreground">
                     {RECOMMENDATION_LABELS[p.after as Recommendation] ?? p.after}
                   </strong>
-                  {p.queue ? ` · ${QUEUE_LABELS[p.queue as Queue] ?? p.queue}` : ""} · {fmtTime(e.created_at)}
+                  {p.queue ? ` · ${QUEUE_LABELS[p.queue as Queue] ?? p.queue}` : ""} ·{" "}
+                  {fmtTime(e.created_at)}
                 </p>
               );
             if (e.type === "closed")
               return (
-                <p key={e.id} className="flex items-center justify-center gap-1.5 py-1 text-center text-[12px] text-text-2">
+                <p
+                  key={e.id}
+                  className="flex items-center justify-center gap-1.5 py-1 text-center text-[12px] text-text-2"
+                >
                   <Lock className="size-3" /> Claim {p.outcome ?? "closed"}
-                  {p.reason ? ` · ${p.reason}` : ""} and closed · {fmtTime(e.created_at)} · {e.actor}
+                  {p.reason ? ` · ${p.reason}` : ""} and closed · {fmtTime(e.created_at)} ·{" "}
+                  {e.actor}
                 </p>
               );
             // automatic outreach and reminders from the rules engine (no body stored)
             if (p.manual) return null;
             return (
-              <p key={e.id} className="flex items-center justify-center gap-1.5 py-1 text-center text-[12px] text-text-3">
-                <Mail className="size-3" /> Automatic {e.type === "reminder_sent" ? "reminder" : "request for missing information"} sent · {fmtTime(e.created_at)}
+              <p
+                key={e.id}
+                className="flex items-center justify-center gap-1.5 py-1 text-center text-[12px] text-text-3"
+              >
+                <Mail className="size-3" /> Automatic{" "}
+                {e.type === "reminder_sent" ? "reminder" : "request for missing information"} sent ·{" "}
+                {fmtTime(e.created_at)}
               </p>
             );
           })}
@@ -271,20 +405,28 @@ export function CustomerChat({
               const t = TEMPLATES[k];
               const Icon = t.icon;
               return (
-                <button
+                <Button
+                  variant="outline"
                   key={k}
                   type="button"
                   disabled={closed}
                   onClick={() => setTpl(k)}
                   className={cn(
                     "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12.5px] font-medium ring-1 transition-shadow disabled:opacity-40",
-                    tpl === k ? "bg-white shadow-[var(--shadow-lift)] ring-link/40" : "bg-white/50 ring-line hover:bg-white",
+                    tpl === k
+                      ? "bg-surface shadow-none ring-link/40"
+                      : "bg-surface-2 ring-line hover:bg-surface",
                   )}
                 >
                   <Icon className={cn("size-3.5", t.tone)} strokeWidth={1.8} />
                   {t.label}
-                  {recommended.includes(k) && !closed && <span className="ml-0.5 size-1.5 rounded-full bg-link" title="Suggested for this case" />}
-                </button>
+                  {recommended.includes(k) && !closed && (
+                    <span
+                      className="ml-0.5 size-1.5 rounded-full bg-link"
+                      title="Suggested for this case"
+                    />
+                  )}
+                </Button>
               );
             })}
           </div>
@@ -298,7 +440,7 @@ export function CustomerChat({
                 id="deny-reason"
                 value={denyKey}
                 onChange={(e) => setDenyKey(e.target.value)}
-                className="h-9 w-full rounded-[10px] border border-line bg-white px-3 text-[13.5px] focus-visible:outline-2 focus-visible:outline-link"
+                className="h-9 w-full rounded-[10px] border border-line bg-surface px-3 text-[13.5px] focus-visible:outline-2 focus-visible:outline-link"
               >
                 {DENY_REASONS.map((r) => (
                   <option key={r.key} value={r.key}>
@@ -317,17 +459,20 @@ export function CustomerChat({
               setConfirming(false);
             }}
             placeholder={closed ? "This claim is closed." : ""}
-            className="min-h-[190px] bg-white/85 text-[13px] leading-relaxed"
+            className="min-h-[190px] bg-surface text-[13px] leading-relaxed"
           />
 
           {!closed && (
             <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
               <span className="inline-flex items-center gap-1.5 text-[12px] text-text-2">
-                <Mail className="size-3.5" strokeWidth={1.7} /> Sent by email to {customer ?? "the customer"}
+                <Mail className="size-3.5" strokeWidth={1.7} /> Sent by email to{" "}
+                {customer ?? "the customer"}
               </span>
               {confirming ? (
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-[12.5px] text-text-2">This sends the message and closes the claim for good.</span>
+                  <span className="text-[12.5px] text-text-2">
+                    This sends the message and closes the claim for good.
+                  </span>
                   <Button variant="ghost" disabled={busy} onClick={() => setConfirming(false)}>
                     Cancel
                   </Button>
@@ -337,13 +482,23 @@ export function CustomerChat({
                 </div>
               ) : (
                 <Button disabled={busy || body.trim().length < 10} onClick={() => void send()}>
-                  <Send /> {T.closes ? `Send & ${T.closes === "accepted" ? "accept" : "deny"} claim` : tpl === "request" ? "Send request" : tpl === "reminder" ? "Send reminder" : "Send"}
+                  <Send />{" "}
+                  {T.closes
+                    ? `Send & ${T.closes === "accepted" ? "accept" : "deny"} claim`
+                    : tpl === "request"
+                      ? "Send request"
+                      : tpl === "reminder"
+                        ? "Send reminder"
+                        : "Send"}
                 </Button>
               )}
             </div>
           )}
           {!closed && needsUser && (tpl === "accept" || tpl === "deny") && (
-            <p className="mt-2 text-[12px] text-text-3">Recorded with {reviewer}, policy {version.toUpperCase()} and the time. The claim is then closed and never re-evaluated.</p>
+            <p className="mt-2 text-[12px] text-text-3">
+              Recorded with {reviewer}, policy {version.toUpperCase()} and the time. The claim is
+              then closed and never re-evaluated.
+            </p>
           )}
         </div>
       </div>
@@ -361,7 +516,11 @@ export function CustomerChatLauncher(props: Parameters<typeof CustomerChat>[0]) 
     .filter((e) => e.type === "message_sent" || e.type === "message_received")
     .sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)));
   const last = thread[thread.length - 1] as Row | undefined;
-  const lastText = last ? String((last.payload as Row | null)?.body ?? "").replace(/\s+/g, " ").slice(0, 110) : "";
+  const lastText = last
+    ? String((last.payload as Row | null)?.body ?? "")
+        .replace(/\s+/g, " ")
+        .slice(0, 110)
+    : "";
   const name = props.customer ?? "Unknown customer";
 
   return (
@@ -369,28 +528,37 @@ export function CustomerChatLauncher(props: Parameters<typeof CustomerChat>[0]) 
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="card-quiet mb-5 flex w-full items-center gap-4 px-7 py-4 text-left transition-shadow hover:shadow-[var(--shadow-lift)] focus-visible:outline-2 focus-visible:outline-link"
+        className="card-quiet mb-5 flex w-full items-center gap-4 px-7 py-4 text-left transition-shadow hover:shadow-none focus-visible:outline-2 focus-visible:outline-link"
       >
-        <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[oklch(0.95_0.03_245)] to-[oklch(0.86_0.07_258)] font-mono text-[11px] font-medium text-[oklch(0.38_0.1_262)] ring-2 ring-white">
-          {name.split(" ").map((p) => p[0]).join("").slice(0, 2)}
+        <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-surface-2 font-mono text-[11px] font-medium text-text-2 ring-1 ring-line">
+          {name
+            .split(" ")
+            .map((p) => p[0])
+            .join("")
+            .slice(0, 2)}
         </span>
         <span className="min-w-0 flex-1">
           <span className="section-title block leading-tight">Customer · {name}</span>
           <span className="mt-0.5 block truncate text-[13px] text-text-2">
-            {last ? `${last.type === "message_received" ? name : "You"}: ${lastText}` : "No messages yet"}
+            {last
+              ? `${last.type === "message_received" ? name : "You"}: ${lastText}`
+              : "No messages yet"}
           </span>
         </span>
         <span className="hidden shrink-0 text-[12.5px] text-text-2 sm:inline">
           {thread.length} {thread.length === 1 ? "message" : "messages"}
         </span>
-        <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-[12.5px] font-medium ring-1 ring-line">
-          <Mail className="size-3.5" strokeWidth={1.8} /> {props.closed ? "View conversation" : "Open conversation"}
+        <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-surface px-3 py-1.5 text-[12.5px] font-medium ring-1 ring-line">
+          <Mail className="size-3.5" strokeWidth={1.8} />{" "}
+          {props.closed ? "View conversation" : "Open conversation"}
         </span>
       </button>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-h-[92vh] max-w-5xl overflow-y-auto border-0 bg-transparent p-0 shadow-none">
           <DialogTitle className="sr-only">Conversation with {name}</DialogTitle>
-          <DialogDescription className="sr-only">Email messages for claim {props.caseId}</DialogDescription>
+          <DialogDescription className="sr-only">
+            Email messages for claim {props.caseId}
+          </DialogDescription>
           <CustomerChat {...props} className="mb-0 bg-background" />
         </DialogContent>
       </Dialog>

@@ -151,13 +151,6 @@
   }
   body {
     background-color: var(--color-background);
-    background-image:
-      radial-gradient(1100px 720px at 8% -12%, oklch(0.86 0.085 252 / 0.95), transparent 62%),
-      radial-gradient(900px 640px at 100% 0%, oklch(0.91 0.055 290 / 0.7), transparent 60%),
-      radial-gradient(760px 520px at 52% 30%, oklch(0.955 0.035 55 / 0.55), transparent 65%),
-      radial-gradient(1100px 820px at 85% 105%, oklch(0.88 0.075 232 / 0.75), transparent 60%),
-      radial-gradient(900px 700px at 0% 100%, oklch(0.93 0.04 205 / 0.5), transparent 60%);
-    background-attachment: fixed;
     min-height: 100vh;
     color: var(--color-foreground);
     font-family: var(--font-sans);
@@ -181,84 +174,63 @@
   font-family: var(--font-mono);
   font-size: 11px;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0;
   color: var(--text-2);
 }
 @utility page-title {
-  font-size: 28px;
+  font-size: 20px;
   font-weight: 600;
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
   line-height: 1.15;
 }
 @utility section-title {
-  font-size: 17px;
+  font-size: 14px;
   font-weight: 600;
-  letter-spacing: -0.01em;
+  letter-spacing: 0;
 }
 @utility num {
   font-variant-numeric: tabular-nums;
 }
 @utility card-quiet {
-  background: var(--card-bg, var(--glass));
-  border: 1px solid var(--card-border, var(--glass-border));
-  border-radius: 18px;
-  box-shadow: var(--card-shadow, var(--shadow-card));
-  backdrop-filter: saturate(170%) blur(22px);
-  -webkit-backdrop-filter: saturate(170%) blur(22px);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: none;
 }
 @utility glass-panel {
-  background: oklch(1 0 0 / 0.5);
-  border: 1px solid oklch(1 0 0 / 0.75);
-  border-radius: 20px;
-  box-shadow: var(--shadow-card);
-  backdrop-filter: saturate(170%) blur(22px);
-  -webkit-backdrop-filter: saturate(170%) blur(22px);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
 }
 @utility pill-active {
-  background: var(--surface);
-  box-shadow: var(--shadow-lift);
-  color: var(--foreground);
+  background: var(--surface-2);
+  color: var(--link);
 }
-@utility logo-mark {
-  background: linear-gradient(140deg, oklch(0.72 0.14 235), oklch(0.52 0.2 262));
-  box-shadow: 0 3px 10px -2px oklch(0.55 0.18 258 / 0.45), inset 0 1px 0 oklch(1 0 0 / 0.35);
-}
-@utility tint-action {
-  --card-bg: linear-gradient(140deg, oklch(0.985 0.014 45 / 0.95), oklch(0.955 0.04 30 / 0.92));
-  --card-border: oklch(0.9 0.055 35 / 0.9);
-  --card-shadow: 0 1px 2px oklch(0.55 0.15 35 / 0.08), 0 14px 34px -14px oklch(0.62 0.17 32 / 0.45);
-  background: var(--card-bg);
-  border-color: var(--card-border);
-  color: var(--action);
-}
-@utility tint-wait {
-  --card-bg: linear-gradient(140deg, oklch(0.99 0.016 88 / 0.95), oklch(0.965 0.04 78 / 0.92));
-  --card-border: oklch(0.9 0.06 82 / 0.9);
-  --card-shadow: 0 1px 2px oklch(0.6 0.12 72 / 0.08), 0 14px 34px -14px oklch(0.7 0.13 72 / 0.4);
-  background: var(--card-bg);
-  border-color: var(--card-border);
-  color: var(--wait);
-}
-@utility pill-action {
-  background: oklch(0.955 0.035 38);
-  box-shadow: inset 0 0 0 1px oklch(0.9 0.055 35);
-  color: var(--action);
-}
-@utility pill-wait {
-  background: oklch(0.965 0.04 85);
-  box-shadow: inset 0 0 0 1px oklch(0.9 0.065 82);
-  color: var(--wait);
-}
+@utility logo-mark { background: var(--link); }
+@utility tint-action { color: var(--action); }
+@utility tint-wait { color: var(--wait); }
+@utility pill-action { color: var(--action); }
+@utility pill-wait { color: var(--wait); }
 @utility unknown-chip {
   border: 1px dashed var(--text-3);
   color: var(--text-2);
   border-radius: 6px;
 }
-@utility topbar-glass {
-  background: oklch(0.985 0.008 255 / 0.985);
-  backdrop-filter: saturate(180%) blur(24px);
-  -webkit-backdrop-filter: saturate(180%) blur(20px);
-}
-@utility btn-glow {
-  box-shadow: 0 1px 0 oklch(1 0 0 / 0.12) inset, 0 8px 20px -8px oklch(0.24 0.05 264 / 0.55);
-}
+@utility topbar-glass { background: var(--surface); }
+@utility btn-glow { box-shadow: none; }
+
+.enterprise-content { font-size: 13px; letter-spacing: 0; }
+.enterprise-content .page-header { margin-bottom: 20px; }
+.enterprise-content .kpi-strip { border-bottom: 1px solid var(--line); }
+.enterprise-content .kpi-strip > .kpi-item + .kpi-item { border-left: 1px solid var(--line); }
+.enterprise-content th { font-size: 11px; font-weight: 500; text-transform: none; letter-spacing: 0; color: var(--text-2); }
+.enterprise-content td { height: 44px; }
+.enterprise-content .tracking-tight { letter-spacing: 0; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition-duration: 0s !important; animation-duration: 0s !important; } }
+
+/* Enterprise density stays inside the authenticated app; the judging page keeps its shared presentation. */
+.enterprise-content .page-subtitle { display: none; }
+.enterprise-content .card-quiet:not(.p-0):not(aside) { padding: 16px; }
+.enterprise-content .kpi-item { border: 0; border-radius: 0; padding: 12px 16px; background: transparent; }
+.enterprise-content .kpi-value { font-size: 20px; }
+.enterprise-content .kpi-strip > .kpi-item + .kpi-item { border-left: 1px solid var(--line); }

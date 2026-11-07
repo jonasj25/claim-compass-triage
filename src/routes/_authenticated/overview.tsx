@@ -62,7 +62,7 @@ function Overview() {
         sub={`Live from ${s.total} claims in the system · active policy ${policy.version.toUpperCase()}`}
       />
 
-      <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
+      <div className="kpi-strip grid grid-cols-3 gap-0 lg:grid-cols-6">
         <Kpi label="Open claims" value={s.open} sub={`${s.closed} closed`} />
         <Kpi
           label={QUEUE_LABELS.on_you}
@@ -110,7 +110,7 @@ function Overview() {
                 Open claims, by next step under the decision they hold now.
               </p>
             </div>
-            <p className="num text-[44px] font-semibold leading-none tracking-tight">
+            <p className="num text-[20px] font-semibold leading-none tracking-tight">
               {Math.round(s.automation * 100)}%
             </p>
           </div>

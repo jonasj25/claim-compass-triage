@@ -15,6 +15,10 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/_authenticated/quality")({
   head: () => ({
     meta: [
+{ property: "og:title", content: "Quality — Clearpath" },
+{ property: "og:description", content: "Clearpath claims workspace: review evidence, policy decisions and case activity." },
+{ property: "og:type", content: "website" },
+{ name: "twitter:card", content: "summary" },
       { title: "Quality — Clearpath" },
       {
         name: "description",
@@ -161,7 +165,7 @@ function QualityPage() {
         right={
           <Button
             variant="outline"
-            className="bg-white"
+            className="bg-surface"
             onClick={exportAudit}
             disabled={!cases.length}
           >
@@ -182,8 +186,8 @@ function QualityPage() {
                 className={cn(
                   "rounded-full px-3 py-1.5 text-[12.5px] ring-1",
                   active
-                    ? "bg-white font-medium shadow-[var(--shadow-lift)] ring-link/40"
-                    : "bg-white/50 ring-line hover:bg-white",
+                    ? "bg-surface font-medium shadow-[var(--shadow-lift)] ring-link/40"
+                    : "bg-surface-2 ring-line hover:bg-surface",
                 )}
               >
                 {label}
@@ -193,7 +197,7 @@ function QualityPage() {
         )}
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="kpi-strip grid grid-cols-4 gap-0">
         <Kpi
           label={`Correct under ${v2}`}
           value={pctOf(r.v2)}

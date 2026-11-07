@@ -26,6 +26,10 @@ import { FIELD_LABELS, type Policy, type Recommendation } from "@/lib/triage";
 export const Route = createFileRoute("/_authenticated/policy")({
   head: () => ({
     meta: [
+{ property: "og:title", content: "Policy — Clearpath" },
+{ property: "og:description", content: "Clearpath claims workspace: review evidence, policy decisions and case activity." },
+{ property: "og:type", content: "website" },
+{ name: "twitter:card", content: "summary" },
       { title: "Policy — Clearpath" },
       { name: "description", content: "The active triage policy." },
     ],
@@ -134,7 +138,7 @@ function Chip({ c }: { c: Cond }) {
   return (
     <li
       title={c.full}
-      className="inline-flex items-center gap-1.5 rounded-full bg-white/70 px-2.5 py-1 text-[12.5px] ring-1 ring-line/70"
+      className="inline-flex items-center gap-1.5 rounded-full bg-surface-2 px-2.5 py-1 text-[12.5px] ring-1 ring-line/70"
     >
       <c.icon className="size-3.5 shrink-0 text-text-2" strokeWidth={1.7} />
       <span>{c.short}</span>
@@ -201,7 +205,7 @@ function PolicyPage() {
         right={<NewPolicyDialog base={p} existingIds={versions.map((x) => x.id)} />}
       />
 
-      <p className="mb-6 max-w-[64ch] text-[17px] leading-relaxed text-text-2">{summary(p)}</p>
+      <p className="mb-6 max-w-[64ch] text-[14px] leading-relaxed text-text-2">{summary(p)}</p>
 
       <ol className="card-quiet divide-y divide-line p-0">
         <Row n={1} title="Needs a person?" outcome="human_review" rule={`${v}.R1`}>

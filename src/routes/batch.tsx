@@ -13,6 +13,10 @@ import { Card, Kpi, PageHeader, StatusDot } from "@/components/triage/ui";
 export const Route = createFileRoute("/batch")({
   head: () => ({
     meta: [
+{ property: "og:title", content: "Batch run — Clearpath" },
+{ property: "og:description", content: "Clearpath claims workspace: review evidence, policy decisions and case activity." },
+{ property: "og:type", content: "website" },
+{ name: "twitter:card", content: "summary" },
       { title: "Batch run — Clearpath" },
       {
         name: "description",

@@ -37,6 +37,7 @@ use the editor.
 - Roles live in `user_roles`; the top-bar role switcher is a demo view toggle only, not a permission.
 - Design tokens live in src/styles.css; colour is reserved for states where a human must act.
 - Reviewer workstream grouping is a pure presentation helper using persisted decisions, policy checklist and second-check logic; it never changes recommendations or selects new QA samples.
-- Case navigation may carry per-case group labels, resolved by the shared helper so the case-detail page stays unchanged.
+- Case navigation carries per-case presentation labels; the shared workstream presentation helper maps persisted groups to display tabs and priorities without changing eligibility.
+- Case workspace tabs reuse existing action handlers and evidence highlighting; task checkboxes remain local state and requests advance only after successful send.
 - Handling-time reporting reads recorded confirmation and override durations through a shared query; it is separate from estimated workstream effort.
 - The /claims route owns all-claim lookups independently of the personal dashboard so autonomous and closed claims remain accessible.

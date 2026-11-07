@@ -76,29 +76,29 @@ function AllClaims() {
       <PageHeader title="All claims" sub="Every claim, whatever its status. Your tasks are on the To review page." />
       <div role="tablist" aria-label="Status" className="mb-4 flex flex-wrap gap-1 border-b border-line">
         {(["all", ...CLAIM_STATUSES] as Tab[]).map((t) => (
-          <button key={t} role="tab" aria-selected={tab === t} onClick={() => setTab(t)}
+          <Button variant="ghost" key={t} role="tab" aria-selected={tab === t} onClick={() => setTab(t)}
             className={cn("-mb-px flex items-center gap-1.5 border-b-2 px-3 py-2 text-[13px]",
               tab === t ? "border-foreground font-medium text-foreground" : "border-transparent text-text-2 hover:text-foreground")}>
             {t === "all" ? "All" : CLAIM_STATUS_LABEL[t]}
             <span className="num rounded-full bg-surface-2 px-1.5 text-[11px] text-text-2">{count(t)}</span>
-          </button>
+          </Button>
         ))}
       </div>
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <label className="relative min-w-[220px] flex-1">
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-text-3" />
           <Input aria-label="Search claims" placeholder="Search case number, customer, plate…" value={search}
-            onChange={(e) => setSearch(e.target.value)} className="h-9 bg-white/70 pl-9" />
+            onChange={(e) => setSearch(e.target.value)} className="h-9 bg-surface pl-9" />
         </label>
         <Select value={channel} onValueChange={setChannel}>
-          <SelectTrigger aria-label="Channel" className="h-9 w-auto min-w-[150px] bg-white/70"><SelectValue /></SelectTrigger>
+          <SelectTrigger aria-label="Channel" className="h-9 w-auto min-w-[150px] bg-surface"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All channels</SelectItem>
             {channels.map((c) => <SelectItem key={c} value={c}>{channelLabel(c)}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={sort} onValueChange={(v) => setSort(v as Sort)}>
-          <SelectTrigger aria-label="Sort" className="h-9 w-auto min-w-[140px] bg-white/70"><SelectValue /></SelectTrigger>
+          <SelectTrigger aria-label="Sort" className="h-9 w-auto min-w-[140px] bg-surface"><SelectValue /></SelectTrigger>
           <SelectContent>
             {(Object.keys(SORT_LABEL) as Sort[]).map((s) => <SelectItem key={s} value={s}>{SORT_LABEL[s]}</SelectItem>)}
           </SelectContent>
