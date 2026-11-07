@@ -255,8 +255,8 @@
   border-radius: 6px;
 }
 @utility topbar-glass {
-  background: oklch(1 0 0 / 0.45);
-  backdrop-filter: saturate(180%) blur(20px);
+  background: oklch(0.985 0.008 255 / 0.82);
+  backdrop-filter: saturate(180%) blur(24px);
   -webkit-backdrop-filter: saturate(180%) blur(20px);
 }
 @utility btn-glow {

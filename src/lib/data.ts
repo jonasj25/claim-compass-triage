@@ -81,13 +81,15 @@ export const caseDetailQuery = (caseId: string) =>
   queryOptions({
     queryKey: ["case", caseId],
     queryFn: async () => {
-      const [claim, decision, workflow, intake, facts, events] = await Promise.all([
+      const [claim, decision, workflow, intake, facts, events, overrides, comments] = await Promise.all([
         supabase.from("claims").select("*").eq("case_id", caseId).maybeSingle(),
         supabase.from("decisions").select("*").eq("case_id", caseId).eq("is_current", true).maybeSingle(),
         supabase.from("case_workflow").select("*").eq("case_id", caseId).maybeSingle(),
         supabase.from("claim_intake").select("*").eq("case_id", caseId).maybeSingle(),
         supabase.from("fact_sources").select("*").eq("case_id", caseId).order("created_at"),
         supabase.from("case_events").select("*").eq("case_id", caseId).order("created_at"),
+        supabase.from("overrides").select("*").eq("case_id", caseId).order("created_at"),
+        supabase.from("comments").select("*").eq("case_id", caseId).order("created_at"),
       ]);
       if (claim.error) throw claim.error;
       return {
@@ -97,6 +99,8 @@ export const caseDetailQuery = (caseId: string) =>
         intake: intake.data,
         facts: facts.data ?? [],
         events: events.data ?? [],
+        overrides: overrides.data ?? [],
+        comments: comments.data ?? [],
       };
     },
   });
