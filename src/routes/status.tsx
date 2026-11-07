@@ -1,9 +1,8 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
-import { ArrowLeft, Bot, Check, ChevronRight, Clock, FileQuestion, Mail, Phone, PhoneOff, Plus, Search, User, X } from "lucide-react";
+import { ArrowLeft, Bot, Check, ChevronRight, Clock, FileQuestion, Mail, Phone, Plus, Search, User, X } from "lucide-react";
 import { Logo } from "@/components/triage/Logo";
-import { MiaCall, useRingtone } from "@/components/triage/MiaCall";
-import { endClaimCall } from "@/lib/report.functions";
+import { MiaCall } from "@/components/triage/MiaCall";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -97,7 +96,11 @@ function StatusPage() {
     return () => window.clearInterval(t);
   }, [search.plate, search.case, load]);
 
+  // Incoming call: go straight to that claim, where the call window rings at the top
   const calling = !search.case ? list?.find((c) => c.incoming_call) : undefined;
+  useEffect(() => {
+    if (calling && search.plate) void navigate({ search: { plate: search.plate, case: calling.case_id } });
+  }, [calling, search.plate, navigate]);
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -143,17 +146,6 @@ function StatusPage() {
 
             {error && <p className="mt-4 text-[14px] text-action">{error}</p>}
 
-            {calling && (
-              <CallBanner
-                key={calling.case_id}
-                caseId={calling.case_id}
-                onRespond={() => void navigate({ search: { plate: search.plate, case: calling.case_id } })}
-                onDecline={async () => {
-                  await endClaimCall({ data: { case_id: calling.case_id, plate: search.plate, outcome: "declined" } }).catch(() => undefined);
-                  void load(search.plate ?? "", true);
-                }}
-              />
-            )}
 
             {list && (
               <section className="mt-8">
@@ -201,25 +193,6 @@ function StatusPage() {
           </>
         )}
       </main>
-    </div>
-  );
-}
-
-function CallBanner({ caseId, onRespond, onDecline }: { caseId: string; onRespond: () => void; onDecline: () => void }) {
-  const muted = useRingtone(true);
-  return (
-    <div className="mt-6 rounded-[14px] bg-ok px-5 py-4 text-white shadow-lg">
-      <div className="flex flex-wrap items-center gap-3">
-        <Phone className="size-5 animate-pulse" />
-        <span className="flex-1 text-[15px] font-semibold">Clearpath is calling you about {caseId}</span>
-        <button onClick={onDecline} className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-4 py-1.5 text-[13px] font-semibold ring-1 ring-white/40 hover:bg-white/25">
-          <PhoneOff className="size-3.5" /> Decline
-        </button>
-        <button onClick={onRespond} className="inline-flex items-center gap-1.5 rounded-full bg-white px-4 py-1.5 text-[13px] font-semibold text-ok hover:bg-white/90">
-          <Phone className="size-3.5" /> Respond
-        </button>
-      </div>
-      {muted && <p className="mt-1.5 pl-8 text-[12px] text-white/80">Tap anywhere on the page to hear the ringtone.</p>}
     </div>
   );
 }
@@ -309,9 +282,25 @@ function ClaimDetail({ plate, caseId, onBack }: { plate: string; caseId: string;
   const call = d.call ?? (selfCall ? { requested_at: selfCall, missing_items: d.missing_fields } : null);
   const next = NEXT[d.status];
 
+  const callWindow = call && (
+    <MiaCall
+      caseId={d.case_id}
+      firstName={d.first_name}
+      items={call.missing_items.length ? call.missing_items : d.missing_fields}
+      requestedAt={call.requested_at}
+      who={{ plate }}
+      onFinished={(msg) => {
+        setSelfCall(null);
+        setNotice(msg);
+        void load();
+      }}
+    />
+  );
+
   return (
     <>
       {back}
+      {callWindow}
       <section className="card-quiet mt-4 p-6" aria-live="polite">
         <p className="text-[13px] text-text-2">
           {d.first_name ? `Hello ${d.first_name}, this` : "This"} is claim <span className="font-mono text-foreground">{d.case_id}</span>
@@ -324,20 +313,7 @@ function ClaimDetail({ plate, caseId, onBack }: { plate: string; caseId: string;
 
       {notice && <p className="mt-4 rounded-[12px] bg-surface-2 px-4 py-3 text-[14px] ring-1 ring-line">{notice}</p>}
 
-      {call ? (
-        <MiaCall
-          caseId={d.case_id}
-          firstName={d.first_name}
-          items={call.missing_items.length ? call.missing_items : d.missing_fields}
-          requestedAt={call.requested_at}
-          who={{ plate }}
-          onFinished={(msg) => {
-            setSelfCall(null);
-            setNotice(msg);
-            void load();
-          }}
-        />
-      ) : (
+      {call ? null : (
         <section className="card-quiet mt-6 p-6">
           <p className="label-mono">What happens next</p>
           <h2 className="mt-2 text-[18px] font-semibold">{next.title}</h2>
