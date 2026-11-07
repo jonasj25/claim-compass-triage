@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { ArrowLeft, ArrowRight, Check, ChevronLeft, Lock, MessageSquare, PhoneCall, Send, UserPlus, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, ChevronLeft, Lock, MessageSquare, PhoneCall, Send, UserPlus, X, Copy, Sparkles, FileText, User, Car, Calendar, Inbox, Wrench, Receipt, Shield, ListChecks, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { activePolicyQuery, caseDetailQuery, casesQuery } from "@/lib/data";
@@ -12,8 +12,11 @@ import { isClosed } from "@/lib/csv";
 import { queueFor } from "@/lib/lifecycle";
 import { useRole } from "@/lib/role";
 import { Card, Chip, Mono, StatusDot, Unknown, fmtEur, fmtTime } from "@/components/triage/ui";
-import { CustomerChatLauncher } from "@/components/triage/CustomerChat";
+import { CustomerChat } from "@/components/triage/CustomerChat";
 import { secondCheckReason } from "@/lib/second-check";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import { WORK_TABS, workPriority, type WorkTab } from "@/lib/workstream-presentation";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -68,6 +71,11 @@ function CaseDetail() {
   const [hover, setHover] = useState<string | null>(null);
   const [overrideOpen, setOverrideOpen] = useState<Recommendation | null>(null);
   const [busy, setBusy] = useState(false);
+  const [mainTab, setMainTab] = useState("Overview");
+  const [sideTab, setSideTab] = useState("Tasks");
+  const [taskChecks, setTaskChecks] = useState<Set<string>>(new Set());
+  const [decisionAction, setDecisionAction] = useState("confirm");
+  const [requestMode, setRequestMode] = useState(false);
   const opened = useRef(Date.now());
   const confirmKey = useRef<(() => void) | null>(null);
   const overrideKey = useRef<(() => void) | null>(null);
@@ -75,6 +83,7 @@ function CaseDetail() {
   useEffect(() => {
     opened.current = Date.now();
     setHover(null);
+    setMainTab("Overview"); setSideTab("Tasks"); setTaskChecks(new Set()); setDecisionAction("confirm"); setRequestMode(false);
   }, [caseId]);
 
   // ---------- step through the list the case was opened from (like a task queue) ----------
@@ -242,95 +251,6 @@ function CaseDetail() {
       await must(supabase.from("comments").insert({ case_id: caseId, author: me.name, body }));
     }, "Comment posted");
 
-  // ---------- next-step content by state ----------
-  let stepTitle = "";
-  let stepText: ReactNode = "";
-  let actions: ReactNode = null;
-  const overrideBtn = (label = "Override", pre?: Recommendation) => (
-    <Button variant="outline" disabled={busy} onClick={() => setOverrideOpen(pre ?? (rec === "human_review" ? "routine_processing" : "human_review"))} title={`${label} (O)`}>
-      {label} <Kbd>O</Kbd>
-    </Button>
-  );
-  const assignBtn = !mine && !closed && queue === "on_you" && (
-    <Button variant="ghost" disabled={busy} onClick={assignMe}>
-      <UserPlus /> Assign to me
-    </Button>
-  );
-
-  if (closed) {
-    stepTitle = "Nothing to do";
-    stepText = `Closed. The decision is frozen under policy ${version.toUpperCase()} and will never be re-evaluated.`;
-  } else if (queue === "done" || confirmed) {
-    stepTitle = "Done";
-    stepText = "A reviewer has confirmed this case. It continues in the normal claims process. You can still correct it while the claim is open.";
-    actions = (
-      <>
-        {overrideBtn("Override")}
-        {nextId && (
-          <Button onClick={() => goTo(nextId)}>
-            Next case <Kbd dark>→</Kbd>
-          </Button>
-        )}
-      </>
-    );
-  } else if (queue === "on_you" && rec === "human_review") {
-    stepTitle = recheck ? "Check the new policy result" : "Review this claim";
-    stepText = recheck
-      ? "The policy changed and this open case now gets a different recommendation. Check the evidence and confirm, or correct it."
-      : "A known risk needs a person. Check the highlighted item in the checklist against its source, then confirm the escalation or correct it with a reason.";
-    actions = (
-      <>
-        {assignBtn}
-        {overrideBtn("Override")}
-        <Button disabled={busy} onClick={() => confirm(true)} title="Confirm (C)">
-          <Check /> {recheck ? `Confirm ${version} result` : "Confirm review"}
-          {nextId && " & next"} <Kbd dark>C</Kbd>
-        </Button>
-      </>
-    );
-  } else if (qa || queue === "on_you") {
-    stepTitle = nearLimit ? "Second check: close to the limit" : qa ? "Random QA sample" : "Check this case";
-    stepText = nearLimit
-      ? `${nearLimit} Check the quote and evidence; confirm if auto-processing is right, or correct it.`
-      : qa
-      ? "This claim was processed automatically. It was picked at random so a person can check the rules still work. Confirm if the decision is right, or correct it."
-      : "This case is waiting for you. Confirm the recommendation or correct it.";
-    actions = (
-      <>
-        {assignBtn}
-        {overrideBtn("Override")}
-        <Button disabled={busy} onClick={() => confirm(true)} title="Confirm (C)">
-          <Check /> Confirm {RECOMMENDATION_LABELS[rec].toLowerCase()}
-          {nextId && " & next"} <Kbd dark>C</Kbd>
-        </Button>
-      </>
-    );
-  } else if (queue === "waiting_customer") {
-    const missing = (decision?.missing_fields as string[] | undefined) ?? [];
-    stepTitle = "Waiting on the customer";
-    stepText = (
-      <>
-        We asked the customer for {missing.length ? <strong>{missing.map((f) => FIELD_LABELS[f] ?? f).join(", ")}</strong> : "the missing information"}. Reminders go out
-        automatically after 48h and 96h; after that the case comes to a reviewer. Nothing needed from you unless the customer calls.
-      </>
-    );
-    actions = (
-      <>
-        <Button variant="ghost" disabled={busy} onClick={call}>
-          <PhoneCall /> Log phone call
-        </Button>
-        {overrideBtn("Override")}
-        <Button variant="outline" disabled={busy} onClick={reminder}>
-          <Send /> Send reminder now
-        </Button>
-      </>
-    );
-  } else {
-    stepTitle = "Processed automatically";
-    stepText = "All checks passed, so this claim went into the normal process. Nothing to do – history only. Auto-processed is not a payment approval.";
-    actions = overrideBtn("Pull into review", "human_review");
-  }
-
   // keyboard: C confirms (and moves on), O opens the override
   const canConfirm = !closed && !busy && !(queue === "done" || confirmed) && (queue === "on_you" || qa);
   confirmKey.current = canConfirm ? () => void confirm(true) : null;
@@ -351,120 +271,47 @@ function CaseDetail() {
           ? ["Automatic reminder (48h, then 96h)", "Customer sends documents → checked again automatically", "No answer after 2 reminders → goes to a reviewer"]
           : ["Normal claims handling (~7% are sampled for QA)"];
 
+  const storedLabel = nav.labels?.[caseId];
+  const caseTab: WorkTab = storedLabel && WORK_TABS.includes(storedLabel as WorkTab) ? storedLabel as WorkTab : nearLimit ? "Near limit" : recheck ? "Policy change" : qa ? "QA sample" : "Risk cases";
+  const priority = workPriority(caseTab);
+  const missingFields = [...new Set([...(decision?.missing_fields ?? []), ...live.checklist.filter((c) => c.stage === "R2" && c.status === "fail").map((c) => c.field)])] as string[];
+  const triggers = live.checklist.filter((c) => c.status === "fail");
+  const status = closed ? "Closed" : queue === "done" || confirmed ? "Done" : queue === "waiting_customer" ? "Waiting on customer" : needsUser ? "Needs review" : "Auto-processed";
+  const assignees = [...new Set([me.name, "Mara Weber", "Jonas Klein", "Lea Fischer", ...(allCases.data ?? []).map((c) => c.workflow?.assignee).filter((v): v is string => !!v)])];
+  const assign = (name: string) => run(async () => { await must(supabase.from("case_workflow").update({ assignee: name === "unassigned" ? null : name, updated_at: new Date().toISOString() }).eq("case_id", caseId)); await must(event("assigned", { assignee: name === "unassigned" ? null : name })); }, "Assignee updated");
+  const submit = () => { if (decisionAction === "override") setOverrideOpen(rec === "human_review" ? "routine_processing" : "human_review"); else if (decisionAction === "request") { setRequestMode(true); setMainTab("Customer"); } else void confirm(true).then(() => { if (!nextId) void navigate({ to: "/dashboard" }); }); };
+  const tasks = [...triggers.map((c) => ({ key: c.key, label: `Check ${FIELD_LABELS[c.field] ?? c.field.replace(/_/g, " ")}`, note: humanize(c.note), tab: "Evidence" })), ...(nearLimit ? [{ key: "near_limit", label: "Verify quote amount", note: nearLimit, tab: "Evidence" }] : []), { key: "identity", label: "Confirm customer identity", note: "Compare customer and vehicle details against the submitted evidence.", tab: "Overview" }];
   return (
     <div>
-      {/* 0 · Move through the queue */}
       <nav aria-label="Case navigation" className="mb-5 flex flex-wrap items-center gap-3">
-        <Button asChild variant="outline" className="bg-white">
-          <Link to="/dashboard">
-            <ArrowLeft /> To review
-          </Link>
-        </Button>
-        <div className="ml-auto flex flex-wrap items-center gap-2">
-          {pos >= 0 && (
-            <span className="label-mono mr-1">
-              {nav.label} · Case {pos + 1} of {nav.ids.length}
-            </span>
-          )}
-          <Button variant="outline" className="bg-white" disabled={!prevId} onClick={() => goTo(prevId)} title="Previous case (←)">
-            <ChevronLeft /> Previous <Kbd>←</Kbd>
-          </Button>
-          <Button variant="outline" className="bg-white font-semibold" disabled={!nextId} onClick={() => goTo(nextId)} title="Next case without deciding (→)">
-            {nextId ? "Next case" : "Last case"} <Kbd>→</Kbd> <ArrowRight />
-          </Button>
+        <Button asChild variant="ghost" size="sm" className="px-0 text-text-2"><Link to="/dashboard"><ArrowLeft className="size-4" />Workstream</Link></Button>
+        <span className="font-mono text-[16px] font-semibold">{caseId}</span>
+        <Button size="icon" variant="ghost" className="size-7" aria-label="Copy case ID" title="Copy case ID" onClick={() => void navigator.clipboard.writeText(caseId).then(() => toast("Case ID copied"))}><Copy className="size-3.5" /></Button>
+        <span className={cn("text-[12px]", status === "Needs review" ? "text-action" : status === "Waiting on customer" ? "text-wait" : "text-text-2")}>{status}</span>
+        <span className={cn("border-l border-line pl-3 text-[12px]", priority === "High" ? "text-action" : priority === "Medium" ? "text-wait" : "text-text-2")}>{priority} priority</span>
+        <div className="ml-auto flex items-center gap-2">
+          <span className="text-[11px] text-text-2">Updated {fmtTime(workflow?.updated_at ?? data.claim.received_at)}</span>
+          <Select value={workflow?.assignee ?? "unassigned"} onValueChange={(v) => void assign(v)} disabled={busy || closed}><SelectTrigger aria-label="Select assignee" className="h-8 w-[165px] bg-surface text-[12px]"><SelectValue placeholder="Select assignee" /></SelectTrigger><SelectContent><SelectItem value="unassigned">Select assignee</SelectItem>{assignees.map((name) => <SelectItem key={name} value={name}>{name}</SelectItem>)}</SelectContent></Select>
+          <span className="ml-2 text-[11px] text-text-2">Case {pos + 1} of {nav.ids.length}</span>
+          <Button size="icon" variant="outline" className="size-8" aria-label="Previous case" title="Previous case (←)" disabled={!prevId} onClick={() => goTo(prevId)}><ChevronLeft className="size-4" /></Button>
+          <Button size="icon" variant="outline" className="size-8" aria-label="Next case" title="Next case (→)" disabled={!nextId} onClick={() => goTo(nextId)}><ArrowRight className="size-4" /></Button>
         </div>
       </nav>
-
-      {/* 1 · Verdict and short description */}
-      <div className={cn("card-quiet mb-5 p-7", tone)}>
-        <div className="flex flex-wrap items-start justify-between gap-8">
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <Mono className={cn(tone && "text-current")}>
-                {caseId}
-                {data.intake?.customer_name ? ` · ${data.intake.customer_name}` : ""}
-                {data.intake?.plate ? ` · ${data.intake.plate}` : ""}
-              </Mono>
-              {closed ? <Chip><Lock className="mr-1 size-3" /> Closed</Chip> : <Chip>Open</Chip>}
-              {recheck && <Chip>Needs re-check · policy {version}</Chip>}
-              {qa && <Chip>{nearLimit ? "Second check · near limit" : "QA sample"}</Chip>}
-              {lastOverride && <Chip>Overridden</Chip>}
-              {unknownCount > 0 && <Chip className="border-dashed">{unknownCount} unknown {unknownCount === 1 ? "field" : "fields"}</Chip>}
-            </div>
-            <div className="mt-4 text-[28px] font-semibold leading-none tracking-tight">
-              <StatusDot rec={rec} closed={closed} plain />
-            </div>
-            <p className={cn("mt-3 max-w-2xl text-[15px] font-medium", tone ? "text-current" : "text-foreground")}>
-              {lastOverride ? lastOverride.reason_text : humanize(decision?.explanation ?? live.reasons.join(". "))}
-            </p>
-            <p className="mt-1.5 max-w-2xl text-[13.5px] text-text-2">
-              <span className="label-mono mr-2">Summary</span>
-              {claim.claim_summary ?? "No summary provided."}
-            </p>
-            {lastOverride && (
-              <p className="mt-3 max-w-2xl rounded-[10px] bg-white/60 px-3 py-2 text-[12.5px] text-text-2 ring-1 ring-white/80">
-                System said <strong className="text-foreground">{RECOMMENDATION_LABELS[lastOverride.original_recommendation as Recommendation] ?? lastOverride.original_recommendation}</strong> ({String(decision?.rule_id ?? "").toUpperCase()}).
-                Changed to <strong className="text-foreground">{RECOMMENDATION_LABELS[rec]}</strong> by {lastOverride.reviewer} · {reasonLabel(lastOverride.reason_code)} · policy{" "}
-                {String(lastOverride.policy_version ?? "").toUpperCase()} · {fmtTime(lastOverride.created_at)}
-              </p>
-            )}
+      <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,2.125fr)_minmax(320px,1fr)]">
+        <section className="min-w-0">
+          <div role="tablist" aria-label="Case sections" className="mb-4 flex gap-5 border-b border-line">
+            {["Overview", "Evidence", "Customer", "Policy check"].map((tab) => <Button key={tab} variant="ghost" role="tab" aria-selected={mainTab === tab} className={cn("h-10 rounded-none border-b-2 px-1 text-[13px]", mainTab === tab ? "border-link text-link" : "border-transparent text-text-2")} onClick={() => setMainTab(tab)}>{tab}</Button>)}
           </div>
-          <dl className="grid shrink-0 grid-cols-2 gap-x-8 gap-y-3 text-[13px]">
-            {[
-              ["Rule", String(decision?.rule_id ?? live.recommendation).toUpperCase()],
-              ["Policy", version.toUpperCase()],
-              ["Received", fmtTime(data.claim.received_at)],
-              ["Assignee", workflow?.assignee ?? "Unassigned"],
-            ].map(([k, v]) => (
-              <div key={k}>
-                <dt className={cn("label-mono", tone && "text-current opacity-80")}>{k}</dt>
-                <dd className="mt-0.5 font-medium">{v}</dd>
-              </div>
-            ))}
-          </dl>
-        </div>
-
-        <div className="mt-6 grid grid-cols-2 gap-2 sm:grid-cols-4">
-          <Fact label="Quote" value={claim.quote_eur === null ? null : fmtEur(claim.quote_eur)} flag={live.checklist.some((c) => c.field === "quote_eur" && c.status === "fail")} />
-          <Fact label="Claim type" value={claim.claim_type ? claimTypeLabel(claim.claim_type) : null} flag={live.checklist.some((c) => c.field === "claim_type" && c.status === "fail")} />
-          <Fact label="Repair" value={claim.repair_type ? repairTypeLabel(claim.repair_type) : null} flag={live.checklist.some((c) => c.field === "repair_type" && c.status === "fail")} />
-          <Fact label="Channel" value={channelLabel(data.intake?.channel ?? "csv_import")} />
-        </div>
-      </div>
-
-      {/* 2 · What the reviewer does now */}
-      <div className="card-quiet mb-5 flex flex-wrap items-center justify-between gap-4 px-7 py-5">
-        <div className="min-w-0 max-w-2xl">
-          <p className="label-mono mb-1">Your next step</p>
-          <h2 className="section-title">{stepTitle}</h2>
-          <p className="mt-1 text-[13.5px] text-text-2">{stepText}</p>
-        </div>
-        {actions && <div className="ml-auto flex flex-wrap items-center gap-2">{actions}</div>}
-      </div>
-
-      {/* 2b · Customer conversation (opens in a pop-up): accept / deny / request / remind via templates */}
-      <CustomerChatLauncher
-        caseId={caseId}
-        customer={data.intake?.customer_name ?? null}
-        plate={data.intake?.plate ?? null}
-        quote={claim.quote_eur}
-        version={version}
-        rec={rec}
-        queue={queue}
-        closed={closed}
-        needsUser={needsUser}
-        missingFields={((decision?.missing_fields as string[] | undefined) ?? []).concat(live.checklist.filter((c) => c.stage === "R2" && c.status === "fail").map((c) => c.field)).filter((f, i, a) => a.indexOf(f) === i)}
-        failedTrigger={live.checklist.find((c) => c.status === "fail" && c.stage === "R1")?.key ?? null}
-        decisionId={(decision?.id as string | undefined) ?? null}
-        reviewer={me.name}
-        events={data.events as Row[]}
-        claim={claim}
-        policy={policy}
-      />
-
-      {/* 3 · Evidence: checklist and sources side by side, same height */}
-      <div className="mb-5 grid items-stretch gap-5 lg:grid-cols-2">
-        <Card className="flex flex-col">
+          {mainTab === "Overview" && <>
+            <div className="mb-4 grid items-stretch gap-4 md:grid-cols-2">
+              <Card><h2 className="section-title mb-3">Case details</h2><dl className="divide-y divide-line">
+                {[[User, "Customer", data.intake?.customer_name], [Car, "Plate", data.intake?.plate], [Calendar, "Received", fmtTime(data.claim.received_at)], [Inbox, "Channel", channelLabel(data.intake?.channel ?? "csv_import")], [FileText, "Claim type", claim.claim_type ? claimTypeLabel(claim.claim_type) : null], [Wrench, "Repair", claim.repair_type ? repairTypeLabel(claim.repair_type) : null], [Receipt, "Quote", fmtEur(claim.quote_eur)], [Shield, "Policy version", version], [ListChecks, "Rule", decision?.rule_id]].map(([Icon, label, val]) => { const DetailIcon = Icon as typeof User; return <div key={String(label)} className="flex items-center justify-between gap-2 py-2 text-[12px]"><dt className="flex items-center gap-2 text-text-2"><DetailIcon className="size-3.5" />{String(label)}</dt><dd className="text-right">{val ? String(val) : <Unknown />}</dd></div>; })}
+              </dl></Card>
+              <Card><h2 className="section-title flex items-center gap-2"><Sparkles className="size-4 text-link" />AI summary</h2><p className="mt-1 text-[10px] text-text-3">AI summary – does not change the recommendation</p><p className="mt-3 text-[13px] leading-relaxed">{claim.claim_summary ?? "The incident summary is unknown."} {humanize(decision?.explanation ?? live.reasons.join(". "))}</p><h3 className="mt-4 text-[12px] font-semibold">Case triggers</h3><ul className="mt-2 space-y-2 text-[12px] text-text-2">{nearLimit && <li><strong className="text-wait"><TriangleAlert className="mr-1 inline size-3" />Near limit.</strong> {nearLimit}</li>}{triggers.map((c) => <li key={c.key}><strong className="text-foreground">{FIELD_LABELS[c.field] ?? c.field}.</strong> {humanize(c.note)}</li>)}{qa && !nearLimit && <li><strong className="text-foreground">QA sample.</strong> Selected by the recorded workflow for a second check.</li>}{recheck && <li><strong className="text-foreground">Policy change.</strong> Review the persisted result under policy {version}.</li>}{!triggers.length && !qa && !recheck && !nearLimit && <li>No failed policy checks.</li>}</ul><p className="mt-4 border-t border-line pt-3 text-[12px] text-text-2">{closed ? "The decision is frozen." : missingFields.length ? `To resolve: verify ${missingFields.map((f) => FIELD_LABELS[f] ?? f).join(", ")}.` : "To resolve: check the evidence, then confirm or correct the recommendation."}</p></Card>
+            </div>
+            <Card><h2 className="section-title mb-3">Checks</h2><table className="w-full text-[12px]"><tbody>{live.checklist.map((c) => <tr key={c.key} className="border-b border-line last:border-0"><td className="py-2 text-text-2">{humanize(c.note)}</td><td className={cn("w-24 text-right", c.status === "fail" ? c.stage === "R1" ? "text-action" : "text-wait" : "text-text-2")}>{c.status === "unknown" ? <Unknown /> : c.status === "pass" ? "Pass" : "Fail"}</td></tr>)}</tbody></table></Card>
+          </>}
+          {mainTab === "Evidence" && <div className="grid gap-4">        <Card className="flex flex-col">
           <div className="mb-4 flex items-baseline justify-between gap-3">
             <h2 className="section-title">Checklist · policy {version}</h2>
             <span className="label-mono">
@@ -476,12 +323,12 @@ function CaseDetail() {
               const src = refOf(c.field);
               return (
                 <li key={c.key}>
-                  <button
+                  <Button variant="ghost"
                     onMouseEnter={() => setHover(c.field)}
                     onFocus={() => setHover(c.field)}
                     onBlur={() => setHover(null)}
                     className={cn(
-                      "flex w-full items-center gap-3 rounded-[8px] px-2 py-2.5 text-left transition-[background-color,box-shadow] duration-200",
+                      "h-auto whitespace-normal flex w-full items-center gap-3 rounded-[8px] px-2 py-2.5 text-left transition-[background-color,box-shadow] duration-200",
                       c.status === "fail" && c.stage === "R1" && "my-1 bg-action-tint ring-1 ring-action-border",
                       c.status === "fail" && c.stage !== "R1" && "my-1 bg-wait-tint ring-1 ring-wait-border",
                       c.status === "unknown" && "my-1 border border-dashed border-text-3/60 bg-surface-2",
@@ -520,7 +367,7 @@ function CaseDetail() {
                     ) : (
                       <span className="label-mono hidden text-[10px] text-text-3 sm:inline">no source</span>
                     )}
-                  </button>
+                  </Button>
                 </li>
               );
             })}
@@ -529,11 +376,9 @@ function CaseDetail() {
             <Mono className="mr-2">What would have to change?</Mono>
             {live.counterfactual}
           </p>
-        </Card>
-
-        <Card className="flex flex-col">
+        </Card>         <Card className="flex flex-col">
           <h2 className="section-title">Sources</h2>
-          <p className="mb-4 mt-1 text-[12.5px] text-text-2">Point at a checklist item to see where the fact came from.</p>
+
           {transcript && (
             <div className="mb-5">
               <Mono>Call transcript</Mono>
@@ -602,12 +447,101 @@ function CaseDetail() {
               </ul>
             </div>
           )}
-        </Card>
-      </div>
-
-      {/* 4 · Timeline and comments side by side, same height */}
-      <div className="grid items-stretch gap-5 lg:grid-cols-2">
-        <Card>
+        </Card></div>}
+          {mainTab === "Customer" && <CustomerChat
+        caseId={caseId}
+        customer={data.intake?.customer_name ?? null}
+        plate={data.intake?.plate ?? null}
+        quote={claim.quote_eur}
+        version={version}
+        rec={rec}
+        queue={queue}
+        closed={closed}
+        needsUser={needsUser}
+        missingFields={((decision?.missing_fields as string[] | undefined) ?? []).concat(live.checklist.filter((c) => c.stage === "R2" && c.status === "fail").map((c) => c.field)).filter((f, i, a) => a.indexOf(f) === i)}
+        failedTrigger={live.checklist.find((c) => c.status === "fail" && c.stage === "R1")?.key ?? null}
+        decisionId={(decision?.id as string | undefined) ?? null}
+        reviewer={me.name}
+        events={data.events as Row[]}
+        claim={claim}
+        policy={policy}
+        initialTemplate={requestMode ? "request" : undefined}
+        onRequestSent={() => { if (requestMode) { if (nextId) goTo(nextId); else void navigate({ to: "/dashboard" }); } }}
+        className="mb-0"
+      />}
+          {mainTab === "Policy check" &&         <Card className="flex flex-col">
+          <div className="mb-4 flex items-baseline justify-between gap-3">
+            <h2 className="section-title">Checklist · policy {version}</h2>
+            <span className="label-mono">
+              {live.checklist.filter((c) => c.status === "fail").length} failed · {unknownCount} unknown
+            </span>
+          </div>
+          <ul className="divide-y divide-line/80" onMouseLeave={() => setHover(null)}>
+            {live.checklist.map((c) => {
+              const src = refOf(c.field);
+              return (
+                <li key={c.key}>
+                  <Button variant="ghost"
+                    onMouseEnter={() => setHover(c.field)}
+                    onFocus={() => setHover(c.field)}
+                    onBlur={() => setHover(null)}
+                    className={cn(
+                      "h-auto whitespace-normal flex w-full items-center gap-3 rounded-[8px] px-2 py-2.5 text-left transition-[background-color,box-shadow] duration-200",
+                      c.status === "fail" && c.stage === "R1" && "my-1 bg-action-tint ring-1 ring-action-border",
+                      c.status === "fail" && c.stage !== "R1" && "my-1 bg-wait-tint ring-1 ring-wait-border",
+                      c.status === "unknown" && "my-1 border border-dashed border-text-3/60 bg-surface-2",
+                      active === c.field &&
+                        (c.status === "pass"
+                          ? "bg-link/10 ring-1 ring-link/30"
+                          : c.status === "unknown"
+                            ? "border-text-2"
+                            : c.stage === "R1"
+                              ? "ring-2 ring-action-dot/45"
+                              : "ring-2 ring-wait-dot/50"),
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "inline-flex size-5 shrink-0 items-center justify-center rounded-full",
+                        c.status === "pass" && "text-ok",
+                        c.status === "fail" && (c.stage === "R1" ? "text-action" : "text-wait"),
+                        c.status === "unknown" && "border border-dashed border-text-3 text-text-2",
+                      )}
+                    >
+                      {c.status === "pass" ? <Check className="size-4" strokeWidth={2} /> : c.status === "fail" ? <X className="size-4" strokeWidth={2} /> : <span className="text-[11px]">?</span>}
+                    </span>
+                    <span
+                      className={cn(
+                        "flex-1 text-[13.5px]",
+                        c.status === "fail" && "font-semibold",
+                        c.status === "fail" && (c.stage === "R1" ? "text-action" : "text-wait"),
+                        c.status === "pass" && "text-text-2",
+                      )}
+                    >
+                      {humanize(c.note)}
+                    </span>
+                    {src ? (
+                      <span className="label-mono hidden text-[10px] sm:inline">{src.ref}</span>
+                    ) : (
+                      <span className="label-mono hidden text-[10px] text-text-3 sm:inline">no source</span>
+                    )}
+                  </Button>
+                </li>
+              );
+            })}
+          </ul>
+          <p className="mt-auto border-t border-line/80 pt-4 text-[13px] text-text-2">
+            <Mono className="mr-2">What would have to change?</Mono>
+            {live.counterfactual}
+          </p>
+        </Card>}
+        </section>
+        <aside className="card-quiet sticky top-[76px] flex h-[calc(100vh-100px)] min-h-[600px] flex-col overflow-hidden">
+          <div role="tablist" aria-label="Case side panel" className="flex shrink-0 gap-4 border-b border-line px-4">{["Tasks", "Files", "History"].map((tab) => <Button key={tab} variant="ghost" role="tab" aria-selected={sideTab === tab} className={cn("h-11 rounded-none border-b-2 px-1 text-[12px]", sideTab === tab ? "border-link text-link" : "border-transparent text-text-2")} onClick={() => setSideTab(tab)}>{tab}</Button>)}</div>
+          <div className="min-h-0 flex-1 overflow-y-auto p-4">
+            {sideTab === "Tasks" && <ul className="space-y-5">{tasks.map((task) => <li key={task.key} className="flex gap-2.5"><Checkbox id={`task-${task.key}`} checked={taskChecks.has(task.key)} onCheckedChange={(on) => setTaskChecks((cur) => { const n = new Set(cur); if (on) n.add(task.key); else n.delete(task.key); return n; })} className="mt-0.5" /><div><Label htmlFor={`task-${task.key}`} className="text-[12px] font-medium">{task.label}</Label><p className="mt-1 text-[11px] text-text-2">{task.note}</p><Button variant="ghost" size="sm" className="mt-2 h-6 rounded-md bg-surface-2 px-2 text-[10px] text-text-2" onClick={() => { setMainTab(task.tab); setHover(triggers.find((c) => c.key === task.key)?.field ?? null); }}>{task.tab} ↗</Button></div></li>)}</ul>}
+            {sideTab === "Files" && <ul className="divide-y divide-line">{docs.length === 0 && <li className="text-text-2">No documents recorded.</li>}{docs.map((doc) => <li key={doc.name} className="flex items-start gap-2 py-3"><FileText className="mt-0.5 size-4 shrink-0 text-text-3" /><div className="min-w-0"><p className="break-words font-mono text-[11px]">{doc.name}</p><p className="mt-1 text-[11px] text-text-2">{doc.name.split(".").pop()?.toUpperCase()} · <span className={doc.status === "missing" || doc.status === "incomplete" ? "text-wait" : "text-text-2"}>{doc.status}</span></p></div></li>)}</ul>}
+            {sideTab === "History" && <div>        <div>
           <h2 className="section-title mb-5">Timeline</h2>
           {upcoming.length > 0 && (
             <ol className="relative mb-2 ml-1.5 border-l border-dashed border-text-3/60">
@@ -659,8 +593,12 @@ function CaseDetail() {
               );
             })}
           </ol>
-        </Card>
-        <CommentBox disabled={busy} onPost={postComment} comments={comments} />
+        </div><div className="mt-5 border-t border-line pt-4"><CommentBox disabled={busy} onPost={postComment} comments={comments} /></div></div>}
+          </div>
+          <div className="shrink-0 border-t border-line bg-surface p-4">
+            {closed ? <p className="flex items-start gap-2 text-[12px] text-text-2"><Lock className="size-4 shrink-0" />Closed – decision frozen under policy {version}</p> : <><Label className="mb-2 block text-[12px]">Reviewer decision</Label><p className="mb-3 text-[11px] text-text-2">Recommendation: <strong className="font-medium">{RECOMMENDATION_LABELS[rec]}</strong></p><Select value={decisionAction} onValueChange={setDecisionAction}><SelectTrigger aria-label="Reviewer decision" className="h-9 text-[12px]"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="confirm" disabled={!canConfirm}>Confirm recommendation</SelectItem><SelectItem value="request">Request information from customer</SelectItem><SelectItem value="override">Override recommendation</SelectItem></SelectContent></Select><Button className="mt-3 w-full" disabled={busy || (decisionAction === "confirm" && !canConfirm)} onClick={submit}>Submit</Button></>}
+          </div>
+        </aside>
       </div>
 
       <OverrideDialog
@@ -678,15 +616,6 @@ function CaseDetail() {
   );
 }
 
-function Fact({ label, value, flag }: { label: string; value: ReactNode | null; flag?: boolean }) {
-  return (
-    <div className={cn("rounded-[12px] bg-white/65 px-3.5 py-2.5 ring-1 ring-white/80", flag && "bg-white ring-action-border")}>
-      <p className={cn("label-mono text-[10px]", flag && "text-action")}>{label}</p>
-      <p className={cn("mt-0.5 truncate text-[13.5px] font-medium text-foreground", flag && "text-action")}>{value ?? <Unknown />}</p>
-    </div>
-  );
-}
-
 function CommentBox({ onPost, disabled, comments }: { onPost: (body: string) => Promise<unknown>; disabled: boolean; comments: Row[] }) {
   const [body, setBody] = useState("");
   const post = async () => {
@@ -696,7 +625,7 @@ function CommentBox({ onPost, disabled, comments }: { onPost: (body: string) => 
   };
   const recent = [...comments].sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
   return (
-    <Card className="flex flex-col">
+    <div className="flex flex-col">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="section-title">Comments</h2>
         <span className="label-mono">{comments.length ? `${comments.length} · cannot be edited` : "Cannot be edited"}</span>
@@ -731,7 +660,7 @@ function CommentBox({ onPost, disabled, comments }: { onPost: (body: string) => 
           </div>
         </div>
       </div>
-    </Card>
+    </div>
   );
 }
 
@@ -846,18 +775,3 @@ function OverrideDialog({
 function reasonLabel(code: unknown) {
   return REASONS.find(([v]) => v === code)?.[1] ?? String(code ?? "");
 }
-
-function Kbd({ children, dark }: { children: ReactNode; dark?: boolean }) {
-  return (
-    <kbd
-      className={cn(
-        "ml-0.5 inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-[4px] px-1 font-mono text-[10px] font-medium",
-        dark ? "bg-white/15 text-white/80 ring-1 ring-white/25" : "bg-surface-2 text-text-2 ring-1 ring-line",
-      )}
-    >
-      {children}
-    </kbd>
-  );
-}
-
-
