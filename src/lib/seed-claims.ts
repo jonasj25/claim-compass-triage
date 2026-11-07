@@ -1,0 +1,29 @@
+// The 26 seed claims (14 dev with expected_v1, 12 practice). Used by the self-test.
+export const SEED_CLAIMS_CSV = `case_id,case_status,claim_summary,policy_active_on_incident,claim_type,repair_type,quote_eur,incident_report_present,itemized_quote_present,injury_reported,liability_disputed,duplicate_flag,evidence_conflict,expected_v1
+DEV-001,open,Single-car parking scrape; photos and itemized workshop quote.,True,motor_own_damage,standard,650,True,True,False,False,False,False,routine_processing
+DEV-002,open,"Minor bumper damage, but the incident report is missing.",True,motor_own_damage,standard,750,False,True,False,False,False,False,request_information
+DEV-003,open,Repair quote is a total only; no line items.,True,motor_own_damage,standard,890,True,False,False,False,False,False,request_information
+DEV-004,open,Repair estimate for bodywork exceeds the routine limit.,True,motor_own_damage,standard,1800,True,True,False,False,False,False,human_review
+DEV-005,open,Incident date falls outside the active policy period.,False,motor_own_damage,standard,400,True,True,False,False,False,False,human_review
+DEV-006,open,Driver reports an injury after the collision.,True,motor_own_damage,standard,300,True,True,True,False,False,False,human_review
+DEV-007,open,Two drivers disagree about who caused the collision.,True,motor_own_damage,standard,700,True,True,False,True,False,False,human_review
+DEV-008,open,Second submission with the same incident reference.,True,motor_own_damage,standard,500,True,True,False,False,True,False,human_review
+DEV-009,open,Photo timestamp conflicts with the reported incident date.,True,motor_own_damage,standard,600,True,True,False,False,False,True,human_review
+DEV-010,open,"Straightforward claim at the original €1,500 boundary.",True,motor_own_damage,standard,1500,True,True,False,False,False,False,routine_processing
+DEV-011,open,Electric vehicle battery housing repair; complete paperwork.,True,motor_own_damage,ev_high_voltage_battery,900,True,True,False,False,False,False,routine_processing
+DEV-012,open,"Routine panel replacement, but the claim concerns theft.",True,theft,standard,700,True,True,False,False,False,False,human_review
+DEV-013,open,"Panel repair; the quote amount is unreadable on the scanned document.",True,motor_own_damage,standard,,True,True,False,False,False,False,request_information
+DEV-014,open,"Injury reported; the incident-report field was left blank on the form.",True,motor_own_damage,standard,350,,True,True,False,False,False,human_review
+PRA-001,open,Windshield repair with complete evidence.,True,motor_own_damage,standard,320,True,True,False,False,False,False,
+PRA-002,open,"Panel repair at €1,200 with complete evidence.",True,motor_own_damage,standard,1200,True,True,False,False,False,False,
+PRA-003,open,"Panel repair at €1,201 with complete evidence.",True,motor_own_damage,standard,1201,True,True,False,False,False,False,
+PRA-004,open,"Repair quote at €1,450, complete evidence.",True,motor_own_damage,standard,1450,True,True,False,False,False,False,
+PRA-005,open,EV high-voltage battery service at €700.,True,motor_own_damage,ev_high_voltage_battery,700,True,True,False,False,False,False,
+PRA-006,open,Battery service with no itemized quote.,True,motor_own_damage,ev_high_voltage_battery,700,True,False,False,False,False,False,
+PRA-007,open,Claimant reports injury; incident report missing.,True,motor_own_damage,standard,800,False,True,True,False,False,False,
+PRA-008,open,"Damage looks routine, but policy had expired.",False,motor_own_damage,standard,500,True,True,False,False,False,False,
+PRA-009,closed,"Closed claim at €1,350, complete evidence.",True,motor_own_damage,standard,1350,True,True,False,False,False,False,
+PRA-010,closed,Closed EV battery repair at €900.,True,motor_own_damage,ev_high_voltage_battery,900,True,True,False,False,False,False,
+PRA-011,open,"Quote says €900; claim form says €1,900.",True,motor_own_damage,standard,900,True,True,False,False,False,True,
+PRA-012,open,New claim with missing incident report and itemized quote.,True,motor_own_damage,standard,800,False,False,False,False,False,False,
+`;
