@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Bell, Download, LogOut, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { RoleContext, ROLE_HOME, ROLE_LABELS, ROLE_NAV, initials, type Me, type Role } from "@/lib/role";
+import { RoleContext, useRole, ROLE_HOME, ROLE_LABELS, ROLE_NAV, initials, type Me, type Role } from "@/lib/role";
 import { activePolicyQuery, casesQuery } from "@/lib/data";
 import { toCsv } from "@/lib/csv";
 import { cn } from "@/lib/utils";
@@ -71,14 +71,6 @@ function AppShell() {
     </RoleContext.Provider>
   );
 }
-
-function useCtx() {
-  // local helper to avoid circular import naming
-  return (RoleContext as any)._currentValue as never;
-}
-void useCtx;
-
-import { useRole } from "@/lib/role";
 
 function TopBar() {
   const { me, role, setRole } = useRole();
