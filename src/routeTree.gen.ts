@@ -15,6 +15,7 @@ import { Route as AuthenticatedAuditRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedBusinessCaseRouteImport } from './routes/_authenticated/business-case'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedImpactRouteImport } from './routes/_authenticated/impact'
+import { Route as AuthenticatedImportRouteImport } from './routes/_authenticated/import'
 import { Route as AuthenticatedOverviewRouteImport } from './routes/_authenticated/overview'
 import { Route as AuthenticatedPhoneIntakeRouteImport } from './routes/_authenticated/phone-intake'
 import { Route as AuthenticatedPolicyRouteImport } from './routes/_authenticated/policy'
@@ -53,6 +54,11 @@ const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
 const AuthenticatedImpactRoute = AuthenticatedImpactRouteImport.update({
   id: '/impact',
   path: '/impact',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedImportRoute = AuthenticatedImportRouteImport.update({
+  id: '/import',
+  path: '/import',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedOverviewRoute = AuthenticatedOverviewRouteImport.update({
@@ -110,6 +116,7 @@ export interface FileRoutesByFullPath {
   '/business-case': typeof AuthenticatedBusinessCaseRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/impact': typeof AuthenticatedImpactRoute
+  '/import': typeof AuthenticatedImportRoute
   '/overview': typeof AuthenticatedOverviewRoute
   '/phone-intake': typeof AuthenticatedPhoneIntakeRoute
   '/policy': typeof AuthenticatedPolicyRoute
@@ -126,6 +133,7 @@ export interface FileRoutesByTo {
   '/business-case': typeof AuthenticatedBusinessCaseRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/impact': typeof AuthenticatedImpactRoute
+  '/import': typeof AuthenticatedImportRoute
   '/overview': typeof AuthenticatedOverviewRoute
   '/phone-intake': typeof AuthenticatedPhoneIntakeRoute
   '/policy': typeof AuthenticatedPolicyRoute
@@ -144,6 +152,7 @@ export interface FileRoutesById {
   '/_authenticated/business-case': typeof AuthenticatedBusinessCaseRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/impact': typeof AuthenticatedImpactRoute
+  '/_authenticated/import': typeof AuthenticatedImportRoute
   '/_authenticated/overview': typeof AuthenticatedOverviewRoute
   '/_authenticated/phone-intake': typeof AuthenticatedPhoneIntakeRoute
   '/_authenticated/policy': typeof AuthenticatedPolicyRoute
@@ -162,6 +171,7 @@ export interface FileRouteTypes {
     | '/business-case'
     | '/dashboard'
     | '/impact'
+    | '/import'
     | '/overview'
     | '/phone-intake'
     | '/policy'
@@ -178,6 +188,7 @@ export interface FileRouteTypes {
     | '/business-case'
     | '/dashboard'
     | '/impact'
+    | '/import'
     | '/overview'
     | '/phone-intake'
     | '/policy'
@@ -195,6 +206,7 @@ export interface FileRouteTypes {
     | '/_authenticated/business-case'
     | '/_authenticated/dashboard'
     | '/_authenticated/impact'
+    | '/_authenticated/import'
     | '/_authenticated/overview'
     | '/_authenticated/phone-intake'
     | '/_authenticated/policy'
@@ -253,6 +265,13 @@ declare module '@tanstack/react-router' {
       path: '/impact'
       fullPath: '/impact'
       preLoaderRoute: typeof AuthenticatedImpactRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/import': {
+      id: '/_authenticated/import'
+      path: '/import'
+      fullPath: '/import'
+      preLoaderRoute: typeof AuthenticatedImportRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/overview': {
@@ -326,6 +345,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedBusinessCaseRoute: typeof AuthenticatedBusinessCaseRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedImpactRoute: typeof AuthenticatedImpactRoute
+  AuthenticatedImportRoute: typeof AuthenticatedImportRoute
   AuthenticatedOverviewRoute: typeof AuthenticatedOverviewRoute
   AuthenticatedPhoneIntakeRoute: typeof AuthenticatedPhoneIntakeRoute
   AuthenticatedPolicyRoute: typeof AuthenticatedPolicyRoute
@@ -342,6 +362,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedBusinessCaseRoute: AuthenticatedBusinessCaseRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedImpactRoute: AuthenticatedImpactRoute,
+  AuthenticatedImportRoute: AuthenticatedImportRoute,
   AuthenticatedOverviewRoute: AuthenticatedOverviewRoute,
   AuthenticatedPhoneIntakeRoute: AuthenticatedPhoneIntakeRoute,
   AuthenticatedPolicyRoute: AuthenticatedPolicyRoute,
