@@ -78,7 +78,33 @@ function ReportPage() {
   const channel = useRef<"online_form" | "phone">("online_form");
 
   const qs = useMemo(() => activeQuestions(answers), [answers]);
-  const set = (k: AnswerKey, v: string) => setAnswers((a) => ({ ...a, [k]: v }));
+  const set = (k: AnswerKey, v: string) => {
+    if (k === "name" || k === "email") setFormCheck({ busy: false, error: null });
+    setAnswers((a) => ({ ...a, [k]: v }));
+  };
+
+  // Written form: name and email must match a registered customer before the claim questions
+  const formVerified = useRef<{ name: string; email: string } | null>(null);
+  const [formCheck, setFormCheck] = useState<{ busy: boolean; error: string | null }>({ busy: false, error: null });
+  const formIsVerified = (a: ReportAnswers) =>
+    !!formVerified.current && sameName(formVerified.current.name, a.name) && normalizeEmail(a.email) === normalizeEmail(formVerified.current.email);
+  const emailStep = qs.findIndex((q) => q.key === "email");
+  const formNext = async () => {
+    const q = qs[Math.min(step, qs.length - 1)];
+    if (q.key === "email" && !formIsVerified(answers)) {
+      setFormCheck({ busy: true, error: null });
+      const r = await verifyCustomer({ data: { name: answers.name, email: answers.email } }).catch(() => null);
+      if (!r?.registered || !r.email) {
+        setFormCheck({ busy: false, error: r ? "We couldn't find a registered customer with this name and email. Please check both." : "We couldn't check your details just now. Please try again." });
+        return;
+      }
+      formVerified.current = { name: answers.name, email: r.email };
+      setAnswers((a) => ({ ...a, email: r.email!, plate: a.plate || (r.plate ?? "") }));
+      setFormCheck({ busy: false, error: null });
+    }
+    if (step >= qs.length - 1) completeAndSubmit();
+    else setStep((s) => s + 1);
+  };
 
   // Latest values for callbacks that fire later (voice agent, timers)
   const latest = useRef({ answers, lines, heardIn, files, uploads });
@@ -198,7 +224,7 @@ function ReportPage() {
           <Shell
             side={
               <div className="space-y-4">
-                <Checklist qs={qs} answers={answers} heardIn={{}} onJump={(i) => setStep(i)} current={qs[step]?.key} />
+                <Checklist qs={qs} answers={answers} heardIn={{}} onJump={(i) => setStep(formIsVerified(answers) ? i : Math.min(i, emailStep))} current={qs[step]?.key} />
                 {uploadsCard(true)}
               </div>
             }
@@ -210,7 +236,9 @@ function ReportPage() {
               answers={answers}
               set={set}
               onBack={() => (step === 0 ? setMode("start") : setStep((s) => s - 1))}
-              onNext={() => (step >= qs.length - 1 ? completeAndSubmit() : setStep((s) => s + 1))}
+              onNext={() => void formNext()}
+              checking={formCheck.busy}
+              checkError={formCheck.error}
             />
           </Shell>
         )}
@@ -374,9 +402,9 @@ function Checklist({ qs, answers, heardIn, onJump, current }: { qs: Question[]; 
 
 // ------------------------------------------------------------------ form (one question at a time)
 
-function FormStep({ q, index, total, answers, set, onBack, onNext }: { q: Question; index: number; total: number; answers: ReportAnswers; set: (k: AnswerKey, v: string) => void; onBack: () => void; onNext: () => void }) {
+function FormStep({ q, index, total, answers, set, onBack, onNext, checking = false, checkError = null }: { q: Question; index: number; total: number; answers: ReportAnswers; set: (k: AnswerKey, v: string) => void; onBack: () => void; onNext: () => void; checking?: boolean; checkError?: string | null }) {
   const value = String(answers[q.key] ?? "");
-  const ok = canContinue(q, answers);
+  const ok = canContinue(q, answers) && !checking;
   const inputRef = useRef<HTMLInputElement & HTMLTextAreaElement>(null);
   useEffect(() => {
     inputRef.current?.focus();
@@ -457,6 +485,11 @@ function FormStep({ q, index, total, answers, set, onBack, onNext }: { q: Questi
           </div>
         )}
         {q.type === "email" && value && !emailOk(value) && <p className="mt-2 text-[13px] text-action">Please check the email address.</p>}
+        {q.key === "email" && checkError && (
+          <p role="alert" className="mt-2 text-[13px] text-action">
+            {checkError}
+          </p>
+        )}
       </div>
 
       <div className="mt-auto flex items-center justify-between pt-10">
@@ -466,7 +499,7 @@ function FormStep({ q, index, total, answers, set, onBack, onNext }: { q: Questi
         <div className="flex items-center gap-3">
           {q.type !== "choice" && <span className="hidden text-[12px] text-text-3 sm:inline">press Enter ↵</span>}
           <Button onClick={onNext} disabled={!ok}>
-            {index === total - 1 ? "Check my answers" : q.optional && !value ? "Skip" : "Continue"} <ArrowRight />
+            {checking ? "Checking…" : index === total - 1 ? "Check my answers" : q.optional && !value ? "Skip" : "Continue"} <ArrowRight />
           </Button>
         </div>
       </div>
@@ -619,16 +652,16 @@ function Conversation({
   }, [lines.length, interim, phase]);
 
   // ---- customer check: Mia asks for name and email first and only continues once they match a registered customer
-  const verified = useRef<{ name: string; email: string } | null>(null);
+  const verified = useRef<{ name: string; email: string; plate: string } | null>(null);
   const failedChecks = useRef(0);
   const isVerified = (a: ReportAnswers) =>
     !!verified.current && sameName(verified.current.name, a.name) && normalizeEmail(a.email) === normalizeEmail(verified.current.email);
   const checkCustomer = async (a: ReportAnswers): Promise<"verified" | "unknown" | "incomplete"> => {
     if (isVerified(a)) return "verified";
     if (!a.name.trim() || !a.email.trim()) return "incomplete";
-    const r = await verifyCustomer({ data: { name: a.name, email: a.email } }).catch(() => ({ registered: false as const, name: undefined, email: undefined }));
+    const r = await verifyCustomer({ data: { name: a.name, email: a.email } }).catch(() => ({ registered: false as const, name: undefined, email: undefined, plate: undefined }));
     if (r.registered && r.name && r.email) {
-      verified.current = { name: r.name, email: r.email };
+      verified.current = { name: r.name, email: r.email, plate: r.plate ?? "" };
       return "verified";
     }
     failedChecks.current += 1;
@@ -718,7 +751,7 @@ function Conversation({
     let check: "verified" | "unknown" | "incomplete" = "verified";
     if (!wasVerified) {
       check = await checkCustomer(merged);
-      if (check === "verified") merged = { ...merged, email: verified.current!.email };
+      if (check === "verified") merged = { ...merged, email: verified.current!.email, plate: merged.plate || verified.current!.plate };
       if (check === "unknown") {
         merged = { ...merged, name: "", email: "" };
         found = {};
@@ -854,7 +887,7 @@ function Conversation({
                   return "Not saved. Still no registered customer with that name and email. Apologise, explain you can only take claims from registered customers, ask them to check their registration or contact Clearpath, and end the conversation.";
                 return "Not saved. No registered customer matches that name and email. Tell the caller politely, ask them to repeat their full name and the email address they registered with, and call update_claim again. Do not ask about the claim until the customer is verified.";
               }
-              merged = { ...merged, email: verified.current!.email };
+              merged = { ...merged, email: verified.current!.email, plate: merged.plate || verified.current!.plate };
               greeting = `Customer verified: ${merged.name}. `;
             }
             answersRef.current = merged;

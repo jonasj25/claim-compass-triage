@@ -5,6 +5,8 @@
 export interface Customer {
   name: string;
   email: string;
+  /** Licence plate of the customer's insured car */
+  plate: string;
 }
 
 const DIGITS: Record<string, string> = {

@@ -1,13 +1,14 @@
 import { createServerFn } from "@tanstack/react-start";
 import { findCustomer } from "./customers";
 
-// Mia checks the caller against the registered customers before she asks anything about the claim.
-// Only a yes/no comes back (plus the name and email as registered), never the list.
+// Mia and the written form check the customer against the registered customers before anything about the claim.
+// Only a yes/no comes back (plus that customer's registered name, email and plate), never the list.
 
 export interface CustomerCheck {
   registered: boolean;
   name?: string;
   email?: string;
+  plate?: string;
 }
 
 export const verifyCustomer = createServerFn({ method: "POST" })
@@ -18,5 +19,7 @@ export const verifyCustomer = createServerFn({ method: "POST" })
   .handler(async ({ data }): Promise<CustomerCheck> => {
     const { REGISTERED_CUSTOMERS } = await import("./customers.server");
     const c = findCustomer(REGISTERED_CUSTOMERS, data.name, data.email);
-    return c ? { registered: true, name: c.name, email: c.email } : { registered: false };
+    return c
+      ? { registered: true, name: c.name, email: c.email, plate: c.plate }
+      : { registered: false };
   });

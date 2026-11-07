@@ -57,8 +57,8 @@ export const submitClaimReport = createServerFn({ method: "POST" })
     const { supabaseAdmin: db } = await import("@/integrations/supabase/client.server");
     const a = data.answers;
 
-    // Claims reported through Mia only come from registered customers (checked again here, not just in the browser)
-    if (data.channel === "phone") {
+    // Claims only come from registered customers, by voice or form (checked again here, not just in the browser)
+    {
       const { REGISTERED_CUSTOMERS } = await import("./customers.server");
       const customer = findCustomer(REGISTERED_CUSTOMERS, a.name, a.email);
       if (!customer) throw new Error("We couldn't find a registered customer with this name and email. Please check both and try again.");

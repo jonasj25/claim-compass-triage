@@ -3,7 +3,7 @@
 import type { Customer } from "./customers";
 
 export const REGISTERED_CUSTOMERS: readonly Customer[] = [
-  { name: "John", email: "john123@gmail.com" },
-  { name: "Anna", email: "anna123@gmail.com" },
-  { name: "Marko", email: "marko123@gmail.com" },
+  { name: "John", email: "john123@gmail.com", plate: "M-JO 4821" },
+  { name: "Anna", email: "anna123@gmail.com", plate: "M-AN 2735" },
+  { name: "Marko", email: "marko123@gmail.com", plate: "M-MK 9164" },
 ];

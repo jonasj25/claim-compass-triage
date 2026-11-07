@@ -3,8 +3,12 @@ import { findCustomer, normalizeEmail, sameName } from "./customers";
 import { REGISTERED_CUSTOMERS } from "./customers.server";
 
 describe("registered customers", () => {
-  it("holds John, Anna and Marko", () => {
-    expect(REGISTERED_CUSTOMERS.map((c) => c.name)).toEqual(["John", "Anna", "Marko"]);
+  it("holds John, Anna and Marko, each with a licence plate", () => {
+    expect(REGISTERED_CUSTOMERS.map((c) => [c.name, c.plate])).toEqual([
+      ["John", "M-JO 4821"],
+      ["Anna", "M-AN 2735"],
+      ["Marko", "M-MK 9164"],
+    ]);
   });
 
   it.each([

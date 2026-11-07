@@ -71,3 +71,34 @@ describe("Mia checks the customer before the claim", () => {
     );
   });
 });
+
+describe("the written form checks the customer too", () => {
+  const typeIn = (value: string) => {
+    fireEvent.change(document.querySelector("main input") as HTMLInputElement, {
+      target: { value },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /Continue/ }));
+  };
+
+  it("stops at the email question for an unregistered customer", async () => {
+    render(<Page />);
+    fireEvent.click(screen.getByRole("button", { name: /form|type|write/i }));
+    typeIn("John");
+    await waitFor(() => expect(screen.getByText("Which email can we reach you at?")).toBeTruthy());
+    typeIn("anna123@gmail.com");
+    await waitFor(() =>
+      expect(screen.getByRole("alert").textContent).toMatch(/couldn't find a registered customer/),
+    );
+    expect(screen.getByText("Which email can we reach you at?")).toBeTruthy();
+  });
+
+  it("continues for a registered customer and fills in their plate", async () => {
+    render(<Page />);
+    fireEvent.click(screen.getByRole("button", { name: /form|type|write/i }));
+    typeIn("Anna");
+    await waitFor(() => expect(screen.getByText("Which email can we reach you at?")).toBeTruthy());
+    typeIn("Anna123@gmail.com");
+    await waitFor(() => expect(screen.getByText("What's your policy number?")).toBeTruthy());
+    expect(screen.getAllByText("M-AN 2735").length).toBeGreaterThan(0);
+  });
+});
