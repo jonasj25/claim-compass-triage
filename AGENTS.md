@@ -39,3 +39,4 @@ use the editor.
 - Reviewer workstream grouping is a pure presentation helper using persisted decisions, policy checklist and second-check logic; it never changes recommendations or selects new QA samples.
 - Case navigation may carry per-case group labels, resolved by the shared helper so the case-detail page stays unchanged.
 - Handling-time reporting reads recorded confirmation and override durations through a shared query; it is separate from estimated workstream effort.
+- The /claims route owns all-claim lookups independently of the personal dashboard so autonomous and closed claims remain accessible.
