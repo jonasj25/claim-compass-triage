@@ -3,7 +3,7 @@ import { decide, type Claim, type Policy, type Recommendation } from "./triage";
 import { queueFor } from "./lifecycle";
 import { secondCheckReason } from "./second-check";
 import { buildDocuments, type FactSource, type FormField, type TranscriptLine } from "./intake";
-import { activeQuestions, answerLabel, EMPTY_ANSWERS, FIELD_SOURCE, toClaimFields, type AnswerKey, type ReportAnswers } from "./report-intake";
+import { activeQuestions, answerLabel, CSV_COLUMNS, EMPTY_ANSWERS, FIELD_SOURCE, isUnknownText, knownClaimFields, toClaimFields, type AnswerKey, type ReportAnswers } from "./report-intake";
 
 // Public claim report (/report). Runs on the server with the service role, because the customer is not signed in.
 // The recommendation comes only from decide() with the active policy - exactly like a CSV import.
@@ -24,6 +24,8 @@ export interface ReportResult {
   policy_version: string;
   missing_fields: string[];
   reasons: string[];
+  /** The stored claim as one row in the case CSV format */
+  row: Record<string, unknown>;
 }
 
 const clip = (v: unknown, n: number) => String(v ?? "").trim().slice(0, n);
@@ -69,7 +71,7 @@ export const submitClaimReport = createServerFn({ method: "POST" })
     const claim: Claim = {
       case_id,
       case_status: "open",
-      policy_active_on_incident: a.policy_number ? true : null,
+      policy_active_on_incident: isUnknownText(a.policy_number) ? null : true,
       duplicate_flag: duplicate,
       evidence_conflict: false,
       ...toClaimFields(a),
@@ -101,7 +103,7 @@ export const submitClaimReport = createServerFn({ method: "POST" })
         raw: {
           source: "customer_report",
           customer_email: a.email,
-          policy_number: a.policy_number || null,
+          policy_number: isUnknownText(a.policy_number) ? null : a.policy_number,
           incident_date: a.incident_date || null,
           plate: a.plate,
           plate_key: plateKey,
@@ -170,8 +172,8 @@ export const submitClaimReport = createServerFn({ method: "POST" })
         field: "policy_active_on_incident",
         source_type: "system",
         ref: "policy register",
-        quote: a.policy_number ? `Policy ${a.policy_number} found (demo register)` : "No policy number given",
-        confidence: a.policy_number ? "confirmed" : "unconfirmed",
+        quote: isUnknownText(a.policy_number) ? "No policy number given" : `Policy ${a.policy_number} found (demo register)`,
+        confidence: isUnknownText(a.policy_number) ? "unconfirmed" : "confirmed",
       },
       { field: "duplicate_flag", source_type: "system", ref: "duplicate check", quote: duplicate ? "Same plate and incident date already reported" : "No duplicate found", confidence: "confirmed" },
       { field: "evidence_conflict", source_type: "system", ref: "evidence check", quote: "No conflict found at intake", confidence: "confirmed" },
@@ -189,5 +191,91 @@ export const submitClaimReport = createServerFn({ method: "POST" })
     );
     if (queue === "waiting_customer") must(await db.from("outreach").insert({ case_id, channel: "email", missing_items: d.missing_fields }));
 
-    return { case_id, recommendation: d.recommendation, rule_id: d.rule_id, policy_version: policy.version, missing_fields: d.missing_fields, reasons: d.reasons };
+    const row = Object.fromEntries(CSV_COLUMNS.map((c) => [c, (claim as Record<string, unknown>)[c] ?? null]));
+    return { case_id, recommendation: d.recommendation, rule_id: d.rule_id, policy_version: policy.version, missing_fields: d.missing_fields, reasons: d.reasons, row };
+  });
+
+// ---------------------------------------------------------------- customer adds missing information later
+
+export interface AddInfoInput {
+  case_id: string;
+  email: string;
+  answers: Partial<ReportAnswers>;
+  files?: { incident_report?: string; quote?: string };
+}
+
+/**
+ * The customer sends what was missing. Only stated facts are written (unknowns stay unknown), then the claim
+ * runs through the active policy again: complete and uncritical -> processed, a risk -> to review, still missing -> waiting.
+ */
+export const addClaimInfo = createServerFn({ method: "POST" })
+  .inputValidator((d: AddInfoInput) => {
+    if (!d?.case_id || !d?.email) throw new Error("Missing reference");
+    const answers: Partial<ReportAnswers> = {};
+    for (const k of Object.keys(EMPTY_ANSWERS) as AnswerKey[]) if (d.answers?.[k] !== undefined) answers[k] = clip(d.answers[k], 120) as never;
+    return { case_id: clip(d.case_id, 40), email: clip(d.email, 120).toLowerCase(), answers, files: d.files ?? {} };
+  })
+  .handler(async ({ data }): Promise<ReportResult> => {
+    const { supabaseAdmin: db } = await import("@/integrations/supabase/client.server");
+    const must = (r: { error: { message: string } | null }) => {
+      if (r.error) throw new Error(r.error.message);
+    };
+    const cur = await db.from("claims").select("*").eq("case_id", data.case_id).single();
+    if (cur.error || !cur.data) throw new Error("Claim not found");
+    const raw = (cur.data.raw ?? {}) as Record<string, unknown>;
+    if (raw.source !== "customer_report" || String(raw.customer_email ?? "").toLowerCase() !== data.email) throw new Error("Claim not found");
+    if (String(cur.data.case_status ?? "").toLowerCase() === "closed") throw new Error("This claim is already closed");
+
+    const pol = await db.from("policy_versions").select("config").eq("status", "active").order("created_at", { ascending: false }).limit(1).single();
+    if (pol.error) throw new Error(pol.error.message);
+    const policy = pol.data.config as unknown as Policy;
+
+    const changes = knownClaimFields(data.answers);
+    const claim = { ...(cur.data as unknown as Claim), ...changes } as Claim;
+    const d = decide(claim, policy);
+    const queue = queueFor(d.recommendation, false);
+    const second = secondCheckReason(claim, policy, d.recommendation);
+    const now = new Date().toISOString();
+    const fields = Object.keys(changes);
+
+    if (fields.length) {
+      const files: Record<string, string | undefined> = { ...((raw.files as Record<string, string | undefined>) ?? {}), ...data.files };
+      const newRaw = { ...raw, ...(data.answers.policy_number && !isUnknownText(data.answers.policy_number) ? { policy_number: data.answers.policy_number } : {}), files };
+      must(await db.from("claims").update({ ...(changes as never), raw: newRaw as never }).eq("case_id", data.case_id));
+      const docs = buildDocuments(claim).map((doc) => {
+        const f = doc.kind === "incident_report" ? files.incident_report : doc.kind === "quote" ? files.quote : undefined;
+        return f ? { ...doc, name: f } : doc;
+      });
+      must(await db.from("claim_intake").update({ documents: docs as never }).eq("case_id", data.case_id));
+      must(
+        await db.from("fact_sources").insert(
+          fields.map((field) => ({ case_id: data.case_id, field, source_type: "form", ref: "customer follow-up", quote: `${field} = ${String((changes as Record<string, unknown>)[field])}`, confidence: "confirmed" })),
+        ),
+      );
+    }
+    must(await db.from("outreach").update({ status: "answered" }).eq("case_id", data.case_id).in("status", ["sent", "reminded"]));
+    must(await db.from("decisions").update({ is_current: false }).eq("case_id", data.case_id).eq("is_current", true));
+    must(
+      await db.from("decisions").insert({ case_id: data.case_id, policy_version: policy.version, recommendation: d.recommendation, rule_id: d.rule_id, explanation: d.reasons.join(". "), missing_fields: d.missing_fields }),
+    );
+    must(
+      await db.from("case_workflow").update({
+        queue,
+        qa_sample: !!second,
+        sla_due_at: queue === "on_you" || second ? new Date(Date.now() + 24 * 3600e3).toISOString() : null,
+        updated_at: now,
+      }).eq("case_id", data.case_id),
+    );
+    must(
+      await db.from("case_events").insert([
+        { case_id: data.case_id, type: "documents_received", actor: "Customer · online follow-up", payload: { fields } },
+        { case_id: data.case_id, type: "retriaged", actor: "Rules engine", payload: { recommendation: d.recommendation, rule_id: d.rule_id, policy_version: policy.version } },
+        ...(queue === "waiting_customer" ? [{ case_id: data.case_id, type: "outreach_sent", actor: "Rules engine", payload: { channel: "email", missing_items: d.missing_fields } }] : []),
+        ...(second ? [{ case_id: data.case_id, type: "second_check_flagged", actor: "Rules engine", payload: { reason: second, policy_version: policy.version } }] : []),
+      ]),
+    );
+    if (queue === "waiting_customer") must(await db.from("outreach").insert({ case_id: data.case_id, channel: "email", missing_items: d.missing_fields }));
+
+    const row = Object.fromEntries(CSV_COLUMNS.map((c) => [c, (claim as Record<string, unknown>)[c] ?? null]));
+    return { case_id: data.case_id, recommendation: d.recommendation, rule_id: d.rule_id, policy_version: policy.version, missing_fields: d.missing_fields, reasons: d.reasons, row };
   });

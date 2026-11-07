@@ -136,6 +136,7 @@ export function answerLabel(q: Question, a: ReportAnswers): string {
   const v = String(a[q.key] ?? "").trim();
   if (!v) return "";
   if (q.choices) return q.choices.find((c) => c.value === v)?.label ?? v;
+  if (v === "unsure") return "Not sure";
   if (q.type === "money") {
     const n = parseEuro(v);
     return n === null ? v : "€" + n.toLocaleString("en-US", { maximumFractionDigits: 2 });
@@ -285,7 +286,7 @@ export function interpretReply(q: Question, text: string, today = new Date()): P
     return {};
   }
   if (q.type === "money") {
-    if (unsure || /no quote|not yet|noch nicht/.test(t)) return { quote_amount: "" };
+    if (unsure || no || /no quote|not yet|noch nicht/.test(t)) return { quote_amount: "unsure" };
     const m = raw.match(/\d[\d.,]*/);
     const n = m ? parseEuro(m[0]) : null;
     return n === null ? {} : { quote_amount: String(n) };
@@ -307,11 +308,58 @@ export function interpretReply(q: Question, text: string, today = new Date()): P
   const words = raw.split(/\s+/).length;
   if ((q.key === "name" || q.key === "plate" || q.key === "policy_number") && words > 6) return {};
   if (q.key === "policy_number") {
-    if (unsure || no) return {};
+    if (unsure || no || /don't have|do not have|not with me|nicht dabei/.test(t)) return { policy_number: "unsure" };
     return { policy_number: raw.replace(/^(it'?s|it is|my policy number is)\s+/i, "").replace(/\s+/g, "").toUpperCase() };
   }
   if (q.key === "plate") return { plate: raw.replace(/^(it'?s|it is|the plate is)\s+/i, "").toUpperCase() };
   if (q.key === "name") return { name: raw.replace(/^(my name is|i'm|i am|it's)\s+/i, "") };
   if (q.key === "what_happened") return { what_happened: raw };
   return {};
+}
+
+/** A text answer that is really "not known". */
+export const isUnknownText = (v: string) => !v.trim() || v.trim().toLowerCase() === "unsure";
+
+/** Which answers feed a claim field (used when the customer adds missing information later). */
+export const FIELD_QUESTIONS: Record<string, AnswerKey[]> = {
+  claim_type: ["claim_kind"],
+  repair_type: ["repair_kind"],
+  quote_eur: ["quote_amount"],
+  itemized_quote_present: ["quote_itemized"],
+  incident_report_present: ["incident_report"],
+  injury_reported: ["injury"],
+  liability_disputed: ["other_party", "fault"],
+  policy_active_on_incident: ["policy_number"],
+};
+
+/** The claim fields that a partial set of answers determines; unknowns are left out (stay as they are). */
+export function knownClaimFields(partial: Partial<ReportAnswers>) {
+  const full = toClaimFields({ ...EMPTY_ANSWERS, ...partial });
+  const out: Record<string, unknown> = {};
+  for (const [field, keys] of Object.entries(FIELD_QUESTIONS)) {
+    if (field === "policy_active_on_incident") {
+      if (partial.policy_number && !isUnknownText(partial.policy_number)) out[field] = true;
+      continue;
+    }
+    if (!keys.some((k) => partial[k] !== undefined)) continue;
+    const v = (full as Record<string, unknown>)[field];
+    if (v !== null && v !== undefined) out[field] = v;
+  }
+  return out;
+}
+
+/** One row in the case CSV format (same columns as data/dev_cases.csv) for a claim. */
+export const CSV_COLUMNS = [
+  "case_id", "case_status", "claim_summary", "policy_active_on_incident", "claim_type", "repair_type", "quote_eur",
+  "incident_report_present", "itemized_quote_present", "injury_reported", "liability_disputed", "duplicate_flag", "evidence_conflict",
+] as const;
+
+export function toCsvRow(claim: Record<string, unknown>): string {
+  const cell = (v: unknown) => {
+    if (v === null || v === undefined) return "";
+    if (typeof v === "boolean") return v ? "True" : "False";
+    const s = String(v);
+    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  return `${CSV_COLUMNS.join(",")}\n${CSV_COLUMNS.map((c) => cell(claim[c])).join(",")}`;
 }

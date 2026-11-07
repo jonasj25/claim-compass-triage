@@ -15,11 +15,14 @@ import {
   fieldState,
   interpretReply,
   parseEuro,
+  FIELD_QUESTIONS,
+  QUESTIONS,
+  toCsvRow,
   type AnswerKey,
   type Question,
   type ReportAnswers,
 } from "@/lib/report-intake";
-import { submitClaimReport, type ReportResult } from "@/lib/report.functions";
+import { addClaimInfo, submitClaimReport, type ReportResult } from "@/lib/report.functions";
 import { speakText, transcribeAudio, voiceStatus } from "@/lib/voice.functions";
 
 // Public page (no sign-in): a customer reports a motor claim, by form or by voice.
@@ -77,19 +80,37 @@ function ReportPage() {
   const qs = useMemo(() => activeQuestions(answers), [answers]);
   const set = (k: AnswerKey, v: string) => setAnswers((a) => ({ ...a, [k]: v }));
 
+  // Latest values for callbacks that fire later (voice agent, timers)
+  const latest = useRef({ answers, lines, heardIn, files });
+  latest.current = { answers, lines, heardIn, files };
+  const submitting = useRef(false);
+
   const submit = async () => {
+    if (submitting.current) return;
+    submitting.current = true;
     setBusy(true);
     setError(null);
     try {
-      const res = await submitClaimReport({ data: { channel: channel.current, answers, transcript: lines, heardIn, files } });
+      const cur = latest.current;
+      const res = await submitClaimReport({ data: { channel: channel.current, answers: cur.answers, transcript: cur.lines, heardIn: cur.heardIn, files: cur.files } });
       setResult(res);
       setMode("done");
       window.scrollTo({ top: 0 });
     } catch (e) {
       setError((e as Error).message || "Something went wrong. Please try again.");
+      setMode("review");
     } finally {
       setBusy(false);
+      submitting.current = false;
     }
+  };
+
+  /** Every point is answered or marked "not sure": create the claim file right away (review only if basics are missing). */
+  const completeAndSubmit = () => {
+    const a = latest.current.answers;
+    const basicsOk = activeQuestions(a).every((q) => canContinue(q, a));
+    if (basicsOk) void submit();
+    else setMode("review");
   };
 
   return (
@@ -127,6 +148,10 @@ function ReportPage() {
                   channel.current = "phone";
                   setMode("review");
                 }}
+                onComplete={() => {
+                  channel.current = "phone";
+                  completeAndSubmit();
+                }}
               />
             }
             onForm={() => {
@@ -146,7 +171,7 @@ function ReportPage() {
               answers={answers}
               set={set}
               onBack={() => (step === 0 ? setMode("start") : setStep((s) => s - 1))}
-              onNext={() => (step >= qs.length - 1 ? setMode("review") : setStep((s) => s + 1))}
+              onNext={() => (step >= qs.length - 1 ? completeAndSubmit() : setStep((s) => s + 1))}
             />
           </Shell>
         )}
@@ -167,7 +192,15 @@ function ReportPage() {
           />
         )}
 
-        {mode === "done" && result && <Done result={result} name={answers.name} email={answers.email} />}
+        {busy && mode !== "review" && mode !== "done" && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/70 backdrop-blur-sm">
+            <div className="card-quiet px-6 py-5 text-center">
+              <p className="section-title">Creating your claim…</p>
+              <p className="mt-1 text-[13px] text-text-2">Checking it against our rules.</p>
+            </div>
+          </div>
+        )}
+        {mode === "done" && result && <Done result={result} setResult={setResult} name={answers.name} email={answers.email} />}
       </main>
     </div>
   );
@@ -408,6 +441,10 @@ function cleanAgentAnswers(params: Record<string, unknown>): Partial<ReportAnswe
     const allowed = CLAIM_ENUMS[k];
     if (allowed && !allowed.includes(str)) continue;
     if (k === "quote_amount") {
+      if (/^(unsure|unknown|none|no quote)$/i.test(str)) {
+        out.quote_amount = "unsure";
+        continue;
+      }
       const n = parseEuro(str);
       if (n === null) continue;
       out.quote_amount = String(n);
@@ -551,6 +588,7 @@ function Conversation({
   setHeardIn,
   onStart,
   onDone,
+  onComplete,
 }: {
   answers: ReportAnswers;
   setAnswers: (fn: (a: ReportAnswers) => ReportAnswers) => void;
@@ -559,6 +597,7 @@ function Conversation({
   setHeardIn: (fn: (h: Partial<Record<AnswerKey, number>>) => Partial<Record<AnswerKey, number>>) => void;
   onStart: () => void;
   onDone: () => void;
+  onComplete: () => void;
 }) {
   const [phase, setPhase] = useState<Phase>(lines.length ? "ended" : "idle");
   const phaseRef = useRef<Phase>(phase);
@@ -760,7 +799,7 @@ function Conversation({
   const finish = () => {
     shutdown();
     setPhase("ended");
-    window.setTimeout(onDone, 600);
+    window.setTimeout(onComplete, 600);
   };
 
   // ---- preferred engine: the ElevenLabs voice agent (introduces itself, asks, records via update_claim)
@@ -804,7 +843,7 @@ function Conversation({
           session.current = null;
           const done = !nextQuestion(answersRef.current);
           setPhase(done ? "ended" : "ended");
-          if (done) window.setTimeout(onDone, 800);
+          if (done) window.setTimeout(onComplete, 800);
         },
         onError: () => setNote("The voice connection had a problem. You can continue by typing below."),
       });
@@ -866,7 +905,7 @@ function Conversation({
     const reply = understand(t);
     if (!reply) {
       setLines((l) => [...l, { speaker: "agent", text: "Thank you, that's everything I need. Please check your answers and send them." }]);
-      window.setTimeout(onDone, 900);
+      window.setTimeout(onComplete, 900);
     } else setLines((l) => [...l, { speaker: "agent", text: reply }]);
   };
 
@@ -1075,15 +1114,26 @@ function FilePick({ label, name, onPick }: { label: string; name?: string; onPic
 
 // ------------------------------------------------------------------ done
 
-function Done({ result, name, email }: { result: ReportResult; name: string; email: string }) {
+function Done({ result, setResult, name, email }: { result: ReportResult; setResult: (r: ReportResult) => void; name: string; email: string }) {
   const first = name.split(" ")[0] || "there";
+  const [rechecked, setRechecked] = useState<ReportResult["recommendation"] | null>(null);
   const missing = result.missing_fields.map((f) => CUSTOMER_MISSING[f] ?? f);
   const next =
     result.recommendation === "routine_processing"
       ? { title: "Your claim is complete", text: "Everything we need is there, so your claim goes straight into processing. This is not yet a payment approval; we'll confirm the next steps by email." }
       : result.recommendation === "request_information"
-        ? { title: "We need a little more", text: `We've sent a request to ${email}. As soon as you send the missing items, your claim continues automatically.` }
+        ? { title: "We need a little more", text: `We've sent a request to ${email}. You can also add the missing points right here; your claim is then checked again automatically.` }
         : { title: "A claims specialist will look at it", text: "Some points need a person to check them. A specialist will review your claim and get back to you." };
+  const csv = toCsvRow(result.row);
+
+  const download = () => {
+    const url = URL.createObjectURL(new Blob([csv + "\n"], { type: "text/csv" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${result.case_id}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <div className="mx-auto max-w-[680px] pt-10">
@@ -1094,6 +1144,10 @@ function Done({ result, name, email }: { result: ReportResult; name: string; ema
       <p className="mt-2 text-[15px] text-text-2">
         Your reference number is <span className="font-mono font-medium text-foreground">{result.case_id}</span>. Please keep it for any questions.
       </p>
+
+      {rechecked && (
+        <p className="mt-4 rounded-[10px] bg-link/10 px-4 py-2.5 text-[14px] text-foreground">Thanks, we've added your information and checked your claim again.</p>
+      )}
 
       <div className="card-quiet mt-8 p-6">
         <p className="label-mono">What happens next</p>
@@ -1110,21 +1164,114 @@ function Done({ result, name, email }: { result: ReportResult; name: string; ema
         )}
       </div>
 
+      {result.recommendation === "request_information" && (
+        <AddMissing
+          result={result}
+          email={email}
+          onDone={(r) => {
+            setResult(r);
+            setRechecked(r.recommendation);
+            window.scrollTo({ top: 0, behavior: "smooth" });
+          }}
+        />
+      )}
+
       <div className="mt-6 rounded-[10px] border border-dashed border-line p-5">
         <p className="label-mono">Demo · inside Clearpath</p>
         <p className="mt-2 text-[14px]">
           Rules engine: <strong>{RECOMMENDATION_LABELS[result.recommendation]}</strong> · rule {result.rule_id.toUpperCase()} · policy {result.policy_version.toUpperCase()}
+          {" · "}
+          {result.recommendation === "human_review" ? "now in the reviewer workstream" : result.recommendation === "request_information" ? "waiting on the customer" : "processed automatically"}
         </p>
+        <p className="mt-3 text-[12.5px] text-text-2">The claim as one row in the case CSV format (same columns as the judges' data). Empty cells are unknown, never guessed.</p>
+        <pre className="mt-2 overflow-x-auto rounded-[8px] bg-surface-2 p-3 font-mono text-[11px] leading-relaxed ring-1 ring-line">{csv}</pre>
         <div className="mt-3 flex flex-wrap gap-2">
           <Button asChild variant="outline">
             <Link to="/claims/$caseId" params={{ caseId: result.case_id }}>
               Open in reviewer workspace <ArrowRight />
             </Link>
           </Button>
+          <Button variant="ghost" onClick={download}>
+            <FileText /> Download CSV row
+          </Button>
           <Button asChild variant="ghost">
             <a href="/report">Report another claim</a>
           </Button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+/** The customer adds what was missing; the claim is then re-run through the rules on the server. */
+function AddMissing({ result, email, onDone }: { result: ReportResult; email: string; onDone: (r: ReportResult) => void }) {
+  const [partial, setPartial] = useState<Partial<ReportAnswers>>({});
+  const [files, setFiles] = useState<{ incident_report?: string; quote?: string }>({});
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const keys = Array.from(new Set(result.missing_fields.flatMap((f) => FIELD_QUESTIONS[f] ?? [])));
+  const qs = QUESTIONS.filter((q) => keys.includes(q.key) && (q.key !== "fault" || partial.other_party === "yes"));
+  const set = (k: AnswerKey, v: string) => setPartial((p) => ({ ...p, [k]: v }));
+  if (!qs.length) return null;
+
+  const send = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      onDone(await addClaimInfo({ data: { case_id: result.case_id, email, answers: partial, files } }));
+      setPartial({});
+    } catch (e) {
+      setError((e as Error).message || "Could not send. Please try again.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="card-quiet mt-5 p-6">
+      <p className="section-title">Add the missing information now</p>
+      <p className="mt-1 text-[13px] text-text-2">Only answer what you know. Anything you leave open stays open.</p>
+      <div className="mt-4 space-y-4">
+        {qs.map((q) => {
+          const v = String(partial[q.key] ?? "");
+          return (
+            <div key={q.key}>
+              <p className="text-[14px] font-medium">{q.ask}</p>
+              {q.type === "choice" && q.choices ? (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {q.choices.map((c) => (
+                    <button
+                      key={c.value}
+                      type="button"
+                      onClick={() => set(q.key, c.value)}
+                      className={cn("rounded-[8px] border px-3 py-1.5 text-[13.5px]", v === c.value ? "border-link bg-link/10 font-medium" : "border-line bg-surface hover:border-link/40")}
+                    >
+                      {c.label}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <Input value={v} onChange={(e) => set(q.key, e.target.value)} placeholder={q.type === "money" ? "e.g. 1,450" : q.key === "policy_number" ? "e.g. POL-482913" : ""} className="mt-2 h-10 max-w-[320px] bg-surface" />
+              )}
+              {q.key === "incident_report" && v === "yes" && (
+                <div className="mt-2 max-w-[360px]">
+                  <FilePick label="Incident or police report" name={files.incident_report} onPick={(n) => setFiles({ ...files, incident_report: n })} />
+                </div>
+              )}
+              {q.key === "quote_itemized" && v === "yes" && (
+                <div className="mt-2 max-w-[360px]">
+                  <FilePick label="Itemized repair quote" name={files.quote} onPick={(n) => setFiles({ ...files, quote: n })} />
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      {error && <p className="mt-3 text-[13px] text-action">{error}</p>}
+      <div className="mt-5 flex justify-end">
+        <Button onClick={send} disabled={busy || Object.keys(partial).length === 0}>
+          {busy ? "Checking…" : "Send and check again"} <ArrowRight />
+        </Button>
       </div>
     </div>
   );

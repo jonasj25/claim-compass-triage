@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { decide, POLICY_V1 } from "./triage";
-import { EMPTY_ANSWERS, QUESTIONS, extractFromUtterance, interpretReply, parseEuro, toClaimFields, type ReportAnswers } from "./report-intake";
+import { EMPTY_ANSWERS, QUESTIONS, extractFromUtterance, interpretReply, knownClaimFields, parseEuro, toClaimFields, toCsvRow, type ReportAnswers } from "./report-intake";
 
 const q = (k: string) => QUESTIONS.find((x) => x.key === k)!;
 const today = new Date(2026, 10, 7);
@@ -47,5 +47,26 @@ describe("voice replies", () => {
   it("does not take a whole story as a name", () => {
     expect(interpretReply(q("name"), "Yesterday I reversed into a pole in a car park and dented the bumper")).toEqual({});
     expect(interpretReply(q("name"), "Anna Schmidt")).toEqual({ name: "Anna Schmidt" });
+  });
+});
+
+describe("claim file", () => {
+  it("records 'not sure' for amount and policy number instead of getting stuck", () => {
+    expect(interpretReply(q("quote_amount"), "I don't know yet")).toEqual({ quote_amount: "unsure" });
+    expect(interpretReply(q("policy_number"), "I don't have it with me")).toEqual({ policy_number: "unsure" });
+  });
+
+  it("follow-up answers only change what the customer stated", () => {
+    expect(knownClaimFields({ incident_report: "yes" })).toEqual({ incident_report_present: true });
+    expect(knownClaimFields({ incident_report: "unsure" })).toEqual({});
+    expect(knownClaimFields({ other_party: "yes", fault: "disagree" })).toEqual({ liability_disputed: true });
+    expect(knownClaimFields({ policy_number: "unsure" })).toEqual({});
+    expect(knownClaimFields({ policy_number: "POL-1" })).toEqual({ policy_active_on_incident: true });
+  });
+
+  it("writes the claim as a CSV row with empty cells for unknowns", () => {
+    const csv = toCsvRow({ case_id: "WEB-1", case_status: "open", claim_summary: "Bumper, rear", policy_active_on_incident: true, quote_eur: null, incident_report_present: false });
+    expect(csv.split("\n")[0]).toBe("case_id,case_status,claim_summary,policy_active_on_incident,claim_type,repair_type,quote_eur,incident_report_present,itemized_quote_present,injury_reported,liability_disputed,duplicate_flag,evidence_conflict");
+    expect(csv.split("\n")[1]).toBe('WEB-1,open,"Bumper, rear",True,,,,False,,,,,');
   });
 });
