@@ -6,7 +6,7 @@ import { Card, PageHeader, StatusDot } from "@/components/triage/ui";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/tests")({
-  head: () => ({ meta: [{ title: "Test results — Triage" }, { name: "description", content: "Engine self-test against labelled cases." }] }),
+  head: () => ({ meta: [{ title: "Test results — Clearpath" }, { name: "description", content: "Engine self-test against labelled cases." }] }),
   component: Tests,
 });
 

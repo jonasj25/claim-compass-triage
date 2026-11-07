@@ -11,7 +11,7 @@ import { saveCaseNav } from "@/lib/case-nav";
 import type { Queue } from "@/lib/lifecycle";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
-  head: () => ({ meta: [{ title: "Dashboard — Triage" }, { name: "description", content: "Cases that need you today." }] }),
+  head: () => ({ meta: [{ title: "Dashboard — Clearpath" }, { name: "description", content: "Cases that need you today." }] }),
   component: Dashboard,
 });
 

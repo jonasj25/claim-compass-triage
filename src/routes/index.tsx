@@ -10,9 +10,9 @@ import { Label } from "@/components/ui/label";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Sign in — Triage" },
-      { name: "description", content: "Sign in to Triage, deterministic next-step recommendations for motor claims." },
-      { property: "og:title", content: "Sign in — Triage" },
+      { title: "Sign in — Clearpath" },
+      { name: "description", content: "Sign in to Clearpath, deterministic next-step recommendations for motor claims." },
+      { property: "og:title", content: "Sign in — Clearpath" },
       { property: "og:description", content: "Deterministic next-step recommendations for motor claims." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -67,9 +67,11 @@ function SignIn() {
     <div className="flex min-h-screen items-center justify-center px-6">
       <div className="w-full max-w-[400px]">
         <div className="mb-10 flex items-center gap-2.5">
-          <span className="logo-mark size-5 rounded-[6px]" />
-          <span className="text-[15px] font-semibold tracking-tight">Triage</span>
-          <span className="label-mono">Motor claims</span>
+          <span className="logo-mark size-7 rounded-[8px]" />
+          <span className="flex flex-col leading-none">
+            <span className="text-[15px] font-semibold tracking-tight">Clearpath</span>
+            <span className="label-mono mt-1 text-[9.5px]">Motor claims</span>
+          </span>
         </div>
         <h1 className="page-title">Sign in</h1>
         <p className="mt-2 text-text-2">One next step per claim. Rules decide, people confirm.</p>

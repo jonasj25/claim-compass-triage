@@ -94,9 +94,11 @@ function TopBar() {
     <header className="topbar-glass sticky top-0 z-30 border-b border-white/70">
       <div className="mx-auto grid h-14 max-w-[1360px] grid-cols-[1fr_auto_1fr] items-center px-8">
         <Link to={ROLE_HOME[role]} className="flex items-center gap-2.5">
-          <span className="logo-mark size-5 rounded-[6px]" />
-          <span className="text-[15px] font-semibold tracking-tight">Triage</span>
-          <span className="label-mono hidden sm:inline">Motor claims</span>
+          <span className="logo-mark size-7 rounded-[8px]" />
+          <span className="flex flex-col leading-none">
+            <span className="text-[15px] font-semibold tracking-tight">Clearpath</span>
+            <span className="label-mono mt-1 text-[9.5px]">Motor claims</span>
+          </span>
         </Link>
 
         <div role="tablist" aria-label="Role" className="flex rounded-full border border-white/80 bg-[oklch(0.93_0.015_258/0.6)] p-0.5 backdrop-blur">

@@ -12,7 +12,7 @@ import { Card, Kpi, PageHeader, StatusDot } from "@/components/triage/ui";
 export const Route = createFileRoute("/batch")({
   head: () => ({
     meta: [
-      { title: "Batch run — Triage" },
+      { title: "Batch run — Clearpath" },
       {
         name: "description",
         content: "Upload a claims CSV and download results in the judging format.",
@@ -81,9 +81,11 @@ function BatchPage() {
     <div className="mx-auto max-w-6xl px-6 py-12">
       <div className="mb-10 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <span className="logo-mark size-5 rounded-[6px]" />
-          <span className="text-[15px] font-semibold tracking-tight">Triage</span>
-          <span className="label-mono">Motor claims</span>
+          <span className="logo-mark size-7 rounded-[8px]" />
+          <span className="flex flex-col leading-none">
+            <span className="text-[15px] font-semibold tracking-tight">Clearpath</span>
+            <span className="label-mono mt-1 text-[9.5px]">Motor claims</span>
+          </span>
         </div>
         <Link to="/" className="text-[13px] text-text-2 hover:text-foreground">
           Sign in to the app →

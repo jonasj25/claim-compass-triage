@@ -21,7 +21,7 @@ export const Route = createFileRoute("/_authenticated/impact")({
     typeof s.v === "string" ? { v: s.v } : {},
   head: () => ({
     meta: [
-      { title: "Change impact — Triage" },
+      { title: "Change impact — Clearpath" },
       { name: "description", content: "See which open cases a new policy version would change." },
     ],
   }),

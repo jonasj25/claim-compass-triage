@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/_authenticated/versions")({
   head: () => ({
     meta: [
-      { title: "Versions — Triage" },
+      { title: "Versions — Clearpath" },
       { name: "description", content: "Policy version history." },
     ],
   }),

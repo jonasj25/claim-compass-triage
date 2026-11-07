@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Card, PageHeader } from "@/components/triage/ui";
 
 export const Route = createFileRoute("/_authenticated/import")({
-  head: () => ({ meta: [{ title: "Import CSV — Triage" }, { name: "description", content: "Upload a claims CSV and triage it with the active policy." }] }),
+  head: () => ({ meta: [{ title: "Import CSV — Clearpath" }, { name: "description", content: "Upload a claims CSV and triage it with the active policy." }] }),
   component: ImportPage,
 });
 

@@ -7,7 +7,7 @@ import { ClaimsTable } from "@/components/triage/ClaimsTable";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/claims/")({
-  head: () => ({ meta: [{ title: "Claims — Triage" }, { name: "description", content: "All claims by queue." }] }),
+  head: () => ({ meta: [{ title: "Claims — Clearpath" }, { name: "description", content: "All claims by queue." }] }),
   component: Claims,
 });
 

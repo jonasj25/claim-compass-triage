@@ -20,7 +20,7 @@ import { cn } from "@/lib/utils";
 import type { TranscriptLine, FormField, IntakeDocument } from "@/lib/intake";
 
 export const Route = createFileRoute("/_authenticated/claims/$caseId")({
-  head: ({ params }) => ({ meta: [{ title: `${params.caseId} — Triage` }, { name: "description", content: `Case ${params.caseId}: recommendation, checklist and sources.` }] }),
+  head: ({ params }) => ({ meta: [{ title: `${params.caseId} — Clearpath` }, { name: "description", content: `Case ${params.caseId}: recommendation, checklist and sources.` }] }),
   component: CaseDetail,
 });
 
