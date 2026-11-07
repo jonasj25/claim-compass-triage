@@ -38,7 +38,6 @@ import {
 } from "@/components/ui/select";
 import {
   claimPriority,
-  isNewToday,
   PRIORITY_RANK,
   WORK_TABS,
   workTab,
@@ -513,7 +512,6 @@ function Dashboard() {
                   const waited = age(row.claim.received_at, now);
                   const p = prio(item);
                   const policyChanged = workTab(item) === "Policy change";
-                  const isNew = isNewToday(row.claim.received_at, now);
                   return (
                     <tr
                       key={id}
@@ -537,11 +535,6 @@ function Dashboard() {
                         >
                           {id}
                         </Link>
-                        {isNew && (
-                          <span className="ml-2 rounded-md bg-ok/10 px-1.5 py-0.5 font-sans text-[11px] font-medium text-ok">
-                            New
-                          </span>
-                        )}
                       </td>
                       <td className="px-3 py-2" title={item.why}>
                         <Chip className="max-w-full whitespace-normal normal-case tracking-normal font-sans leading-snug">
