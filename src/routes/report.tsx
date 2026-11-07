@@ -116,13 +116,13 @@ function ReportPage() {
   return (
     <div className="min-h-screen">
       <header className="mx-auto flex max-w-[1180px] items-center justify-between px-6 py-5">
-        <button onClick={() => setMode("start")} className="flex items-center gap-2.5 text-left">
+        <Link to="/" aria-label="Clearpath: go to the login page" className="flex items-center gap-2.5 text-left">
           <Logo />
           <span className="flex flex-col leading-none">
             <span className="text-[15px] font-semibold tracking-tight">Clearpath</span>
             <span className="label-mono mt-1 text-[9.5px]">Motor claims</span>
           </span>
-        </button>
+        </Link>
         <span className="flex items-center gap-4 text-[12.5px] text-text-2">
           <Link to="/status" className="hover:text-foreground">
             Check claim status

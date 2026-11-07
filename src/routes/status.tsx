@@ -83,7 +83,11 @@ function StatusPage() {
   return (
     <div className="min-h-screen">
       <header className="mx-auto flex max-w-[1180px] items-center justify-between px-6 py-5">
-        <Link to="/report" className="flex items-center gap-2.5">
+        <Link
+          to="/"
+          aria-label="Clearpath: go to the login page"
+          className="flex items-center gap-2.5"
+        >
           <Logo />
           <span className="flex flex-col leading-none">
             <span className="text-[15px] font-semibold tracking-tight">Clearpath</span>

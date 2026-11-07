@@ -96,12 +96,21 @@ function AppShell() {
   // Sidebar: expanded with labels by default, collapsible to an icon rail (remembered per browser).
   const [expanded, setExpanded] = useState(true);
   useEffect(() => {
-    try { setExpanded(localStorage.getItem(NAV_KEY) !== "0"); } catch { /* storage unavailable */ }
+    try {
+      setExpanded(localStorage.getItem(NAV_KEY) !== "0");
+    } catch {
+      /* storage unavailable */
+    }
   }, []);
-  const toggleNav = () => setExpanded((v) => {
-    try { localStorage.setItem(NAV_KEY, v ? "0" : "1"); } catch { /* storage unavailable */ }
-    return !v;
-  });
+  const toggleNav = () =>
+    setExpanded((v) => {
+      try {
+        localStorage.setItem(NAV_KEY, v ? "0" : "1");
+      } catch {
+        /* storage unavailable */
+      }
+      return !v;
+    });
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === "b") {
@@ -120,7 +129,12 @@ function AppShell() {
   return (
     <RoleContext.Provider value={{ me: meQuery.data, role, setRole }}>
       <TooltipProvider delayDuration={150}>
-        <div className={cn("min-h-screen transition-[padding] duration-200 motion-reduce:transition-none", expanded ? "pl-56" : "pl-14")}>
+        <div
+          className={cn(
+            "min-h-screen transition-[padding] duration-200 motion-reduce:transition-none",
+            expanded ? "pl-56" : "pl-14",
+          )}
+        >
           <TopBar />
           <SideNav expanded={expanded} onToggle={toggleNav} />
           <div className="mx-auto max-w-[1440px] p-6">
@@ -140,7 +154,10 @@ function TopBar() {
   const cases = useQuery(casesQuery);
   // Single reviewer: the dot means "there is something to review", not "assigned to you".
   const toReview = (cases.data ?? []).filter(
-    (c) => c.workflow && c.claim.case_status?.toLowerCase() !== "closed" && c.workflow.queue !== "done" &&
+    (c) =>
+      c.workflow &&
+      c.claim.case_status?.toLowerCase() !== "closed" &&
+      c.workflow.queue !== "done" &&
       (c.workflow.queue === "on_you" || c.workflow.qa_sample),
   ).length;
   const onMe = toReview > 0;
@@ -195,7 +212,11 @@ function TopBar() {
           aria-label="Notifications"
           onClick={() => {
             if (role === "reviewer") void navigate({ to: "/dashboard" });
-            toast(onMe ? `${toReview} cases to review in the workstream` : "Nothing to review right now");
+            toast(
+              onMe
+                ? `${toReview} cases to review in the workstream`
+                : "Nothing to review right now",
+            );
           }}
         >
           <Bell className="size-4" />
@@ -275,36 +296,59 @@ function SideNav({ expanded, onToggle }: { expanded: boolean; onToggle: () => vo
   };
   const isMac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
   // One entry in the sidebar: icon only with a hover label when collapsed, icon + label when expanded.
-  const item = (key: string, label: string, Icon: typeof ListTodo, opts: { to?: string; onClick?: () => void; active?: boolean; hint?: string }) => {
+  const item = (
+    key: string,
+    label: string,
+    Icon: typeof ListTodo,
+    opts: { to?: string; onClick?: () => void; active?: boolean; hint?: string },
+  ) => {
     const cls = cn(
       "flex h-9 items-center rounded-md text-[13px] transition-colors",
       expanded ? "w-full justify-start gap-2.5 px-2.5" : "size-9 justify-center",
-      opts.active ? "bg-link/10 font-medium text-link" : "text-text-2 hover:bg-surface-2 hover:text-foreground",
+      opts.active
+        ? "bg-link/10 font-medium text-link"
+        : "text-text-2 hover:bg-surface-2 hover:text-foreground",
     );
     const inner: ReactNode = (
       <>
         <Icon className="size-4 shrink-0" strokeWidth={1.5} />
         {expanded && <span className="truncate">{label}</span>}
-        {expanded && opts.hint && <span className="ml-auto font-mono text-[10px] text-text-3">{opts.hint}</span>}
+        {expanded && opts.hint && (
+          <span className="ml-auto font-mono text-[10px] text-text-3">{opts.hint}</span>
+        )}
       </>
     );
     const el = opts.to ? (
-      <Link key={key} to={opts.to} aria-label={label} className={cls}>{inner}</Link>
+      <Link key={key} to={opts.to} aria-label={label} className={cls}>
+        {inner}
+      </Link>
     ) : (
-      <button key={key} type="button" onClick={opts.onClick} aria-label={label} className={cls}>{inner}</button>
+      <button key={key} type="button" onClick={opts.onClick} aria-label={label} className={cls}>
+        {inner}
+      </button>
     );
     if (expanded) return el;
     return (
       <Tooltip key={key}>
         <TooltipTrigger asChild>{el}</TooltipTrigger>
-        <TooltipContent side="right">{label}{opts.hint ? ` (${opts.hint})` : ""}</TooltipContent>
+        <TooltipContent side="right">
+          {label}
+          {opts.hint ? ` (${opts.hint})` : ""}
+        </TooltipContent>
       </Tooltip>
     );
   };
   const section = (label: string) =>
-    expanded ? <p className="label-mono mb-1 mt-3 w-full px-2.5 text-[10px]">{label}</p> : <div className="my-2 w-7 border-t border-line" />;
+    expanded ? (
+      <p className="label-mono mb-1 mt-3 w-full px-2.5 text-[10px]">{label}</p>
+    ) : (
+      <div className="my-2 w-7 border-t border-line" />
+    );
   const navItem = (to: string, label: string) =>
-    item(to, label, icons[to] ?? Files, { to, active: path === to || (to === "/dashboard" && path.startsWith("/claims/")) });
+    item(to, label, icons[to] ?? Files, {
+      to,
+      active: path === to || (to === "/dashboard" && path.startsWith("/claims/")),
+    });
   return (
     <>
       <nav
@@ -314,21 +358,37 @@ function SideNav({ expanded, onToggle }: { expanded: boolean; onToggle: () => vo
           expanded ? "w-56 items-stretch px-3" : "w-14 items-center",
         )}
       >
-        <Link to={ROLE_HOME[role]} aria-label="Clearpath home" className={cn("mb-3 flex items-center gap-2.5", expanded && "px-1")}>
+        <button
+          type="button"
+          onClick={() => void signOut()}
+          aria-label="Clearpath: sign out and go to the login page"
+          title="Back to the login page (signs you out)"
+          className={cn(
+            "mb-3 flex items-center gap-2.5 rounded-md text-left focus-visible:outline-2 focus-visible:outline-link",
+            expanded && "px-1",
+          )}
+        >
           <Logo className="size-7 shrink-0" />
           {expanded && <span className="text-[14px] font-semibold">Clearpath</span>}
-        </Link>
-        {expanded && <p className="label-mono mb-1 w-full px-2.5 text-[10px]">{ROLE_LABELS[role]}</p>}
+        </button>
+        {expanded && (
+          <p className="label-mono mb-1 w-full px-2.5 text-[10px]">{ROLE_LABELS[role]}</p>
+        )}
         {items.map((it) => navItem(it.to, it.to === "/dashboard" ? "Workstream" : it.label))}
         {section("Data")}
         {navItem("/import", "Import CSV")}
         {item("export", "Export results CSV", Download, { onClick: exportCsv })}
         {navItem("/batch", "Batch run (judges)")}
         <div className="mt-auto" />
-        {item("toggle", expanded ? "Collapse sidebar" : "Expand sidebar", expanded ? PanelLeftClose : PanelLeftOpen, {
-          onClick: onToggle,
-          hint: isMac ? "⌘B" : "Ctrl+B",
-        })}
+        {item(
+          "toggle",
+          expanded ? "Collapse sidebar" : "Expand sidebar",
+          expanded ? PanelLeftClose : PanelLeftOpen,
+          {
+            onClick: onToggle,
+            hint: isMac ? "⌘B" : "Ctrl+B",
+          },
+        )}
         {item("settings", "Settings", Settings, { onClick: () => setSettingsOpen(true) })}
         {item("signout", "Sign out", LogOut, { onClick: signOut })}
       </nav>

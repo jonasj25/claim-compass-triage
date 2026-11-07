@@ -13,10 +13,13 @@ import { Card, Kpi, PageHeader, StatusDot } from "@/components/triage/ui";
 export const Route = createFileRoute("/batch")({
   head: () => ({
     meta: [
-{ property: "og:title", content: "Batch run — Clearpath" },
-{ property: "og:description", content: "Clearpath claims workspace: review evidence, policy decisions and case activity." },
-{ property: "og:type", content: "website" },
-{ name: "twitter:card", content: "summary" },
+      { property: "og:title", content: "Batch run — Clearpath" },
+      {
+        property: "og:description",
+        content: "Clearpath claims workspace: review evidence, policy decisions and case activity.",
+      },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
       { title: "Batch run — Clearpath" },
       {
         name: "description",
@@ -85,13 +88,17 @@ function BatchPage() {
   return (
     <div className="mx-auto max-w-6xl px-6 py-12">
       <div className="mb-10 flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
+        <Link
+          to="/"
+          aria-label="Clearpath: go to the login page"
+          className="flex items-center gap-2.5"
+        >
           <Logo />
           <span className="flex flex-col leading-none">
             <span className="text-[15px] font-semibold tracking-tight">Clearpath</span>
             <span className="label-mono mt-1 text-[9.5px]">Motor claims</span>
           </span>
-        </div>
+        </Link>
         <Link to="/" className="text-[13px] text-text-2 hover:text-foreground">
           Sign in to the app →
         </Link>
