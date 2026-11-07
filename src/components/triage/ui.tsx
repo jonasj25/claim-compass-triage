@@ -82,12 +82,14 @@ export function Kpi({ label, value, sub, tone, onClick, active }: { label: strin
   return (
     <Comp
       onClick={onClick}
+      aria-pressed={onClick ? !!active : undefined}
       className={cn(
         "card-quiet flex flex-col items-start p-5 text-left",
         tone === "action" && "tint-action",
         tone === "wait" && "tint-wait",
         onClick && "cursor-pointer transition-transform duration-200 hover:-translate-y-0.5",
-        active && "ring-2 ring-link",
+        // selected: lifted with a short bar in the tile's own colour (no blue outline)
+        active && "relative -translate-y-0.5 shadow-[var(--shadow-lift)] after:absolute after:inset-x-5 after:bottom-2.5 after:h-[3px] after:rounded-full after:bg-current/60",
       )}
     >
       <span className={cn("label-mono", tone && "text-current")}>{label}</span>
