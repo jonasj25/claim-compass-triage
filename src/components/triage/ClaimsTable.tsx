@@ -43,7 +43,7 @@ export function ClaimsTable({ rows, navLabel = "Claims", statuses }: { rows: Cas
         <thead>
           <tr className="border-b border-line/80">
             {["Case", "Summary", ...(statuses ? ["Status"] : []), "Recommendation", "Rule", "Why", "Quote", "Age"].map((h) => (
-              <th key={h} className={cn("label-mono px-3 py-2.5 font-normal", (h === "Quote" || h === "Age") && "text-right")}>{h}</th>
+              <th key={h} className={cn("px-3 py-3 text-[11px] font-medium text-text-2", (h === "Quote" || h === "Age") && "text-right")}>{h}</th>
             ))}
           </tr>
         </thead>

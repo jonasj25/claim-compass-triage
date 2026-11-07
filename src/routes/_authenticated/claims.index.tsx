@@ -74,39 +74,48 @@ function AllClaims() {
   return (
     <div>
       <PageHeader title="All claims" sub="Every claim, whatever its status. Your tasks are on the To review page." />
-      <div role="tablist" aria-label="Status" className="mb-4 flex flex-wrap gap-1 border-b border-line">
-        {(["all", ...CLAIM_STATUSES] as Tab[]).map((t) => (
-          <Button variant="ghost" key={t} role="tab" aria-selected={tab === t} onClick={() => setTab(t)}
-            className={cn("-mb-px flex items-center gap-1.5 border-b-2 px-3 py-2 text-[13px]",
-              tab === t ? "border-foreground font-medium text-foreground" : "border-transparent text-text-2 hover:text-foreground")}>
-            {t === "all" ? "All" : CLAIM_STATUS_LABEL[t]}
-            <span className="num rounded-full bg-surface-2 px-1.5 text-[11px] text-text-2">{count(t)}</span>
-          </Button>
-        ))}
-      </div>
-      <div className="mb-3 flex flex-wrap items-center gap-2">
-        <label className="relative min-w-[220px] flex-1">
-          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-text-3" />
-          <Input aria-label="Search claims" placeholder="Search case number, customer, plate…" value={search}
-            onChange={(e) => setSearch(e.target.value)} className="h-9 bg-surface pl-9" />
-        </label>
-        <Select value={channel} onValueChange={setChannel}>
-          <SelectTrigger aria-label="Channel" className="h-9 w-auto min-w-[150px] bg-surface"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All channels</SelectItem>
-            {channels.map((c) => <SelectItem key={c} value={c}>{channelLabel(c)}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <Select value={sort} onValueChange={(v) => setSort(v as Sort)}>
-          <SelectTrigger aria-label="Sort" className="h-9 w-auto min-w-[140px] bg-surface"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            {(Object.keys(SORT_LABEL) as Sort[]).map((s) => <SelectItem key={s} value={s}>{SORT_LABEL[s]}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        {filtering && <Button variant="ghost" size="sm" className="text-text-2" onClick={() => { setSearch(""); setChannel("all"); }}>Clear filters</Button>}
-        <span className="ml-auto font-mono text-[11px] text-text-2">{rows.length} shown</span>
-      </div>
-      <div className="card-quiet p-0">
+      {/* Same look as the Workstream: tabs, filters and table in one card */}
+      <div className="card-quiet overflow-hidden">
+        <div role="tablist" aria-label="Status" className="flex flex-wrap gap-1 border-b border-line px-3 pt-2">
+          {(["all", ...CLAIM_STATUSES] as Tab[]).map((t) => (
+            <Button
+              variant="ghost"
+              key={t}
+              role="tab"
+              aria-selected={tab === t}
+              onClick={() => setTab(t)}
+              className={cn(
+                "h-10 gap-1.5 rounded-none border-b-2 px-3 text-[12px] hover:bg-transparent",
+                tab === t ? "border-link text-link" : "border-transparent text-text-2 hover:text-foreground",
+              )}
+            >
+              {t === "all" ? "All" : CLAIM_STATUS_LABEL[t]}
+              <span className="num text-text-3">{count(t)}</span>
+            </Button>
+          ))}
+        </div>
+        <div className="flex flex-wrap items-center gap-2 border-b border-line p-3">
+          <label className="relative min-w-[220px] flex-1">
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-text-3" />
+            <Input aria-label="Search claims" placeholder="Search case number, customer, plate…" value={search}
+              onChange={(e) => setSearch(e.target.value)} className="h-8 bg-surface pl-8 text-[12px]" />
+          </label>
+          <Select value={channel} onValueChange={setChannel}>
+            <SelectTrigger aria-label="Channel" className="h-8 w-[150px]"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All channels</SelectItem>
+              {channels.map((c) => <SelectItem key={c} value={c}>{channelLabel(c)}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={sort} onValueChange={(v) => setSort(v as Sort)}>
+            <SelectTrigger aria-label="Sort" className="h-8 w-[140px]"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {(Object.keys(SORT_LABEL) as Sort[]).map((s) => <SelectItem key={s} value={s}>{SORT_LABEL[s]}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          {filtering && <Button variant="ghost" size="sm" onClick={() => { setSearch(""); setChannel("all"); }}>Clear filters</Button>}
+          <span className="ml-auto text-[11px] text-text-2">{rows.length} shown</span>
+        </div>
         <ClaimsTable rows={rows} statuses={statuses} navLabel={tab === "all" ? "All claims" : CLAIM_STATUS_LABEL[tab]} />
       </div>
     </div>
