@@ -150,10 +150,15 @@ function Dashboard() {
   const term = search.trim().toLowerCase();
   // Every filter except the tab itself (Mine / Everyone / Unassigned, channel, search);
   // the tab counts use this, so they follow the current filters live.
-  const matchesFilters = (item: WorkItem) => {
+  const inScope = (item: WorkItem, sc: typeof scope) =>
+    sc === "mine"
+      ? item.row.workflow?.assignee === me.name
+      : sc === "unassigned"
+        ? !item.row.workflow?.assignee
+        : true;
+  const matchesFilters = (item: WorkItem, sc: typeof scope = scope) => {
     const { row } = item;
-    if (scope === "mine" && row.workflow?.assignee !== me.name) return false;
-    if (scope === "unassigned" && row.workflow?.assignee) return false;
+    if (!inScope(item, sc)) return false;
     if (channel !== "all" && row.intake?.channel !== channel) return false;
     if (!term) return true;
     return [
@@ -379,28 +384,28 @@ function Dashboard() {
       </div>
 
       <div className="card-quiet overflow-hidden">
+        {/* Row 1: whose cases (underline tabs). Row 2: kind of case (pill group) + search and filters.
+            All counts follow the other filters live. */}
         <div
           role="tablist"
-          aria-label="Workstream groups"
+          aria-label="Whose cases"
           className="flex flex-wrap gap-1 border-b border-line px-3 pt-2"
         >
-          {(["all", ...WORK_TABS] as const)
-            .filter((tab) => tab === "all" || tab === task || work.ordered.some((i) => workTab(i) === tab))
-            .map((tab) => (
+          {scopes.map(([key, label]) => (
             <Button
-              key={tab}
+              key={key}
               variant="ghost"
               role="tab"
-              aria-selected={task === tab}
-              onClick={() => setTask(tab)}
+              aria-selected={scope === key}
+              onClick={() => setScope(key)}
               className={cn(
                 "h-10 rounded-none border-b-2 px-3 text-[12px]",
-                task === tab ? "border-link text-link" : "border-transparent text-text-2",
+                scope === key ? "border-link text-link" : "border-transparent text-text-2",
               )}
             >
-              {tab === "all" ? "All" : tab}
+              {label}
               <span className="num text-text-3">
-                {work.ordered.filter((i) => (tab === "all" || workTab(i) === tab) && matchesFilters(i)).length}
+                {work.ordered.filter((i) => (task === "all" || workTab(i) === task) && matchesFilters(i, key)).length}
               </span>
             </Button>
           ))}
@@ -408,32 +413,35 @@ function Dashboard() {
         <div className="flex flex-wrap items-center gap-2 border-b border-line p-3">
           <div
             role="radiogroup"
-            aria-label="Whose cases"
-            className="flex items-center gap-0.5 rounded-full bg-surface-2 p-0.5 text-[12px] ring-1 ring-line"
+            aria-label="Kind of case"
+            className="flex flex-wrap items-center gap-0.5 rounded-full bg-surface-2 p-0.5 text-[12px] ring-1 ring-line"
           >
-            {scopes.map(([key, label, n]) => (
-              <button
-                key={key}
-                type="button"
-                role="radio"
-                aria-checked={scope === key}
-                onClick={() => setScope(key)}
-                className={cn(
-                  "rounded-full px-3 py-1",
-                  scope === key
-                    ? "bg-white font-medium shadow-[var(--shadow-lift)]"
-                    : "text-text-2",
-                )}
-              >
-                {label} <span className="num text-text-3">{n}</span>
-              </button>
-            ))}
+            {(["all", ...WORK_TABS] as const)
+              .filter((tab) => tab === "all" || tab === task || work.ordered.some((i) => workTab(i) === tab))
+              .map((tab) => (
+                <button
+                  key={tab}
+                  type="button"
+                  role="radio"
+                  aria-checked={task === tab}
+                  onClick={() => setTask(tab)}
+                  className={cn(
+                    "whitespace-nowrap rounded-full px-3 py-1",
+                    task === tab ? "bg-white font-medium shadow-[var(--shadow-lift)]" : "text-text-2",
+                  )}
+                >
+                  {tab === "all" ? "All" : tab}{" "}
+                  <span className="num text-text-3">
+                    {work.ordered.filter((i) => (tab === "all" || workTab(i) === tab) && matchesFilters(i)).length}
+                  </span>
+                </button>
+              ))}
           </div>
-          <label className="relative min-w-[220px] flex-1">
+          <label className="relative min-w-[160px] flex-1">
             <Search className="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-text-3" />
             <Input
               aria-label="Search cases"
-              placeholder="Search case number, customer, plate…"
+              placeholder="Search case, customer, plate…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="h-8 bg-surface pl-8 text-[12px]"
