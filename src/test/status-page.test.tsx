@@ -51,3 +51,33 @@ describe("public claim status page", () => {
     await waitFor(() => expect(screen.getByText(/couldn't find a claim/)).toBeTruthy());
   });
 });
+
+describe("progress colours", () => {
+  it.each([
+    ["in_review", "In progress", "var(--wait-dot)"],
+    ["information_needed", "Information needed", "var(--wait-dot)"],
+    ["accepted", "Accepted", "var(--ok-dot)"],
+    ["rejected", "Rejected", "var(--action-dot)"],
+  ])("%s highlights '%s' in %s", async (status, label, color) => {
+    getClaimStatus.mockResolvedValueOnce({
+      found: true,
+      case_id: "C1",
+      status,
+      first_name: null,
+      received_at: null,
+      updated_at: null,
+      missing: [],
+    });
+    await renderPage();
+    fireEvent.change(screen.getByLabelText("Reference number"), { target: { value: "C1" } });
+    fireEvent.change(screen.getByLabelText("Number plate"), { target: { value: "X1" } });
+    fireEvent.click(screen.getByRole("button", { name: /Check/ }));
+    const current = await waitFor(() => {
+      const el = document.querySelector('[aria-current="step"]');
+      if (!el) throw new Error("no current step");
+      return el as HTMLElement;
+    });
+    expect(current.textContent).toContain(label);
+    expect((current.firstElementChild as HTMLElement).getAttribute("style") ?? "").toContain(color);
+  });
+});

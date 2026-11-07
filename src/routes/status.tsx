@@ -31,11 +31,19 @@ export const Route = createFileRoute("/status")({
 });
 
 const TONE: Record<CustomerStatus, { pill: string; icon: typeof Check }> = {
-  in_review: { pill: "bg-link/10 text-link", icon: Clock },
+  in_review: { pill: "pill-wait", icon: Clock },
   information_needed: { pill: "pill-wait", icon: FileQuestion },
   accepted: { pill: "bg-[oklch(0.95_0.05_152)] text-ok", icon: Check },
   rejected: { pill: "pill-action", icon: X },
 };
+
+// Progress colours: received blue, in progress yellow, accepted green, rejected red.
+const STEP_COLOR = {
+  received: "var(--link)",
+  progress: "var(--wait-dot)",
+  accepted: "var(--ok-dot)",
+  rejected: "var(--action-dot)",
+} as const;
 
 const fmtDate = (iso: string | null | undefined) =>
   iso
@@ -145,15 +153,22 @@ function StatusCard({ r }: { r: Required<StatusResult> }) {
   const Icon = t.icon;
   const decided = r.status === "accepted" || r.status === "rejected";
   const steps = [
-    { label: "Received", done: true },
+    { label: "Received", color: STEP_COLOR.received, reached: true, current: false },
     {
-      label: r.status === "information_needed" ? "Information needed" : "Checking",
-      done: decided,
+      label: r.status === "information_needed" ? "Information needed" : "In progress",
+      color: STEP_COLOR.progress,
+      reached: true,
       current: !decided,
     },
     {
       label: decided ? CUSTOMER_STATUS_LABEL[r.status] : "Decision",
-      done: decided,
+      color:
+        r.status === "rejected"
+          ? STEP_COLOR.rejected
+          : r.status === "accepted"
+            ? STEP_COLOR.accepted
+            : "var(--line)",
+      reached: decided,
       current: decided,
     },
   ];
@@ -186,25 +201,41 @@ function StatusCard({ r }: { r: Required<StatusResult> }) {
       )}
 
       <ol className="mt-6 grid grid-cols-3 gap-2" aria-label="Progress">
-        {steps.map((s, i) => (
-          <li key={i} className="text-center">
+        {steps.map((st, i) => (
+          <li key={i} className="text-center" aria-current={st.current ? "step" : undefined}>
             <div
               className={cn(
-                "h-1.5 rounded-full",
-                s.done
-                  ? "bg-foreground/70"
-                  : s.current
-                    ? "bg-link"
-                    : "bg-surface-2 ring-1 ring-line",
+                "rounded-full transition-all",
+                st.current ? "h-2.5" : "mt-0.5 h-1.5",
+                !st.reached && "bg-surface-2 ring-1 ring-line",
               )}
+              style={
+                st.reached
+                  ? {
+                      background: st.current
+                        ? st.color
+                        : `color-mix(in oklch, ${st.color} 40%, var(--surface))`,
+                      boxShadow: st.current
+                        ? `0 0 0 4px color-mix(in oklch, ${st.color} 18%, transparent)`
+                        : undefined,
+                    }
+                  : undefined
+              }
             />
             <p
               className={cn(
-                "mt-2 text-[12px]",
-                s.current ? "font-medium text-foreground" : "text-text-2",
+                "mt-2.5 flex items-center justify-center gap-1.5 text-[12.5px]",
+                st.current
+                  ? "font-semibold text-foreground"
+                  : st.reached
+                    ? "text-text-2"
+                    : "text-text-3",
               )}
             >
-              {s.label}
+              {st.current && (
+                <span className="size-2 rounded-full" style={{ background: st.color }} />
+              )}
+              {st.label}
             </p>
           </li>
         ))}
