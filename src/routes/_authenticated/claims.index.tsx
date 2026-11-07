@@ -1,37 +1,114 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Search } from "lucide-react";
-import { casesQuery } from "@/lib/data";
+import { activePolicyQuery, casesQuery } from "@/lib/data";
+import { dashboardActivityQuery, outreachRemindersQuery } from "@/lib/dashboard-activity";
+import { buildWorkstream, claimStatuses, CLAIM_STATUS_LABEL, CLAIM_STATUSES, type ClaimStatus } from "@/lib/reviewer-workstream";
+import { channelLabel } from "@/lib/labels";
 import { ClaimsTable } from "@/components/triage/ClaimsTable";
-import { Card, PageHeader } from "@/components/triage/ui";
+import { PageHeader } from "@/components/triage/ui";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+
+type Tab = "all" | ClaimStatus;
+type Sort = "newest" | "oldest" | "amount" | "case";
+const SORT_LABEL: Record<Sort, string> = { newest: "Newest first", oldest: "Oldest first", amount: "Highest quote", case: "Case number" };
 
 export const Route = createFileRoute("/_authenticated/claims/")({
   head: () => ({ meta: [
     { title: "All claims — Clearpath" },
-    { name: "description", content: "Look up any Clearpath claim, its recommendation and assignee." },
+    { name: "description", content: "Every Clearpath claim with its status and recommendation." },
     { property: "og:title", content: "All claims — Clearpath" },
-    { property: "og:description", content: "Search all claims, including automated, waiting and closed cases." },
+    { property: "og:description", content: "Search all claims, including auto-processed, waiting and done cases." },
     { property: "og:type", content: "website" },
     { name: "twitter:card", content: "summary" },
   ] }),
-  loader: ({ context }) => context.queryClient.ensureQueryData(casesQuery),
-  component: ClaimsLookup,
+  validateSearch: (s: Record<string, unknown>): { status?: ClaimStatus } =>
+    typeof s.status === "string" && (CLAIM_STATUSES as string[]).includes(s.status) ? { status: s.status as ClaimStatus } : {},
+  loader: async ({ context }) => {
+    await Promise.all([
+      context.queryClient.ensureQueryData(casesQuery),
+      context.queryClient.ensureQueryData(activePolicyQuery),
+      context.queryClient.ensureQueryData(dashboardActivityQuery),
+      context.queryClient.ensureQueryData(outreachRemindersQuery),
+    ]);
+  },
+  component: AllClaims,
 });
 
-function ClaimsLookup() {
+function AllClaims() {
   const { data } = useSuspenseQuery(casesQuery);
+  const { data: policy } = useSuspenseQuery(activePolicyQuery);
+  const { data: events } = useSuspenseQuery(dashboardActivityQuery);
+  const { data: outreach } = useSuspenseQuery(outreachRemindersQuery);
+  const { status } = Route.useSearch();
+  const navigate = useNavigate({ from: Route.fullPath });
+  const tab: Tab = status ?? "all";
+  const setTab = (t: Tab) => void navigate({ search: t === "all" ? {} : { status: t }, replace: true });
   const [search, setSearch] = useState("");
+  const [channel, setChannel] = useState("all");
+  const [sort, setSort] = useState<Sort>("newest");
+
+  const statuses = useMemo(() => {
+    const work = buildWorkstream(data, policy, events, outreach);
+    return claimStatuses(data, new Set(work.ordered.map((i) => i.row.claim.case_id)));
+  }, [data, policy, events, outreach]);
+  const count = (t: Tab) => (t === "all" ? data.length : data.filter((r) => statuses.get(r.claim.case_id) === t).length);
+  const channels = [...new Set(data.map((r) => r.intake?.channel).filter((c): c is string => !!c))].sort();
+
   const term = search.trim().toLowerCase();
-  const rows = data.filter((row) => [row.claim.case_id, row.claim.claim_summary, row.intake?.customer_name, row.intake?.plate]
-    .some((value) => value?.toLowerCase().includes(term)));
-  return <div>
-    <PageHeader title="All claims" />
-    <label className="relative mb-5 block max-w-sm">
-      <Search className="absolute left-3 top-3 size-4 text-text-3" />
-      <Input aria-label="Search claims" placeholder="Search claims" value={search} onChange={(event) => setSearch(event.target.value)} className="pl-9" />
-    </label>
-    <Card className="p-0"><ClaimsTable rows={rows} navLabel="All claims" /></Card>
-  </div>;
+  const time = (iso: string | null) => Date.parse(iso ?? "") || 0;
+  const rows = data
+    .filter((r) => tab === "all" || statuses.get(r.claim.case_id) === tab)
+    .filter((r) => channel === "all" || r.intake?.channel === channel)
+    .filter((r) => !term || [r.claim.case_id, r.claim.claim_summary, r.intake?.customer_name, r.intake?.plate].some((v) => v?.toLowerCase().includes(term)))
+    .sort((a, b) =>
+      sort === "case" ? a.claim.case_id.localeCompare(b.claim.case_id) :
+      sort === "amount" ? (b.claim.quote_eur ?? -1) - (a.claim.quote_eur ?? -1) :
+      sort === "oldest" ? time(a.claim.received_at) - time(b.claim.received_at) : time(b.claim.received_at) - time(a.claim.received_at));
+  const filtering = !!term || channel !== "all";
+
+  return (
+    <div>
+      <PageHeader title="All claims" sub="Every claim, whatever its status. Your tasks are on the To review page." />
+      <div role="tablist" aria-label="Status" className="mb-4 flex flex-wrap gap-1 border-b border-line">
+        {(["all", ...CLAIM_STATUSES] as Tab[]).map((t) => (
+          <button key={t} role="tab" aria-selected={tab === t} onClick={() => setTab(t)}
+            className={cn("-mb-px flex items-center gap-1.5 border-b-2 px-3 py-2 text-[13px]",
+              tab === t ? "border-foreground font-medium text-foreground" : "border-transparent text-text-2 hover:text-foreground")}>
+            {t === "all" ? "All" : CLAIM_STATUS_LABEL[t]}
+            <span className="num rounded-full bg-surface-2 px-1.5 text-[11px] text-text-2">{count(t)}</span>
+          </button>
+        ))}
+      </div>
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <label className="relative min-w-[220px] flex-1">
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-text-3" />
+          <Input aria-label="Search claims" placeholder="Search case number, customer, plate…" value={search}
+            onChange={(e) => setSearch(e.target.value)} className="h-9 bg-white/70 pl-9" />
+        </label>
+        <Select value={channel} onValueChange={setChannel}>
+          <SelectTrigger aria-label="Channel" className="h-9 w-auto min-w-[150px] bg-white/70"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All channels</SelectItem>
+            {channels.map((c) => <SelectItem key={c} value={c}>{channelLabel(c)}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={sort} onValueChange={(v) => setSort(v as Sort)}>
+          <SelectTrigger aria-label="Sort" className="h-9 w-auto min-w-[140px] bg-white/70"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {(Object.keys(SORT_LABEL) as Sort[]).map((s) => <SelectItem key={s} value={s}>{SORT_LABEL[s]}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        {filtering && <Button variant="ghost" size="sm" className="text-text-2" onClick={() => { setSearch(""); setChannel("all"); }}>Clear filters</Button>}
+        <span className="ml-auto font-mono text-[11px] text-text-2">{rows.length} shown</span>
+      </div>
+      <div className="card-quiet p-0">
+        <ClaimsTable rows={rows} statuses={statuses} navLabel={tab === "all" ? "All claims" : CLAIM_STATUS_LABEL[tab]} />
+      </div>
+    </div>
+  );
 }

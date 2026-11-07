@@ -9,7 +9,7 @@ import { readCaseNav } from "@/lib/case-nav";
 import { channelLabel, claimTypeLabel, humanize, repairTypeLabel, valueLabel } from "@/lib/labels";
 import { decide, FIELD_LABELS, POLICY_V1, RECOMMENDATION_LABELS, type Claim, type Recommendation } from "@/lib/triage";
 import { isClosed } from "@/lib/csv";
-import { queueFor, SLA_HOURS } from "@/lib/lifecycle";
+import { queueFor } from "@/lib/lifecycle";
 import { useRole } from "@/lib/role";
 import { Card, Chip, Mono, StatusDot, Unknown, fmtEur, fmtTime } from "@/components/triage/ui";
 import { CustomerChatLauncher } from "@/components/triage/CustomerChat";
@@ -161,13 +161,6 @@ function CaseDetail() {
   const systemSources = facts
     .filter((x) => x.source_type === "system" && !String(x.ref ?? "").startsWith("line"))
     .filter((x, i, arr) => arr.findIndex((y) => y.ref === x.ref) === i);
-
-  const slaDue = workflow?.sla_due_at ? new Date(workflow.sla_due_at) : null;
-  const slaText = slaDue
-    ? slaDue < new Date()
-      ? `SLA passed ${relTime(slaDue)} ago`
-      : `SLA due in ${relTime(slaDue)}`
-    : `SLA ${SLA_HOURS}h`;
 
   // ---------- writes (all append-only except the workflow row) ----------
   const refresh = async () => {
@@ -353,7 +346,7 @@ function CaseDetail() {
     : queue === "done" || confirmed
       ? ["Normal claims handling (outside triage)"]
       : queue === "on_you"
-        ? [`Reviewer decision · ${slaText}`, "Then: normal claims handling, or a request to the customer"]
+        ? ["Reviewer decision", "Then: normal claims handling, or a request to the customer"]
         : queue === "waiting_customer"
           ? ["Automatic reminder (48h, then 96h)", "Customer sends documents → checked again automatically", "No answer after 2 reminders → goes to a reviewer"]
           : ["Normal claims handling (~7% are sampled for QA)"];
@@ -364,7 +357,7 @@ function CaseDetail() {
       <nav aria-label="Case navigation" className="mb-5 flex flex-wrap items-center gap-3">
         <Button asChild variant="outline" className="bg-white">
           <Link to="/dashboard">
-            <ArrowLeft /> Back to my queue
+            <ArrowLeft /> To review
           </Link>
         </Button>
         <div className="ml-auto flex flex-wrap items-center gap-2">
@@ -852,11 +845,6 @@ function OverrideDialog({
 
 function reasonLabel(code: unknown) {
   return REASONS.find(([v]) => v === code)?.[1] ?? String(code ?? "");
-}
-
-function relTime(d: Date) {
-  const h = Math.abs(d.getTime() - Date.now()) / 3600e3;
-  return h < 1 ? `${Math.max(1, Math.round(h * 60))}m` : h < 48 ? `${Math.round(h)}h` : `${Math.round(h / 24)}d`;
 }
 
 function Kbd({ children, dark }: { children: ReactNode; dark?: boolean }) {

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { CaseRow } from "./data";
 import { POLICY_V1, type Recommendation } from "./triage";
-import { buildWorkstream, doneToday, type WorkEvent } from "./reviewer-workstream";
+import { buildWorkstream, claimStatuses, type WorkEvent } from "./reviewer-workstream";
 
 const now = new Date("2026-11-07T12:00:00Z");
 function row(id: string, rec: Recommendation = "human_review"): CaseRow {
@@ -16,76 +16,94 @@ function row(id: string, rec: Recommendation = "human_review"): CaseRow {
 }
 const event = (caseId: string, type: string, created = "2026-11-07T10:00:00Z", payload: Record<string, unknown> = {}): WorkEvent =>
   ({ case_id: caseId, type, actor: "Mara Klein", created_at: created, payload });
-const stream = (cases: CaseRow[], events: WorkEvent[] = []) => buildWorkstream(cases, POLICY_V1, "Mara Klein", events, now);
+const stream = (cases: CaseRow[], events: WorkEvent[] = [], outreach: { case_id: string; reminder_count: number }[] = []) => buildWorkstream(cases, POLICY_V1, events, outreach);
+void now;
 
 describe("reviewer workstream", () => {
   it("uses first-match group priority, with no duplicates and group totals equal to the work total", () => {
-    const overdue = row("overdue");
-    if (overdue.workflow) overdue.workflow.sla_due_at = "2026-11-07T11:59:59Z";
-    if (overdue.decision) overdue.decision.needs_recheck = true;
     const replied = row("reply"), risk = row("risk"), policy = row("policy", "routine_processing"), near = row("near", "routine_processing"), qa = row("qa", "routine_processing");
+    const silent = row("silent", "request_information");
+    if (silent.workflow) silent.workflow.queue = "waiting_customer";
     if (replied.decision) replied.decision.needs_recheck = true;
     if (risk.decision) risk.decision.needs_recheck = true;
     if (policy.decision) policy.decision.needs_recheck = true;
     near.claim.quote_eur = 1450;
     if (qa.workflow) qa.workflow.qa_sample = true;
-    const result = stream([qa, near, policy, risk, replied, overdue, overdue], [event("reply", "message_received"), event("reply", "retriaged")]);
-    expect(result.groups.map((g) => g.key)).toEqual(["overdue", "customer_replied", "risk", "policy_change", "near_limit", "qa"]);
-    expect(result.ordered.map((i) => i.row.claim.case_id)).toEqual(["overdue", "reply", "risk", "policy", "near", "qa"]);
-    expect(result.groups.reduce((n, g) => n + g.items.length, 0)).toBe(6);
+    const result = stream([qa, near, policy, risk, replied, silent, risk],
+      [event("reply", "message_received"), event("reply", "retriaged"), event("silent", "reminder_sent"), event("silent", "reminder_sent", "2026-11-07T11:00:00Z")]);
+    expect(result.groups.map((g) => g.key)).toEqual(["decision", "policy_change", "no_reply", "double_check"]);
+    expect(result.ordered.map((i) => i.row.claim.case_id)).toEqual(["reply", "risk", "policy", "silent", "near", "qa"]);
     expect(new Set(result.ordered.map((i) => i.row.claim.case_id)).size).toBe(6);
+    expect(result.ordered.find((i) => i.row.claim.case_id === "reply")?.replied).toBe(true);
   });
-  it("includes mine and unassigned, never a colleague's assigned cases", () => {
+  it("shows every open case that needs a person, whoever it is assigned to (single reviewer)", () => {
     const unassigned = row("unassigned"), colleague = row("colleague");
     if (unassigned.workflow) unassigned.workflow.assignee = null;
     if (colleague.workflow) colleague.workflow.assignee = "Jonas Weber";
-    expect(stream([row("mine"), unassigned, colleague]).ordered.map((i) => i.row.claim.case_id)).toEqual(["mine", "unassigned"]);
+    expect(stream([row("mine"), unassigned, colleague]).ordered.map((i) => i.row.claim.case_id)).toEqual(["colleague", "mine", "unassigned"]);
   });
-  it("excludes waiting, unflagged auto, done and closed even when overdue or marked for policy recheck", () => {
+  it("excludes waiting (under 2 reminders), unflagged auto, done and closed, even when marked for policy recheck", () => {
     const waiting = row("waiting"), auto = row("auto", "routine_processing"), done = row("done"), closed = row("closed"), statusDone = row("status-done");
     if (waiting.workflow) waiting.workflow.queue = "waiting_customer";
     if (done.workflow) done.workflow.queue = "done";
     closed.claim.case_status = "closed";
     statusDone.claim.case_status = "done";
-    for (const c of [waiting, done, closed, statusDone]) {
-      if (c.decision) c.decision.needs_recheck = true;
-      if (c.workflow) c.workflow.sla_due_at = "2026-11-01T12:00:00Z";
-    }
-    expect(stream([waiting, auto, done, closed, statusDone]).ordered).toEqual([]);
+    for (const c of [waiting, done, closed, statusDone]) if (c.decision) c.decision.needs_recheck = true;
+    expect(stream([waiting, auto, done, closed, statusDone], [event("waiting", "reminder_sent")]).ordered).toEqual([]);
   });
-  it("keeps the €1,450 near-limit recommendation Routine with the exact €50 gap, never random QA", () => {
+  it("brings a waiting case back after 2 reminders, from events or the outreach counter", () => {
+    const a = row("a", "request_information"), b = row("b", "request_information");
+    for (const c of [a, b]) if (c.workflow) c.workflow.queue = "waiting_customer";
+    a.decision!.missing_fields = ["incident_report_present"];
+    const result = stream([a, b], [event("a", "reminder_sent"), event("a", "reminder_sent")], [{ case_id: "b", reminder_count: 2 }]);
+    expect(result.ordered.map((i) => [i.row.claim.case_id, i.group])).toEqual([["a", "no_reply"], ["b", "no_reply"]]);
+    expect(result.ordered[0]?.why).toContain("2 reminders sent");
+  });
+  it("only counts reminders sent after the customer's last reply", () => {
+    const a = row("a", "request_information");
+    if (a.workflow) a.workflow.queue = "waiting_customer";
+    const history = [event("a", "reminder_sent", "2026-11-05T10:00:00Z"), event("a", "reminder_sent", "2026-11-05T11:00:00Z"),
+      event("a", "message_received", "2026-11-06T10:00:00Z"), event("a", "reminder_sent", "2026-11-07T10:00:00Z")];
+    expect(stream([a], history).ordered).toEqual([]);
+  });
+  it("keeps the €1,450 near-limit recommendation Auto-processed with the exact €50 gap, never random QA", () => {
     const near = row("near", "routine_processing");
     near.claim.quote_eur = 1450;
     if (near.workflow) near.workflow.qa_sample = true;
     const item = stream([near]).ordered[0];
-    expect(item?.group).toBe("near_limit");
+    expect(item?.group).toBe("double_check");
     expect(item?.nearLimit).toContain("€1,450 – only €50 under the €1,500 limit");
     expect(item?.row.decision?.recommendation).toBe("routine_processing");
     expect(item?.qa).toBe(false);
   });
-  it("retains the near-limit flag when SLA priority moves the case to overdue", () => {
-    const near = row("near", "routine_processing"); near.claim.quote_eur = 1450;
-    if (near.workflow) near.workflow.sla_due_at = "2026-11-07T11:00:00Z";
-    const item = stream([near]).ordered[0];
-    expect(item?.group).toBe("overdue"); expect(item?.nearLimit).not.toBeNull();
+  it("says 'Exactly at the limit' when the quote equals the limit", () => {
+    const at = row("at", "routine_processing"); at.claim.quote_eur = 1500;
+    expect(stream([at]).ordered[0]?.nearLimit).toBe("Exactly at the €1,500 limit – quick double-check.");
   });
   it("uses the supplied policy's second-check boundary, not a hardcoded future version", () => {
     const near = row("near", "routine_processing"); near.claim.quote_eur = 1150;
     const changed = { ...POLICY_V1, version: "v7", human_review: { ...POLICY_V1.human_review, quote_limit_eur: 1200 } };
     expect(stream([near]).ordered).toEqual([]);
-    expect(buildWorkstream([near], changed, "Mara Klein", [], now).ordered[0]?.nearLimit).toContain("€50 under the €1,200 limit");
+    expect(buildWorkstream([near], changed, [], []).ordered[0]?.nearLimit).toContain("€50 under the €1,200 limit");
   });
   it("does not treat a handled historical customer reply as new work", () => {
     const history = [event("risk", "message_received"), event("risk", "retriaged"), event("risk", "confirmed", "2026-11-07T11:00:00Z")];
-    expect(stream([row("risk")], history).ordered[0]?.group).toBe("risk");
+    const item = stream([row("risk")], history).ordered[0];
+    expect(item?.group).toBe("decision");
+    expect(item?.replied).toBe(false);
   });
   it("sorts oldest first within each group, keeping null age unknown and last", () => {
     const old = row("old"), recent = row("recent"), unknown = row("unknown");
     old.claim.received_at = "2026-11-06T12:00:00Z"; unknown.claim.received_at = null;
     expect(stream([unknown, recent, old]).ordered.map((i) => i.row.claim.case_id)).toEqual(["old", "recent", "unknown"]);
   });
-  it("counts only this reviewer's distinct completed cases today", () => {
-    const colleague = { ...event("other", "confirmed"), actor: "Jonas Weber" };
-    expect(doneToday([event("one", "confirmed"), event("one", "override"), event("two", "qa_confirmed"), colleague, event("yesterday", "confirmed", "2026-11-06T12:00:00Z")], "Mara Klein", now)).toBe(2);
+  it("gives every claim exactly one status, matching the task list", () => {
+    const review = row("review"), auto = row("auto", "routine_processing"), wait = row("wait", "request_information"), done = row("done");
+    if (wait.workflow) wait.workflow.queue = "waiting_customer";
+    done.claim.case_status = "closed";
+    const cases = [review, auto, wait, done];
+    const work = stream(cases);
+    const s = claimStatuses(cases, new Set(work.ordered.map((i) => i.row.claim.case_id)));
+    expect(Object.fromEntries(s)).toEqual({ review: "to_review", auto: "auto_processed", wait: "waiting_customer", done: "done" });
   });
 });

@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Avatar, Chip, StatusDot, Unknown, fmtEur } from "./ui";
+import { Chip, StatusDot, Unknown, fmtEur } from "./ui";
 import { useQuery } from "@tanstack/react-query";
 import { activePolicyQuery, type CaseRow } from "@/lib/data";
 import { secondCheckReason } from "@/lib/second-check";
@@ -8,6 +8,14 @@ import { isClosed } from "@/lib/csv";
 import { cn } from "@/lib/utils";
 import { saveCaseNav } from "@/lib/case-nav";
 import { humanize } from "@/lib/labels";
+import { CLAIM_STATUS_LABEL, type ClaimStatus } from "@/lib/reviewer-workstream";
+
+const STATUS_DOT: Record<ClaimStatus, string> = {
+  to_review: "bg-action-dot",
+  waiting_customer: "bg-wait-dot",
+  auto_processed: "bg-ok-dot",
+  done: "bg-text-3/50",
+};
 
 const ageLabel = (iso: string | null) => {
   if (!iso) return "";
@@ -26,7 +34,7 @@ export function contextLine(c: CaseRow, policy?: Policy) {
   return humanize(c.decision.explanation ?? "");
 }
 
-export function ClaimsTable({ rows, navLabel = "Claims" }: { rows: CaseRow[]; navLabel?: string }) {
+export function ClaimsTable({ rows, navLabel = "Claims", statuses }: { rows: CaseRow[]; navLabel?: string; statuses?: Map<string, ClaimStatus> }) {
   const { data: policy } = useQuery(activePolicyQuery);
   if (!rows.length) return <p className="py-12 text-center text-text-2">No cases here.</p>;
   return (
@@ -34,15 +42,14 @@ export function ClaimsTable({ rows, navLabel = "Claims" }: { rows: CaseRow[]; na
       <table className="w-full text-left text-[13px]">
         <thead>
           <tr className="border-b border-line/80">
-            {["Case", "Summary", "Recommendation", "Rule", "Why", "Amount", "Age", "Assignee"].map((h) => (
-              <th key={h} className="label-mono px-3 py-2.5 font-normal">{h}</th>
+            {["Case", "Summary", ...(statuses ? ["Status"] : []), "Recommendation", "Rule", "Why", "Quote", "Age"].map((h) => (
+              <th key={h} className={cn("label-mono px-3 py-2.5 font-normal", (h === "Quote" || h === "Age") && "text-right")}>{h}</th>
             ))}
           </tr>
         </thead>
         <tbody>
           {rows.map((c) => {
             const closed = isClosed(c.claim.case_status);
-            const overdue = c.workflow?.sla_due_at && !closed && new Date(c.workflow.sla_due_at) < new Date() && (c.workflow.queue === "on_you" || c.workflow.qa_sample);
             const unknown = (c.decision?.missing_fields ?? []).some((f) => c.claim[f] === null);
             return (
               <tr key={c.claim.case_id} className="relative h-14 border-b border-line/70 last:border-0 hover:bg-white/80">
@@ -64,18 +71,19 @@ export function ClaimsTable({ rows, navLabel = "Claims" }: { rows: CaseRow[]; na
                       <Chip className="pill-action border-transparent">Recheck · {c.decision.policy_version}</Chip>
                     )}
                     {c.workflow?.qa_sample && <Chip>{nearLimit(c, policy) ? "Second check" : "QA sample"}</Chip>}
-                    {c.workflow?.queue === "on_you" && !c.workflow.assignee && <Chip>Unassigned</Chip>}
                     {closed && <Chip>Closed</Chip>}
                     {unknown && <Chip className="border-dashed">Unknown fields</Chip>}
                     {c.intake?.channel === "phone" && <Chip>Phone</Chip>}
                   </div>
                 </td>
+                {statuses && (() => { const st = statuses.get(c.claim.case_id); return (
+                  <td className="whitespace-nowrap px-3">{st && <span className="inline-flex items-center gap-1.5"><span className={cn("size-2 rounded-full", STATUS_DOT[st])} />{CLAIM_STATUS_LABEL[st]}</span>}</td>
+                ); })()}
                 <td className="px-3">{c.decision && <StatusDot rec={c.decision.recommendation} closed={closed} />}</td>
                 <td className="px-3 font-mono text-[11px] uppercase text-text-2">{c.decision?.rule_id}</td>
                 <td className="max-w-[220px] truncate px-3 text-text-2">{contextLine(c, policy)}</td>
-                <td className="num px-3">{c.claim.quote_eur === null ? <Unknown /> : fmtEur(c.claim.quote_eur)}</td>
-                <td className={cn("num px-3 font-mono text-[12px]", overdue ? "text-action" : "text-text-2")}>{ageLabel(c.claim.received_at)}</td>
-                <td className="px-3"><Avatar name={c.workflow?.assignee} /></td>
+                <td className="num px-3 text-right">{c.claim.quote_eur === null ? <Unknown /> : fmtEur(c.claim.quote_eur)}</td>
+                <td className="num px-3 text-right font-mono text-[12px] text-text-2">{ageLabel(c.claim.received_at)}</td>
               </tr>
             );
           })}
