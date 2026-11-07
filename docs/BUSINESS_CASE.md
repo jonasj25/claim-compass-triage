@@ -32,8 +32,8 @@ Show best / base / worst cases for the 2–3 assumptions that move the result mo
 
 ## 4. Second check near the limit (threshold logic)
 
-Routine claims just under the quote limit stay routine (the policy decides), but are flagged for a person to double-check. Setting: `MARGIN_EUR = 50` in `src/lib/second-check.ts`.
+Routine claims just under the quote limit stay routine (the policy decides), but are flagged for a person to double-check. Setting: `MARGIN_EUR = 70` in `src/lib/second-check.ts`.
 
-- Band: quote within €50 below the limit. v2: €1,150.01–€1,200; v1: €1,450.01–€1,500.
+- Band: quote within €70 below the limit. v2: €1,130.01–€1,200; v1: €1,430.01–€1,500.
 - Why: a small correction to the quote after the car is opened up would push these claims over the limit, so they are the routine claims most likely to have needed a person.
 - For the pitch: show how many claims this adds for reviewers (count flagged on the volume set) against the cost of one wrong routine decision. The check pays off if (cost of a check) / (cost of a wrong routine decision) is smaller than the share of flagged claims that really needed review.

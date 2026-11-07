@@ -42,10 +42,10 @@ describe("importClaims", () => {
       recommendation: null,
     });
 
-    // v1 limit €1,500: band €1,450.01-1,500. DEV-010 (€1,500) is routine but within €50; PRA-004 (€1,450) is not.
+    // v1 limit €1,500: band €1,430.01-1,500. DEV-010 (€1,500) and PRA-004 (€1,450) are routine but within €70.
     const flagged = r.rows.filter((x) => x.secondCheck).map((x) => x.case_id);
-    expect(flagged).toEqual(["DEV-010"]);
-    expect(r.secondChecks).toBe(1);
+    expect(flagged).toEqual(["DEV-010", "PRA-004"]);
+    expect(r.secondChecks).toBe(2);
     expect(r.rows.find((x) => x.case_id === "DEV-010")).toMatchObject({
       recommendation: "routine_processing",
       queue: "auto_processed",
@@ -54,6 +54,6 @@ describe("importClaims", () => {
     const wf = writes
       .filter((w) => w.table === "case_workflow")
       .flatMap((w) => w.payload as { case_id: string; qa_sample: boolean }[]);
-    expect(wf.filter((w) => w.qa_sample).map((w) => w.case_id)).toEqual(["DEV-010"]);
+    expect(wf.filter((w) => w.qa_sample).map((w) => w.case_id)).toEqual(["DEV-010", "PRA-004"]);
   });
 });

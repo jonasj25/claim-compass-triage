@@ -4,14 +4,14 @@
 // written policy says (routine_processing). The claim is only flagged so a person double-checks it
 // after the fact, using the same flow as a random QA sample.
 //
-// Threshold: a routine claim whose quote is within MARGIN_EUR below the limit (limit - 50 < quote <= limit).
-// With the v2 limit of EUR 1,200 that is EUR 1,150.01 - 1,200; with v1 (EUR 1,500) EUR 1,450.01 - 1,500.
+// Threshold: a routine claim whose quote is within MARGIN_EUR below the limit (limit - 70 < quote <= limit).
+// With the v2 limit of EUR 1,200 that is EUR 1,130.01 - 1,200; with v1 (EUR 1,500) EUR 1,430.01 - 1,500.
 // Rationale: a small correction to the quote after the car is opened up would push these claims over
 // the limit, so they are the routine claims most likely to have needed a person.
 import type { Claim, Policy, Recommendation } from "./triage";
 
 export const SECOND_CHECK = {
-  MARGIN_EUR: 50,
+  MARGIN_EUR: 70,
 } as const;
 
 export interface Band {
