@@ -153,8 +153,10 @@ async function loadClaims(db: any, ids: string[]) { // eslint-disable-line @type
     db.from("outcomes").select("case_id,final_outcome,recorded_at").in("case_id", ids).order("recorded_at", { ascending: false }),
     db.from("case_events").select("case_id,type,actor,payload,created_at").in("case_id", ids).order("created_at", { ascending: true }),
   ]);
-  const by = <T extends { case_id: string }>(rows: T[] | null) => {
-    const m = new Map<string, T[]>();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  type Row = { case_id: string } & Record<string, any>;
+  const by = (rows: Row[] | null) => {
+    const m = new Map<string, Row[]>();
     for (const r of rows ?? []) m.set(r.case_id, [...(m.get(r.case_id) ?? []), r]);
     return m;
   };
