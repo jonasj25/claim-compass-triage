@@ -89,7 +89,8 @@ function ImportPage() {
           <div className="mt-6 flex flex-wrap items-center justify-between gap-3 text-[13px] text-text-2">
             <span>
               {result.inserted} cases triaged{result.frozen ? `, ${result.frozen} closed cases left unchanged` : ""}
-              {result.secondChecks ? `, ${result.secondChecks} flagged for a second check` : ""}.
+              {result.secondChecks ? `, ${result.secondChecks} flagged for a second check` : ""}
+              {result.autoAssigned ? `, ${result.autoAssigned} assigned automatically` : ""}.
             </span>
             <Button variant="outline" onClick={() => setShowResult(true)}>
               Show this import

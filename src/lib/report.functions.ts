@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { decide, type Claim, type Policy, type Recommendation } from "./triage";
 import { queueFor } from "./lifecycle";
 import { secondCheckReason } from "./second-check";
+import { tryAutoAssign } from "./auto-assign";
 import { buildDocuments, type FactSource, type FormField, type TranscriptLine } from "./intake";
 import { activeQuestions, answerLabel, CSV_COLUMNS, EMPTY_ANSWERS, FIELD_SOURCE, isUnknownText, knownClaimFields, toClaimFields, type AnswerKey, type ReportAnswers } from "./report-intake";
 
@@ -131,6 +132,8 @@ export const submitClaimReport = createServerFn({ method: "POST" })
         updated_at: now,
       }),
     );
+    // A reviewer is assigned straight away when the claim needs a person (lowest load; non-fatal).
+    if (queue === "on_you" || second) await tryAutoAssign(db, [case_id]);
 
     // Intake record: an online form (numbered fields) or a voice transcript (numbered lines)
     const questions = activeQuestions(a);

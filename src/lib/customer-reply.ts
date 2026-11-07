@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { buildDocuments } from "./intake";
 import { queueFor, type Queue } from "./lifecycle";
 import { secondCheckReason } from "./second-check";
+import { tryAutoAssign } from "./auto-assign";
 import {
   decide,
   FIELD_LABELS,
@@ -199,6 +200,7 @@ export async function recordCustomerReply(args: {
       })
       .eq("case_id", caseId),
   );
+  if (queue === "on_you" || second) await tryAutoAssign(supabase, [caseId]);
 
   const body = replyText(customer, items, answers);
   const events: {

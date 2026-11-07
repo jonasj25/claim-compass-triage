@@ -6,6 +6,7 @@ import { isClosed } from "./csv";
 import { queueFor, type Queue } from "./lifecycle";
 import { decide, type Claim, type Decision, type Policy, type Recommendation } from "./triage";
 import { secondCheckReason } from "./second-check";
+import { tryAutoAssign } from "./auto-assign";
 
 export interface PlannedDecision {
   case_id: string;
@@ -171,6 +172,12 @@ export async function activatePolicy(plan: ActivationPlan, actor: string): Promi
         })),
       ),
     );
+
+  // Claims that now need a person get an owner automatically (lowest load; non-fatal).
+  await tryAutoAssign(supabase, [
+    ...plan.changed.filter((p) => p.queue === "on_you").map((p) => p.case_id),
+    ...plan.secondChecks.map((p) => p.case_id),
+  ]);
 
   await ok(
     supabase

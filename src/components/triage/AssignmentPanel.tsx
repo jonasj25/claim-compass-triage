@@ -75,7 +75,8 @@ export function AssignmentPanel({ cases }: { cases: CaseRow[] }) {
         <div>
           <h2 className="section-title">Assignment</h2>
           <p className="mt-1 text-[13px] text-text-2">
-            Open claims that need a person (to review or second check), per reviewer.{" "}
+            New claims that need a person are assigned automatically to the reviewer with the fewest
+            open claims. Use this for the older backlog.{" "}
             <span className="font-medium text-foreground">{unassigned}</span> unassigned.
           </p>
         </div>
