@@ -1,0 +1,38 @@
+case_id,case_status,claim_summary,policy_active_on_incident,claim_type,repair_type,quote_eur,incident_report_present,itemized_quote_present,injury_reported,liability_disputed,duplicate_flag,evidence_conflict,expected_v1,label_reason
+SYN-001,open,Quote exactly at the limit.,True,motor_own_damage,standard,1500.00,True,True,False,False,False,False,routine_processing,R1 uses strictly greater than 1500
+SYN-002,open,Quote one cent over the limit.,True,motor_own_damage,standard,1500.01,True,True,False,False,False,False,human_review,R1 quote > 1500
+SYN-003,open,Quote field blank; everything else complete.,True,motor_own_damage,standard,,True,True,False,False,False,False,request_information,Blank quote is an absent fact; no known HR trigger
+SYN-004,open,Quote recorded as unreadable text.,True,motor_own_damage,standard,n/a,True,True,False,False,False,False,request_information,Unreadable value is an absent fact
+SYN-005,open,Quote blank but claim is flagged duplicate.,True,motor_own_damage,standard,,True,True,False,False,True,False,human_review,Known HR trigger beats blank field
+SYN-006,open,Policy status unknown.,,motor_own_damage,standard,500,True,True,False,False,False,False,request_information,Blank policy_active is an absent fact
+SYN-007,open,Policy status unknown; large quote.,,motor_own_damage,standard,2000,True,True,False,False,False,False,human_review,Known quote > 1500 beats blank
+SYN-008,open,Claim type missing.,True,,standard,500,True,True,False,False,False,False,request_information,Blank claim_type is an absent fact
+SYN-009,open,Glass-only claim.,True,glass,standard,300,True,True,False,False,False,False,human_review,claim_type is not motor_own_damage
+SYN-010,open,Injury field left blank.,True,motor_own_damage,standard,500,True,True,,False,False,False,request_information,Blank injury_reported is not the same as False
+SYN-011,open,Liability field left blank.,True,motor_own_damage,standard,500,True,True,False,,False,False,request_information,Blank liability_disputed is an absent fact
+SYN-012,open,Duplicate check not recorded.,True,motor_own_damage,standard,500,True,True,False,False,,False,request_information,Blank duplicate_flag is an absent fact
+SYN-013,open,Evidence-conflict check not recorded.,True,motor_own_damage,standard,500,True,True,False,False,False,,request_information,Blank evidence_conflict is an absent fact
+SYN-014,open,Incident report field blank.,True,motor_own_damage,standard,500,,True,False,False,False,False,request_information,Blank document field; no HR trigger
+SYN-015,open,Itemized quote field blank.,True,motor_own_damage,standard,500,True,,False,False,False,False,request_information,Blank document field; no HR trigger
+SYN-016,open,Both documents missing.,True,motor_own_damage,standard,500,False,False,False,False,False,False,request_information,R2
+SYN-017,open,Incident report missing and liability disputed.,True,motor_own_damage,standard,500,False,True,False,True,False,False,human_review,HR beats missing document
+SYN-018,open,No itemized quote and quote above limit.,True,motor_own_damage,standard,1600,True,False,False,False,False,False,human_review,HR beats missing document
+SYN-019,open,Every review flag raised.,True,motor_own_damage,standard,500,True,True,True,True,True,True,human_review,R1 multiple triggers
+SYN-020,open,Expired policy theft claim with injury.,False,theft,standard,800,True,True,True,False,False,False,human_review,R1 multiple triggers
+SYN-021,open,Repair type not recorded; otherwise clean.,True,motor_own_damage,,500,True,True,False,False,False,False,routine_processing,v1 does not use repair_type
+SYN-022,open,EV battery repair with complete paperwork.,True,motor_own_damage,ev_high_voltage_battery,1400,True,True,False,False,False,False,routine_processing,v1 treats EV like standard
+SYN-023,open,EV battery repair without itemized quote.,True,motor_own_damage,ev_high_voltage_battery,600,True,False,False,False,False,False,request_information,R2
+SYN-024,closed,Closed clean claim at 1300.,True,motor_own_damage,standard,1300,True,True,False,False,False,False,routine_processing,R3; closed must stay frozen after change
+SYN-025,closed,Closed claim above limit.,True,motor_own_damage,standard,1700,True,True,False,False,False,False,human_review,R1
+SYN-026,,Case status blank; otherwise clean.,True,motor_own_damage,standard,500,True,True,False,False,False,False,routine_processing,v1 decision does not depend on case_status
+SYN-027,open,Summary mentions whiplash but injury field is False.,True,motor_own_damage,standard,500,True,True,False,False,False,False,routine_processing,Structured fields decide; summary is descriptive
+SYN-028,open,"Summary says the claim form shows €1,900 but quote field says 900.",True,motor_own_damage,standard,900,True,True,False,False,False,False,routine_processing,Structured fields decide; conflict flag is False
+SYN-029,open,Boolean written in capitals.,True,motor_own_damage,standard,500,True,True,TRUE,False,False,False,human_review,TRUE is a known injury
+SYN-030,open,Clean claim at 1200.,True,motor_own_damage,standard,1200,True,True,False,False,False,False,routine_processing,Below v1 limit (v2 boundary probe)
+SYN-031,open,Clean claim at 1201.,True,motor_own_damage,standard,1201,True,True,False,False,False,False,routine_processing,Below v1 limit (v2 boundary probe)
+SYN-032,open,Nearly empty record.,,,,,,,,,,,request_information,All facts absent; no known HR trigger
+SYN-033,closed,Closed claim with blank incident report.,True,motor_own_damage,standard,400,,True,False,False,False,False,request_information,Blank document field; closed keeps v1
+SYN-034,open,Expired policy and missing documents.,False,motor_own_damage,standard,500,False,False,False,False,False,False,human_review,HR beats missing documents
+SYN-035,open,EV battery repair above limit.,True,motor_own_damage,ev_high_voltage_battery,1600,True,True,False,False,False,False,human_review,R1 quote > 1500
+SYN-036,open,Quote written with euro sign and thousands separator.,True,motor_own_damage,standard,"€1,450",True,True,False,False,False,False,routine_processing,Parses as 1450
+SYN-037,open,Booleans with surrounding spaces.,True , motor_own_damage , standard , 700 , True , True , False , False , False , False ,routine_processing,Whitespace is not a missing value

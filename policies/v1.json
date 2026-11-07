@@ -1,0 +1,12 @@
+{
+  "version": "v1",
+  "description": "Participant policy v1 - fictional motor claims triage",
+  "human_review": {
+    "require_policy_active": true,
+    "allowed_claim_types": ["motor_own_damage"],
+    "flag_fields": ["injury_reported", "liability_disputed", "duplicate_flag", "evidence_conflict"],
+    "quote_limit_eur": 1500,
+    "review_repair_types": []
+  },
+  "required_documents": ["incident_report_present", "itemized_quote_present"]
+}

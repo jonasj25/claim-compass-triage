@@ -1,0 +1,501 @@
+case_id,case_status,claim_summary,policy_active_on_incident,claim_type,repair_type,quote_eur,incident_report_present,itemized_quote_present,injury_reported,liability_disputed,duplicate_flag,evidence_conflict
+VOL-0001,closed,EV battery housing damaged by kerb strike.,True,theft,standard,286,True,True,False,False,False,False
+VOL-0002,open,EV battery housing damaged by kerb strike.,True,motor_own_damage,standard,782,True,True,False,False,False,False
+VOL-0003,closed,Two-car collision at junction.,True,motor_own_damage,standard,1850,True,True,False,False,False,False
+VOL-0004,open,Side mirror broken in narrow street.,True,motor_own_damage,standard,555,True,False,False,False,False,False
+VOL-0005,closed,Scratched panel after car-park contact.,True,motor_own_damage,ev_high_voltage_battery,983,True,True,False,False,False,False
+VOL-0006,closed,Low-speed rear-end collision.,True,motor_own_damage,ev_high_voltage_battery,1077,True,True,False,False,False,False
+VOL-0007,closed,Parking scrape on rear bumper.,True,motor_own_damage,standard,530,True,True,False,False,False,False
+VOL-0008,open,EV battery housing damaged by kerb strike.,True,motor_own_damage,standard,1136,True,False,False,False,False,False
+VOL-0009,open,Door dent from shopping trolley.,True,motor_own_damage,standard,184,True,True,False,False,False,False
+VOL-0010,closed,Door dent from shopping trolley.,False,motor_own_damage,standard,,True,True,False,False,False,False
+VOL-0011,open,Side mirror broken in narrow street.,True,motor_own_damage,standard,1086,True,True,False,False,True,False
+VOL-0012,open,Door dent from shopping trolley.,True,motor_own_damage,standard,1514,True,True,False,False,False,False
+VOL-0013,open,Two-car collision at junction.,,motor_own_damage,standard,795,True,True,False,False,False,False
+VOL-0014,open,Headlight cracked by debris.,False,motor_own_damage,standard,937,True,True,False,False,False,False
+VOL-0015,open,Scratched panel after car-park contact.,True,motor_own_damage,standard,634,True,True,False,False,False,False
+VOL-0016,closed,Door dent from shopping trolley.,True,motor_own_damage,standard,643,True,True,False,False,False,False
+VOL-0017,open,Hail damage on bonnet and roof.,True,motor_own_damage,standard,215,True,True,False,False,False,False
+VOL-0018,open,Parking scrape on rear bumper.,True,motor_own_damage,standard,294,True,True,False,False,True,True
+VOL-0019,open,Headlight cracked by debris.,True,motor_own_damage,standard,780,True,True,False,False,False,False
+VOL-0020,closed,Scratched panel after car-park contact.,True,motor_own_damage,standard,558,True,True,False,False,False,False
+VOL-0021,open,Door dent from shopping trolley.,True,motor_own_damage,ev_high_voltage_battery,594,True,True,False,False,False,False
+VOL-0022,closed,Two-car collision at junction.,True,motor_own_damage,standard,1109,True,True,False,False,False,False
+VOL-0023,closed,Headlight cracked by debris.,True,motor_own_damage,standard,428,True,True,False,True,False,False
+VOL-0024,open,Headlight cracked by debris.,True,theft,standard,252,True,True,False,False,False,False
+VOL-0025,open,Hail damage on bonnet and roof.,True,motor_own_damage,standard,436,False,True,False,False,False,False
+VOL-0026,open,Low-speed rear-end collision.,True,motor_own_damage,standard,361,True,True,False,False,False,False
+VOL-0027,open,Door dent from shopping trolley.,True,motor_own_damage,standard,572,False,True,False,False,False,False
+VOL-0028,open,Scratched panel after car-park contact.,True,motor_own_damage,standard,745,True,True,False,False,False,False
+VOL-0029,open,Hail damage on bonnet and roof.,True,motor_own_damage,standard,596,True,True,False,False,False,False
+VOL-0030,open,Two-car collision at junction.,True,motor_own_damage,standard,794,True,True,False,False,False,False
+VOL-0031,open,Hail damage on bonnet and roof.,True,motor_own_damage,standard,540,False,True,,False,False,False
+VOL-0032,open,Headlight cracked by debris.,True,motor_own_damage,standard,371,True,False,False,False,False,False
+VOL-0033,open,Door dent from shopping trolley.,True,motor_own_damage,standard,542,True,True,False,False,False,False
+VOL-0034,open,EV battery housing damaged by kerb strike.,True,motor_own_damage,standard,911,True,False,False,False,False,False
+VOL-0035,open,Low-speed rear-end collision.,True,motor_own_damage,standard,858,False,True,False,False,False,False
+VOL-0036,open,Side mirror broken in narrow street.,True,motor_own_damage,ev_high_voltage_battery,534,True,True,False,False,False,False
+VOL-0037,open,Parking scrape on rear bumper.,True,motor_own_damage,standard,637,False,True,False,True,False,False
+VOL-0038,open,Scratched panel after car-park contact.,True,motor_own_damage,ev_high_voltage_battery,456,True,True,False,False,False,False
+VOL-0039,open,Headlight cracked by debris.,True,glass,standard,428,True,True,False,False,False,False
+VOL-0040,open,Hail damage on bonnet and roof.,True,motor_own_damage,standard,877,True,True,False,False,False,False
+VOL-0041,open,Front bumper hit a bollard.,True,motor_own_damage,standard,1176,True,True,False,False,False,False
+VOL-0042,closed,Hail damage on bonnet and roof.,True,theft,standard,636,True,True,True,False,False,False
+VOL-0043,closed,Hail damage on bonnet and roof.,True,motor_own_damage,standard,934,True,,False,False,False,False
+VOL-0044,open,Low-speed rear-end collision.,True,motor_own_damage,standard,294,True,True,False,False,False,False
+VOL-0045,closed,Headlight cracked by debris.,True,motor_own_damage,standard,233,True,True,False,False,False,False
+VOL-0046,open,Door dent from shopping trolley.,True,motor_own_damage,standard,629,True,True,False,False,False,False
+VOL-0047,closed,Two-car collision at junction.,True,motor_own_damage,ev_high_voltage_battery,916,True,True,False,False,False,False
+VOL-0048,open,Low-speed rear-end collision.,True,motor_own_damage,ev_high_voltage_battery,739,True,True,False,False,False,False
+VOL-0049,open,Hail damage on bonnet and roof.,True,motor_own_damage,standard,2272,True,True,False,False,False,False
+VOL-0050,open,Two-car collision at junction.,True,motor_own_damage,standard,259,True,True,False,False,False,False
+VOL-0051,closed,Scratched panel after car-park contact.,True,motor_own_damage,standard,992,True,True,False,False,False,False
+VOL-0052,closed,Low-speed rear-end collision.,True,motor_own_damage,standard,1050,,True,False,False,False,False
+VOL-0053,closed,Side mirror broken in narrow street.,True,glass,standard,654,True,True,False,False,False,False
+VOL-0054,open,Headlight cracked by debris.,False,motor_own_damage,ev_high_voltage_battery,2632,False,False,False,False,False,False
+VOL-0055,open,Door dent from shopping trolley.,True,motor_own_damage,standard,741,True,True,False,False,False,False
+VOL-0056,closed,Two-car collision at junction.,True,motor_own_damage,standard,809,True,False,True,False,False,False
+VOL-0057,open,Scratched panel after car-park contact.,True,motor_own_damage,standard,809,True,True,False,False,False,False
+VOL-0058,open,Front bumper hit a bollard.,True,motor_own_damage,ev_high_voltage_battery,534,True,True,False,True,False,False
+VOL-0059,closed,Parking scrape on rear bumper.,,motor_own_damage,standard,648,True,True,False,False,False,False
+VOL-0060,open,Front bumper hit a bollard.,True,motor_own_damage,standard,1760,True,True,False,False,False,False
+VOL-0061,open,EV battery housing damaged by kerb strike.,True,motor_own_damage,standard,815,True,True,False,False,False,False
+VOL-0062,closed,EV battery housing damaged by kerb strike.,True,glass,standard,478,False,True,False,False,False,False
+VOL-0063,closed,Scratched panel after car-park contact.,True,motor_own_damage,standard,1448,True,True,False,False,False,False
+VOL-0064,open,Side mirror broken in narrow street.,True,motor_own_damage,standard,2642,True,True,False,False,False,False
+VOL-0065,open,Side mirror broken in narrow street.,True,motor_own_damage,standard,1129,True,True,False,False,False,False
+VOL-0066,open,Side mirror broken in narrow street.,True,motor_own_damage,standard,979,True,False,False,False,False,False
+VOL-0067,closed,Side mirror broken in narrow street.,True,motor_own_damage,standard,1650,False,True,False,False,False,False
+VOL-0068,closed,Scratched panel after car-park contact.,True,motor_own_damage,standard,517,True,True,False,False,False,False
+VOL-0069,closed,Two-car collision at junction.,True,glass,standard,1790,True,True,False,False,False,False
+VOL-0070,open,Hail damage on bonnet and roof.,True,motor_own_damage,standard,3289,False,True,False,True,False,False
+VOL-0071,open,Hail damage on bonnet and roof.,True,motor_own_damage,standard,1345,True,True,False,False,False,False
+VOL-0072,closed,Front bumper hit a bollard.,True,motor_own_damage,ev_high_voltage_battery,1273,True,True,False,False,False,False
+VOL-0073,open,Low-speed rear-end collision.,True,motor_own_damage,standard,470,False,True,True,False,False,False
+VOL-0074,open,Two-car collision at junction.,True,motor_own_damage,standard,987,True,False,False,True,False,False
+VOL-0075,open,EV battery housing damaged by kerb strike.,True,motor_own_damage,standard,1732,True,,False,False,False,False
+VOL-0076,open,Low-speed rear-end collision.,True,motor_own_damage,standard,966,True,True,False,False,False,False
+VOL-0077,closed,Two-car collision at junction.,True,motor_own_damage,standard,882,True,True,False,False,False,False
+VOL-0078,closed,Parking scrape on rear bumper.,True,motor_own_damage,standard,1366,True,,False,False,False,False
+VOL-0079,closed,Hail damage on bonnet and roof.,True,motor_own_damage,standard,634,True,False,False,False,False,False
+VOL-0080,open,Door dent from shopping trolley.,True,motor_own_damage,standard,1044,True,,False,False,False,False
+VOL-0081,closed,Door dent from shopping trolley.,True,motor_own_damage,standard,522,True,True,False,False,False,False
+VOL-0082,closed,Two-car collision at junction.,True,motor_own_damage,standard,749,False,True,False,False,False,False
+VOL-0083,open,Side mirror broken in narrow street.,True,theft,standard,349,True,True,False,False,False,False
+VOL-0084,open,Hail damage on bonnet and roof.,True,motor_own_damage,standard,774,True,False,False,False,False,False
+VOL-0085,closed,Parking scrape on rear bumper.,True,motor_own_damage,standard,488,True,True,False,False,False,False
+VOL-0086,open,Front bumper hit a bollard.,True,motor_own_damage,standard,553,True,True,False,False,False,False
+VOL-0087,closed,Headlight cracked by debris.,True,motor_own_damage,standard,2261,True,True,False,False,False,False
+VOL-0088,open,EV battery housing damaged by kerb strike.,True,motor_own_damage,standard,749,True,True,False,False,False,False
+VOL-0089,closed,Hail damage on bonnet and roof.,True,motor_own_damage,standard,1132,True,True,False,True,False,False
+VOL-0090,closed,Front bumper hit a bollard.,True,motor_own_damage,standard,1205,True,True,False,False,False,False
+VOL-0091,open,Low-speed rear-end collision.,True,motor_own_damage,standard,698,True,True,False,True,False,False
+VOL-0092,closed,Side mirror broken in narrow street.,True,motor_own_damage,standard,2521,False,True,False,False,True,False
+VOL-0093,open,Parking scrape on rear bumper.,True,motor_own_damage,standard,813,False,False,False,False,False,False
+VOL-0094,closed,Scratched panel after car-park contact.,True,motor_own_damage,standard,560,False,True,False,False,False,False
+VOL-0095,closed,Parking scrape on rear bumper.,True,motor_own_damage,standard,420,True,True,False,False,False,False
+VOL-0096,closed,Front bumper hit a bollard.,True,motor_own_damage,standard,888,True,True,False,False,False,False
+VOL-0097,closed,Front bumper hit a bollard.,True,motor_own_damage,standard,997,True,False,False,False,False,False
+VOL-0098,open,Headlight cracked by debris.,True,motor_own_damage,standard,1768,True,True,False,False,False,False
+VOL-0099,open,Front bumper hit a bollard.,True,motor_own_damage,standard,949,True,True,False,False,False,False
+VOL-0100,open,Parking scrape on rear bumper.,True,motor_own_damage,standard,452,True,True,False,False,False,True
+VOL-0101,open,EV battery housing damaged by kerb strike.,True,motor_own_damage,ev_high_voltage_battery,477,True,True,False,False,False,False
+VOL-0102,open,EV battery housing damaged by kerb strike.,True,motor_own_damage,standard,547,True,True,False,False,False,False
+VOL-0103,open,Parking scrape on rear bumper.,True,motor_own_damage,standard,228,True,True,False,False,False,False
+VOL-0104,closed,Parking scrape on rear bumper.,True,motor_own_damage,standard,1276,True,False,False,False,False,False
+VOL-0105,closed,Low-speed rear-end collision.,True,motor_own_damage,ev_high_voltage_battery,423,True,False,False,False,False,False
+VOL-0106,closed,Front bumper hit a bollard.,True,motor_own_damage,standard,1059,True,True,False,False,False,False
+VOL-0107,closed,Door dent from shopping trolley.,True,motor_own_damage,standard,1074,True,True,False,False,False,False
+VOL-0108,open,Two-car collision at junction.,True,motor_own_damage,standard,957,True,True,False,True,False,False
+VOL-0109,closed,Side mirror broken in narrow street.,True,motor_own_damage,standard,1032,True,True,False,False,False,False
+VOL-0110,open,Front bumper hit a bollard.,True,motor_own_damage,standard,454,True,True,False,False,False,False
+VOL-0111,open,Low-speed rear-end collision.,True,motor_own_damage,standard,213,True,False,False,False,False,False
+VOL-0112,open,Front bumper hit a bollard.,True,motor_own_damage,standard,387,True,True,False,False,False,False
+VOL-0113,open,Low-speed rear-end collision.,True,glass,ev_high_voltage_battery,1020,True,True,False,False,False,False
+VOL-0114,open,Parking scrape on rear bumper.,True,theft,standard,717,False,True,False,False,False,False
+VOL-0115,closed,Front bumper hit a bollard.,True,motor_own_damage,standard,1046,True,True,False,False,False,False
+VOL-0116,closed,Headlight cracked by debris.,True,motor_own_damage,standard,400,True,True,False,False,False,False
+VOL-0117,open,Low-speed rear-end collision.,True,motor_own_damage,standard,1842,True,True,False,False,False,False
+VOL-0118,closed,Scratched panel after car-park contact.,True,motor_own_damage,standard,668,True,True,False,False,False,
+VOL-0119,open,EV battery housing damaged by kerb strike.,True,motor_own_damage,standard,,True,True,,False,False,False
+VOL-0120,closed,Scratched panel after car-park contact.,True,motor_own_damage,standard,802,True,True,False,False,False,False
+VOL-0121,open,Front bumper hit a bollard.,True,motor_own_damage,standard,696,True,False,False,False,False,False
+VOL-0122,open,EV battery housing damaged by kerb strike.,True,motor_own_damage,standard,674,True,True,False,False,False,False
+VOL-0123,closed,Front bumper hit a bollard.,True,motor_own_damage,standard,422,,True,False,False,False,False
+VOL-0124,closed,Parking scrape on rear bumper.,True,motor_own_damage,standard,215,True,True,False,False,False,False
+VOL-0125,closed,Parking scrape on rear bumper.,True,motor_own_damage,standard,1575,True,True,False,False,False,False
+VOL-0126,open,Side mirror broken in narrow street.,True,motor_own_damage,standard,724,True,True,False,False,False,False
+VOL-0127,open,Scratched panel after car-park contact.,True,motor_own_damage,standard,575,True,True,False,False,False,False
+VOL-0128,open,Side mirror broken in narrow street.,True,motor_own_damage,standard,237,True,False,False,False,False,False
+VOL-0129,closed,Front bumper hit a bollard.,True,motor_own_damage,standard,669,False,True,False,False,False,False
+VOL-0130,open,Front bumper hit a bollard.,True,theft,standard,426,True,False,False,False,False,False
+VOL-0131,closed,Parking scrape on rear bumper.,True,motor_own_damage,standard,859,True,False,False,False,False,False
+VOL-0132,closed,Front bumper hit a bollard.,True,motor_own_damage,standard,4071,True,True,False,False,False,True
+VOL-0133,open,Front bumper hit a bollard.,True,motor_own_damage,standard,908,True,True,False,False,False,False
+VOL-0134,open,EV battery housing damaged by kerb strike.,True,glass,standard,1010,,True,False,False,False,False
+VOL-0135,closed,Two-car collision at junction.,True,motor_own_damage,ev_high_voltage_battery,738,True,True,False,False,False,False
+VOL-0136,closed,Two-car collision at junction.,True,motor_own_damage,standard,372,True,True,False,False,False,False
+VOL-0137,open,Low-speed rear-end collision.,True,motor_own_damage,standard,532,True,True,False,False,False,False
+VOL-0138,closed,Low-speed rear-end collision.,True,motor_own_damage,standard,211,True,False,False,True,False,False
+VOL-0139,closed,EV battery housing damaged by kerb strike.,True,motor_own_damage,standard,753,True,True,False,False,False,False
+VOL-0140,open,Front bumper hit a bollard.,True,motor_own_damage,ev_high_voltage_battery,745,True,False,False,False,False,False
+VOL-0141,closed,EV battery housing damaged by kerb strike.,True,motor_own_damage,standard,2057,True,True,False,False,False,False
+VOL-0142,open,Scratched panel after car-park contact.,True,motor_own_damage,standard,1452,True,True,False,False,False,False
+VOL-0143,open,Door dent from shopping trolley.,True,motor_own_damage,standard,1138,True,True,False,False,False,False
+VOL-0144,open,Hail damage on bonnet and roof.,True,motor_own_damage,standard,1339,True,True,False,False,False,
+VOL-0145,open,EV battery housing damaged by kerb strike.,True,motor_own_damage,standard,713,True,True,False,False,False,False
+VOL-0146,open,Parking scrape on rear bumper.,True,motor_own_damage,standard,1513,True,True,False,False,False,False
+VOL-0147,open,Parking scrape on rear bumper.,True,theft,standard,675,False,True,False,True,False,False
+VOL-0148,open,Side mirror broken in narrow street.,True,motor_own_damage,standard,566,True,True,False,True,False,False
+VOL-0149,closed,EV battery housing damaged by kerb strike.,True,motor_own_damage,standard,1108,True,True,False,False,False,False
+VOL-0150,open,Headlight cracked by debris.,True,motor_own_damage,standard,474,True,True,True,False,False,False
+VOL-0151,open,Door dent from shopping trolley.,True,motor_own_damage,standard,876,True,True,False,False,False,False
+VOL-0152,open,Door dent from shopping trolley.,True,motor_own_damage,standard,1068,True,True,False,False,False,False
+VOL-0153,open,Hail damage on bonnet and roof.,True,motor_own_damage,standard,1914,False,True,False,False,False,False
+VOL-0154,closed,Headlight cracked by debris.,True,motor_own_damage,standard,761,True,True,False,False,False,False
+VOL-0155,closed,Low-speed rear-end collision.,True,motor_own_damage,ev_high_voltage_battery,523,True,True,False,False,False,False
+VOL-0156,open,Front bumper hit a bollard.,True,motor_own_damage,standard,862,True,,False,False,False,False
+VOL-0157,open,Parking scrape on rear bumper.,True,motor_own_damage,standard,590,True,False,False,False,False,False
+VOL-0158,closed,Parking scrape on rear bumper.,True,motor_own_damage,standard,971,True,True,False,False,False,False
+VOL-0159,closed,Headlight cracked by debris.,True,motor_own_damage,standard,473,True,True,False,False,False,False
+VOL-0160,closed,Side mirror broken in narrow street.,True,motor_own_damage,ev_high_voltage_battery,293,True,True,False,False,False,False
+VOL-0161,open,Two-car collision at junction.,True,motor_own_damage,standard,2921,True,True,False,False,False,False
+VOL-0162,open,Parking scrape on rear bumper.,True,motor_own_damage,standard,1700,True,True,False,False,False,
+VOL-0163,open,Headlight cracked by debris.,True,motor_own_damage,standard,1221,True,False,False,False,False,False
+VOL-0164,closed,Low-speed rear-end collision.,True,motor_own_damage,standard,629,True,True,False,False,True,False
+VOL-0165,open,Side mirror broken in narrow street.,True,motor_own_damage,standard,1085,True,True,False,False,False,False
+VOL-0166,closed,Side mirror broken in narrow street.,True,motor_own_damage,standard,720,True,True,False,False,False,False
+VOL-0167,open,Hail damage on bonnet and roof.,True,motor_own_damage,standard,885,False,True,False,False,False,False
+VOL-0168,open,Hail damage on bonnet and roof.,True,glass,standard,404,True,False,False,False,False,False
+VOL-0169,open,Low-speed rear-end collision.,True,motor_own_damage,standard,927,True,True,False,False,False,False
+VOL-0170,open,Front bumper hit a bollard.,True,motor_own_damage,ev_high_voltage_battery,1497,True,True,False,False,False,False
+VOL-0171,open,Front bumper hit a bollard.,True,motor_own_damage,standard,1041,True,True,False,False,False,False
+VOL-0172,open,Low-speed rear-end collision.,True,motor_own_damage,standard,186,False,True,False,False,False,False
+VOL-0173,closed,Door dent from shopping trolley.,True,motor_own_damage,standard,1120,True,True,False,False,False,False
+VOL-0174,open,Headlight cracked by debris.,True,motor_own_damage,standard,283,True,True,False,True,False,False
+VOL-0175,open,Scratched panel after car-park contact.,True,motor_own_damage,ev_high_voltage_battery,1147,True,True,False,False,False,False
+VOL-0176,closed,Door dent from shopping trolley.,True,motor_own_damage,standard,831,True,True,False,False,False,True
+VOL-0177,open,EV battery housing damaged by kerb strike.,True,motor_own_damage,standard,459,True,True,False,False,False,False
+VOL-0178,open,Low-speed rear-end collision.,True,motor_own_damage,standard,1250,True,True,False,False,False,False
+VOL-0179,open,Side mirror broken in narrow street.,True,motor_own_damage,standard,758,True,False,False,False,False,False
+VOL-0180,open,Headlight cracked by debris.,True,motor_own_damage,standard,437,True,False,False,False,False,False
+VOL-0181,closed,Parking scrape on rear bumper.,True,motor_own_damage,standard,,True,False,True,False,False,False
+VOL-0182,closed,EV battery housing damaged by kerb strike.,True,theft,standard,,True,True,False,False,False,False
+VOL-0183,open,Door dent from shopping trolley.,False,motor_own_damage,ev_high_voltage_battery,703,True,True,False,False,False,False
+VOL-0184,open,Scratched panel after car-park contact.,True,motor_own_damage,standard,1013,True,True,False,False,False,False
+VOL-0185,closed,Headlight cracked by debris.,True,,standard,644,True,True,False,False,False,False
+VOL-0186,open,EV battery housing damaged by kerb strike.,True,motor_own_damage,standard,459,True,False,False,False,False,False
+VOL-0187,closed,Hail damage on bonnet and roof.,True,motor_own_damage,standard,,True,False,False,False,False,False
+VOL-0188,closed,Headlight cracked by debris.,True,motor_own_damage,ev_high_voltage_battery,631,False,True,False,False,False,False
+VOL-0189,closed,Front bumper hit a bollard.,True,motor_own_damage,standard,993,True,True,False,False,False,False
+VOL-0190,open,Front bumper hit a bollard.,True,motor_own_damage,standard,1077,True,False,False,False,False,False
+VOL-0191,open,Hail damage on bonnet and roof.,True,motor_own_damage,standard,401,True,True,False,False,False,False
+VOL-0192,open,Two-car collision at junction.,False,theft,standard,437,True,True,False,False,False,False
+VOL-0193,closed,Front bumper hit a bollard.,True,motor_own_damage,standard,843,True,False,False,False,False,False
+VOL-0194,closed,Front bumper hit a bollard.,True,motor_own_damage,standard,,True,False,False,False,False,True
+VOL-0195,closed,Front bumper hit a bollard.,True,motor_own_damage,standard,569,True,True,False,False,False,False
+VOL-0196,open,Parking scrape on rear bumper.,True,motor_own_damage,ev_high_voltage_battery,638,True,True,False,False,False,False
+VOL-0197,open,Door dent from shopping trolley.,True,motor_own_damage,standard,1060,True,True,False,False,False,False
+VOL-0198,closed,Door dent from shopping trolley.,True,motor_own_damage,standard,989,True,True,False,False,False,False
+VOL-0199,open,Door dent from shopping trolley.,True,motor_own_damage,standard,899,True,True,False,False,False,False
+VOL-0200,open,Headlight cracked by debris.,True,motor_own_damage,standard,283,True,True,False,False,False,False
+VOL-0201,open,Low-speed rear-end collision.,True,motor_own_damage,standard,722,True,True,False,False,False,False
+VOL-0202,open,Parking scrape on rear bumper.,True,motor_own_damage,standard,857,,True,False,False,False,False
+VOL-0203,open,Hail damage on bonnet and roof.,True,motor_own_damage,standard,549,True,True,False,False,False,False
+VOL-0204,closed,Hail damage on bonnet and roof.,True,motor_own_damage,standard,663,True,True,False,False,False,False
+VOL-0205,open,EV battery housing damaged by kerb strike.,True,motor_own_damage,standard,,True,True,False,False,False,False
+VOL-0206,open,Hail damage on bonnet and roof.,True,motor_own_damage,standard,1345,True,True,False,True,False,False
+VOL-0207,closed,Side mirror broken in narrow street.,True,motor_own_damage,standard,712,True,False,False,False,False,False
+VOL-0208,open,Parking scrape on rear bumper.,True,motor_own_damage,standard,779,True,True,False,False,False,False
+VOL-0209,closed,Scratched panel after car-park contact.,True,motor_own_damage,standard,1073,True,False,False,False,False,False
+VOL-0210,open,Door dent from shopping trolley.,True,motor_own_damage,standard,690,True,True,False,True,,False
+VOL-0211,open,Front bumper hit a bollard.,True,motor_own_damage,standard,505,True,True,False,False,False,False
+VOL-0212,closed,Scratched panel after car-park contact.,True,motor_own_damage,standard,509,True,True,False,False,False,False
+VOL-0213,open,Door dent from shopping trolley.,True,motor_own_damage,standard,690,False,True,False,False,False,False
+VOL-0214,closed,Front bumper hit a bollard.,True,motor_own_damage,standard,1742,True,True,False,False,False,False
+VOL-0215,open,Side mirror broken in narrow street.,True,motor_own_damage,standard,586,True,True,False,False,False,False
+VOL-0216,open,EV battery housing damaged by kerb strike.,True,motor_own_damage,standard,1253,False,True,False,False,False,False
+VOL-0217,closed,Headlight cracked by debris.,True,motor_own_damage,standard,1485,True,True,False,False,True,False
+VOL-0218,open,Low-speed rear-end collision.,True,motor_own_damage,standard,527,True,True,False,False,True,False
+VOL-0219,closed,Low-speed rear-end collision.,False,motor_own_damage,standard,809,True,True,False,False,False,False
+VOL-0220,open,Headlight cracked by debris.,True,motor_own_damage,standard,710,True,True,False,False,False,False
+VOL-0221,closed,Headlight cracked by debris.,True,theft,standard,1478,True,True,False,False,False,False
+VOL-0222,open,Low-speed rear-end collision.,True,theft,standard,1866,True,True,True,False,False,False
+VOL-0223,closed,Scratched panel after car-park contact.,True,motor_own_damage,standard,,True,False,False,False,False,False
+VOL-0224,open,Side mirror broken in narrow street.,True,motor_own_damage,standard,477,True,True,False,False,False,False
+VOL-0225,closed,Door dent from shopping trolley.,True,glass,standard,410,True,True,False,False,False,False
+VOL-0226,open,Parking scrape on rear bumper.,True,motor_own_damage,standard,,True,True,False,False,False,False
+VOL-0227,open,Parking scrape on rear bumper.,True,motor_own_damage,standard,738,True,True,False,False,False,False
+VOL-0228,open,Two-car collision at junction.,True,motor_own_damage,standard,465,False,True,False,False,False,True
+VOL-0229,open,Two-car collision at junction.,True,motor_own_damage,standard,422,True,True,False,False,False,False
+VOL-0230,open,Headlight cracked by debris.,True,motor_own_damage,standard,1047,True,True,False,False,False,False
+VOL-0231,closed,Side mirror broken in narrow street.,True,motor_own_damage,standard,743,True,True,False,False,False,False
+VOL-0232,open,Hail damage on bonnet and roof.,True,motor_own_damage,standard,1589,False,True,False,False,False,False
+VOL-0233,closed,Hail damage on bonnet and roof.,True,motor_own_damage,standard,707,True,True,False,False,False,False
+VOL-0234,closed,Parking scrape on rear bumper.,True,glass,standard,578,True,True,False,False,False,False
+VOL-0235,open,Scratched panel after car-park contact.,,motor_own_damage,standard,1452,True,True,False,False,True,False
+VOL-0236,closed,Scratched panel after car-park contact.,True,motor_own_damage,standard,488,False,True,False,False,False,False
+VOL-0237,open,Hail damage on bonnet and roof.,True,motor_own_damage,ev_high_voltage_battery,,True,True,False,False,False,False
+VOL-0238,open,Side mirror broken in narrow street.,True,motor_own_damage,standard,,True,True,False,False,False,False
+VOL-0239,open,EV battery housing damaged by kerb strike.,True,theft,standard,1940,True,True,False,False,False,False
+VOL-0240,open,Two-car collision at junction.,True,motor_own_damage,standard,342,True,True,False,False,False,False
+VOL-0241,closed,Hail damage on bonnet and roof.,True,motor_own_damage,standard,652,True,True,False,False,False,False
+VOL-0242,open,Hail damage on bonnet and roof.,True,motor_own_damage,standard,1010,True,True,False,False,False,False
+VOL-0243,closed,Front bumper hit a bollard.,True,motor_own_damage,standard,1311,True,True,False,False,False,False
+VOL-0244,open,EV battery housing damaged by kerb strike.,True,glass,standard,470,True,True,False,False,False,False
+VOL-0245,closed,EV battery housing damaged by kerb strike.,True,motor_own_damage,standard,585,True,False,False,False,False,False
+VOL-0246,open,Side mirror broken in narrow street.,True,motor_own_damage,standard,2381,True,True,False,False,False,False
+VOL-0247,closed,Side mirror broken in narrow street.,True,motor_own_damage,standard,1067,False,True,False,False,False,False
+VOL-0248,open,EV battery housing damaged by kerb strike.,True,motor_own_damage,standard,675,True,True,True,False,False,False
+VOL-0249,closed,Door dent from shopping trolley.,True,motor_own_damage,ev_high_voltage_battery,1122,False,True,False,False,False,False
+VOL-0250,open,Scratched panel after car-park contact.,True,motor_own_damage,ev_high_voltage_battery,501,True,True,False,False,False,False
+VOL-0251,closed,Hail damage on bonnet and roof.,True,theft,standard,432,True,True,False,,False,False
+VOL-0252,open,Side mirror broken in narrow street.,True,motor_own_damage,standard,919,True,True,False,False,False,False
+VOL-0253,open,Front bumper hit a bollard.,True,,standard,1203,True,True,False,False,False,False
+VOL-0254,open,EV battery housing damaged by kerb strike.,True,motor_own_damage,standard,284,True,True,False,False,False,False
+VOL-0255,open,Two-car collision at junction.,True,motor_own_damage,standard,824,True,True,False,False,False,False
+VOL-0256,open,Headlight cracked by debris.,True,motor_own_damage,standard,556,True,True,False,False,False,False
+VOL-0257,open,Hail damage on bonnet and roof.,True,motor_own_damage,standard,1678,False,True,False,False,False,False
+VOL-0258,closed,Parking scrape on rear bumper.,True,glass,standard,744,True,True,False,False,False,False
+VOL-0259,open,Door dent from shopping trolley.,True,motor_own_damage,standard,697,True,True,False,False,False,False
+VOL-0260,open,Low-speed rear-end collision.,True,motor_own_damage,standard,1315,True,False,False,False,False,False
+VOL-0261,closed,Headlight cracked by debris.,True,motor_own_damage,standard,362,False,True,False,False,False,False
+VOL-0262,closed,Side mirror broken in narrow street.,True,motor_own_damage,standard,458,True,True,False,False,False,True
+VOL-0263,open,Scratched panel after car-park contact.,True,motor_own_damage,standard,521,True,False,True,False,False,False
+VOL-0264,open,EV battery housing damaged by kerb strike.,True,motor_own_damage,standard,750,True,True,False,False,False,False
+VOL-0265,open,Low-speed rear-end collision.,True,motor_own_damage,standard,1626,True,,False,False,False,False
+VOL-0266,open,Low-speed rear-end collision.,True,motor_own_damage,ev_high_voltage_battery,286,True,True,False,False,False,False
+VOL-0267,open,Scratched panel after car-park contact.,True,motor_own_damage,standard,457,True,True,False,False,False,False
+VOL-0268,open,Two-car collision at junction.,True,motor_own_damage,standard,1012,True,True,False,True,False,False
+VOL-0269,open,Headlight cracked by debris.,True,motor_own_damage,standard,416,True,True,False,True,False,False
+VOL-0270,closed,Two-car collision at junction.,True,motor_own_damage,standard,435,True,True,False,False,False,False
+VOL-0271,open,Two-car collision at junction.,True,motor_own_damage,standard,477,True,True,False,False,False,False
+VOL-0272,open,Door dent from shopping trolley.,True,motor_own_damage,standard,977,True,True,False,False,False,False
+VOL-0273,closed,Front bumper hit a bollard.,True,motor_own_damage,ev_high_voltage_battery,297,True,True,False,False,False,False
+VOL-0274,open,Front bumper hit a bollard.,True,motor_own_damage,standard,957,False,True,False,False,False,False
+VOL-0275,closed,Headlight cracked by debris.,False,motor_own_damage,standard,585,True,True,False,False,False,False
+VOL-0276,open,Front bumper hit a bollard.,True,motor_own_damage,standard,271,False,True,False,False,False,False
+VOL-0277,closed,Two-car collision at junction.,True,motor_own_damage,standard,1053,True,True,False,False,False,False
+VOL-0278,closed,Low-speed rear-end collision.,True,motor_own_damage,standard,738,True,True,False,False,True,False
+VOL-0279,open,Side mirror broken in narrow street.,True,motor_own_damage,standard,2101,True,True,False,False,False,False
+VOL-0280,closed,Parking scrape on rear bumper.,True,motor_own_damage,standard,2135,True,True,False,False,False,True
+VOL-0281,open,Two-car collision at junction.,True,theft,standard,881,True,True,False,False,False,False
+VOL-0282,closed,Side mirror broken in narrow street.,True,motor_own_damage,standard,1423,True,True,True,False,False,False
+VOL-0283,closed,Hail damage on bonnet and roof.,True,motor_own_damage,standard,608,True,True,False,False,False,False
+VOL-0284,open,Front bumper hit a bollard.,True,motor_own_damage,standard,431,True,True,False,False,False,True
+VOL-0285,closed,Front bumper hit a bollard.,True,motor_own_damage,standard,490,True,True,False,False,False,False
+VOL-0286,open,Parking scrape on rear bumper.,True,motor_own_damage,standard,1335,True,False,False,False,False,False
+VOL-0287,open,Side mirror broken in narrow street.,True,motor_own_damage,standard,1097,True,True,False,False,False,False
+VOL-0288,open,Scratched panel after car-park contact.,True,motor_own_damage,standard,277,True,False,False,False,False,False
+VOL-0289,open,Door dent from shopping trolley.,True,,standard,1190,True,True,False,False,False,False
+VOL-0290,closed,Headlight cracked by debris.,True,motor_own_damage,standard,506,True,True,False,False,False,False
+VOL-0291,closed,Headlight cracked by debris.,True,motor_own_damage,standard,598,True,True,False,False,False,False
+VOL-0292,open,Hail damage on bonnet and roof.,False,motor_own_damage,ev_high_voltage_battery,726,True,False,False,False,False,False
+VOL-0293,open,Scratched panel after car-park contact.,True,motor_own_damage,standard,200,True,True,False,False,False,False
+VOL-0294,open,Front bumper hit a bollard.,True,motor_own_damage,standard,277,False,False,False,False,False,False
+VOL-0295,open,Low-speed rear-end collision.,True,motor_own_damage,standard,1161,True,True,False,False,False,False
+VOL-0296,open,EV battery housing damaged by kerb strike.,True,glass,standard,325,True,True,False,False,False,False
+VOL-0297,open,Scratched panel after car-park contact.,True,motor_own_damage,standard,896,True,True,False,False,False,False
+VOL-0298,open,Front bumper hit a bollard.,True,motor_own_damage,standard,432,True,True,False,False,False,False
+VOL-0299,closed,Two-car collision at junction.,True,theft,standard,432,False,False,False,False,False,False
+VOL-0300,open,Scratched panel after car-park contact.,True,motor_own_damage,standard,1001,True,True,False,False,False,False
+VOL-0301,closed,Low-speed rear-end collision.,True,motor_own_damage,standard,875,True,False,True,False,False,False
+VOL-0302,open,Parking scrape on rear bumper.,True,motor_own_damage,standard,804,True,False,False,False,False,False
+VOL-0303,closed,Front bumper hit a bollard.,True,motor_own_damage,standard,585,True,,False,False,False,False
+VOL-0304,closed,Door dent from shopping trolley.,True,motor_own_damage,standard,1805,True,True,False,False,False,False
+VOL-0305,closed,Hail damage on bonnet and roof.,True,motor_own_damage,standard,257,True,True,False,False,False,True
+VOL-0306,open,Front bumper hit a bollard.,True,motor_own_damage,standard,614,True,False,False,False,False,False
+VOL-0307,closed,Headlight cracked by debris.,True,motor_own_damage,standard,1131,True,True,False,False,,False
+VOL-0308,open,Side mirror broken in narrow street.,True,motor_own_damage,standard,683,False,True,False,False,False,False
+VOL-0309,open,EV battery housing damaged by kerb strike.,True,motor_own_damage,standard,470,True,True,False,False,False,False
+VOL-0310,open,Hail damage on bonnet and roof.,True,motor_own_damage,standard,643,True,False,False,False,False,False
+VOL-0311,closed,Hail damage on bonnet and roof.,True,motor_own_damage,standard,1407,False,True,False,False,False,True
+VOL-0312,closed,Headlight cracked by debris.,True,motor_own_damage,standard,1818,True,True,False,False,False,False
+VOL-0313,closed,Side mirror broken in narrow street.,True,motor_own_damage,standard,933,True,True,False,False,False,False
+VOL-0314,closed,Scratched panel after car-park contact.,True,motor_own_damage,ev_high_voltage_battery,569,,True,False,False,False,False
+VOL-0315,open,Front bumper hit a bollard.,True,motor_own_damage,standard,664,True,True,False,False,False,False
+VOL-0316,open,Two-car collision at junction.,True,motor_own_damage,standard,1828,True,True,False,False,False,False
+VOL-0317,open,Front bumper hit a bollard.,True,motor_own_damage,standard,1314,True,True,False,False,False,False
+VOL-0318,closed,EV battery housing damaged by kerb strike.,True,motor_own_damage,standard,953,True,True,False,False,,False
+VOL-0319,closed,EV battery housing damaged by kerb strike.,True,motor_own_damage,standard,280,True,True,False,False,False,False
+VOL-0320,closed,Parking scrape on rear bumper.,False,motor_own_damage,standard,970,True,True,False,False,False,False
+VOL-0321,open,EV battery housing damaged by kerb strike.,True,motor_own_damage,standard,1113,True,False,False,False,False,False
+VOL-0322,open,Hail damage on bonnet and roof.,True,motor_own_damage,standard,586,True,True,False,False,False,False
+VOL-0323,open,Two-car collision at junction.,True,motor_own_damage,ev_high_voltage_battery,1154,True,True,False,False,False,False
+VOL-0324,open,EV battery housing damaged by kerb strike.,True,,ev_high_voltage_battery,855,True,False,False,False,False,False
+VOL-0325,open,Hail damage on bonnet and roof.,True,motor_own_damage,standard,337,True,True,False,False,False,False
+VOL-0326,open,EV battery housing damaged by kerb strike.,True,motor_own_damage,standard,253,True,True,False,False,False,False
+VOL-0327,closed,Side mirror broken in narrow street.,True,motor_own_damage,standard,1170,True,True,True,False,False,False
+VOL-0328,closed,Two-car collision at junction.,True,motor_own_damage,standard,528,True,True,False,False,False,False
+VOL-0329,open,Scratched panel after car-park contact.,True,motor_own_damage,standard,639,True,True,False,False,False,False
+VOL-0330,open,Scratched panel after car-park contact.,True,motor_own_damage,standard,1594,True,True,False,False,False,False
+VOL-0331,closed,Two-car collision at junction.,True,motor_own_damage,standard,591,False,True,False,False,False,False
+VOL-0332,open,Parking scrape on rear bumper.,True,motor_own_damage,standard,1054,True,True,False,False,False,False
+VOL-0333,closed,Headlight cracked by debris.,True,motor_own_damage,standard,329,,True,False,False,False,
+VOL-0334,open,Two-car collision at junction.,True,motor_own_damage,standard,518,,True,False,False,False,False
+VOL-0335,open,Door dent from shopping trolley.,True,motor_own_damage,standard,444,True,True,False,False,False,False
+VOL-0336,open,Scratched panel after car-park contact.,True,motor_own_damage,standard,850,False,False,False,False,False,False
+VOL-0337,open,EV battery housing damaged by kerb strike.,True,motor_own_damage,standard,847,True,,True,False,True,False
+VOL-0338,closed,Parking scrape on rear bumper.,True,motor_own_damage,standard,648,True,True,False,False,False,
+VOL-0339,open,Scratched panel after car-park contact.,True,motor_own_damage,standard,771,True,True,False,False,False,False
+VOL-0340,closed,Scratched panel after car-park contact.,True,motor_own_damage,standard,395,True,True,False,False,False,False
+VOL-0341,closed,Door dent from shopping trolley.,True,motor_own_damage,standard,2123,False,True,False,False,False,False
+VOL-0342,open,Parking scrape on rear bumper.,True,motor_own_damage,standard,914,True,True,False,False,False,False
+VOL-0343,open,Headlight cracked by debris.,True,motor_own_damage,standard,1009,True,True,False,False,False,False
+VOL-0344,closed,Front bumper hit a bollard.,True,motor_own_damage,standard,397,False,True,False,False,False,False
+VOL-0345,closed,Two-car collision at junction.,True,motor_own_damage,standard,1396,True,True,False,False,False,False
+VOL-0346,closed,Side mirror broken in narrow street.,True,motor_own_damage,standard,935,True,True,False,False,False,False
+VOL-0347,open,Side mirror broken in narrow street.,True,motor_own_damage,standard,1130,True,True,False,False,False,False
+VOL-0348,open,Hail damage on bonnet and roof.,True,motor_own_damage,standard,378,True,True,False,False,False,False
+VOL-0349,closed,Front bumper hit a bollard.,True,motor_own_damage,standard,947,True,True,False,False,False,False
+VOL-0350,open,Parking scrape on rear bumper.,True,motor_own_damage,standard,414,True,True,False,False,False,True
+VOL-0351,open,Side mirror broken in narrow street.,True,motor_own_damage,standard,542,True,True,True,False,False,False
+VOL-0352,closed,Door dent from shopping trolley.,True,motor_own_damage,standard,613,True,True,False,True,False,False
+VOL-0353,open,Door dent from shopping trolley.,True,motor_own_damage,standard,1291,True,True,False,False,False,False
+VOL-0354,closed,Door dent from shopping trolley.,True,motor_own_damage,standard,1109,True,True,False,True,False,False
+VOL-0355,closed,Scratched panel after car-park contact.,True,motor_own_damage,standard,615,True,True,True,False,False,False
+VOL-0356,closed,Headlight cracked by debris.,True,motor_own_damage,standard,1497,True,False,False,False,False,False
+VOL-0357,closed,Side mirror broken in narrow street.,True,motor_own_damage,standard,1120,True,True,False,False,False,False
+VOL-0358,closed,Low-speed rear-end collision.,True,motor_own_damage,standard,565,True,True,False,False,False,False
+VOL-0359,closed,Headlight cracked by debris.,True,motor_own_damage,standard,379,True,True,True,True,False,False
+VOL-0360,open,Two-car collision at junction.,True,motor_own_damage,standard,258,True,True,False,False,False,False
+VOL-0361,closed,Two-car collision at junction.,True,motor_own_damage,ev_high_voltage_battery,1084,False,True,False,False,False,False
+VOL-0362,open,Front bumper hit a bollard.,True,motor_own_damage,standard,614,True,True,False,False,False,False
+VOL-0363,open,EV battery housing damaged by kerb strike.,True,motor_own_damage,standard,1155,True,True,False,False,False,False
+VOL-0364,open,Hail damage on bonnet and roof.,True,,standard,662,True,True,False,False,False,False
+VOL-0365,closed,EV battery housing damaged by kerb strike.,True,motor_own_damage,standard,651,False,True,False,False,False,False
+VOL-0366,closed,Door dent from shopping trolley.,True,motor_own_damage,standard,720,True,True,False,False,False,False
+VOL-0367,closed,Side mirror broken in narrow street.,True,motor_own_damage,standard,1105,True,False,False,False,False,False
+VOL-0368,open,EV battery housing damaged by kerb strike.,True,glass,standard,537,True,True,False,False,False,False
+VOL-0369,open,Hail damage on bonnet and roof.,True,motor_own_damage,standard,512,True,True,False,False,False,False
+VOL-0370,open,EV battery housing damaged by kerb strike.,True,motor_own_damage,standard,366,True,True,False,False,False,False
+VOL-0371,closed,Parking scrape on rear bumper.,True,glass,standard,914,True,False,False,False,False,False
+VOL-0372,closed,Headlight cracked by debris.,True,motor_own_damage,standard,856,True,True,False,False,False,False
+VOL-0373,open,Two-car collision at junction.,True,motor_own_damage,standard,1893,True,True,False,False,False,False
+VOL-0374,open,EV battery housing damaged by kerb strike.,True,motor_own_damage,standard,596,True,True,False,False,False,False
+VOL-0375,closed,Headlight cracked by debris.,True,motor_own_damage,standard,707,True,True,False,False,False,True
+VOL-0376,open,Door dent from shopping trolley.,True,motor_own_damage,standard,473,True,False,False,False,False,False
+VOL-0377,open,EV battery housing damaged by kerb strike.,True,theft,ev_high_voltage_battery,1184,True,True,False,False,False,False
+VOL-0378,open,EV battery housing damaged by kerb strike.,True,motor_own_damage,standard,879,,True,False,False,False,False
+VOL-0379,closed,Front bumper hit a bollard.,True,motor_own_damage,standard,352,False,True,False,False,False,False
+VOL-0380,open,Front bumper hit a bollard.,True,motor_own_damage,standard,360,True,True,False,False,False,False
+VOL-0381,open,Side mirror broken in narrow street.,True,theft,standard,705,True,True,True,False,False,False
+VOL-0382,open,EV battery housing damaged by kerb strike.,True,motor_own_damage,standard,1670,True,False,False,False,False,False
+VOL-0383,open,Scratched panel after car-park contact.,True,motor_own_damage,standard,954,True,True,False,False,False,False
+VOL-0384,closed,Hail damage on bonnet and roof.,True,motor_own_damage,ev_high_voltage_battery,507,True,False,False,True,False,False
+VOL-0385,open,Front bumper hit a bollard.,True,motor_own_damage,standard,905,True,True,False,False,False,False
+VOL-0386,open,Front bumper hit a bollard.,True,motor_own_damage,standard,911,True,False,False,False,False,False
+VOL-0387,closed,Two-car collision at junction.,True,motor_own_damage,standard,765,False,False,False,False,False,False
+VOL-0388,closed,Hail damage on bonnet and roof.,True,motor_own_damage,standard,1498,,True,False,False,False,False
+VOL-0389,closed,Scratched panel after car-park contact.,True,glass,standard,1861,True,True,False,False,False,False
+VOL-0390,closed,Two-car collision at junction.,True,motor_own_damage,standard,1184,True,True,True,False,False,False
+VOL-0391,open,Parking scrape on rear bumper.,True,motor_own_damage,standard,681,True,True,False,False,False,False
+VOL-0392,open,Front bumper hit a bollard.,True,motor_own_damage,standard,282,True,True,False,False,False,False
+VOL-0393,closed,Front bumper hit a bollard.,True,motor_own_damage,standard,1323,True,True,False,False,False,False
+VOL-0394,closed,Door dent from shopping trolley.,True,motor_own_damage,standard,323,True,True,False,False,False,False
+VOL-0395,open,EV battery housing damaged by kerb strike.,True,motor_own_damage,standard,1012,True,False,False,False,False,False
+VOL-0396,open,Parking scrape on rear bumper.,True,motor_own_damage,standard,366,,False,False,False,False,False
+VOL-0397,closed,Scratched panel after car-park contact.,True,motor_own_damage,ev_high_voltage_battery,793,True,True,False,False,False,False
+VOL-0398,closed,EV battery housing damaged by kerb strike.,True,motor_own_damage,standard,1175,True,True,False,False,False,False
+VOL-0399,closed,Scratched panel after car-park contact.,True,motor_own_damage,standard,947,False,True,False,False,False,False
+VOL-0400,open,Side mirror broken in narrow street.,True,motor_own_damage,standard,482,True,True,False,False,False,False
+VOL-0401,open,Side mirror broken in narrow street.,True,theft,ev_high_voltage_battery,2504,True,True,False,False,False,False
+VOL-0402,closed,Door dent from shopping trolley.,True,motor_own_damage,standard,666,False,False,False,False,False,False
+VOL-0403,closed,Front bumper hit a bollard.,True,motor_own_damage,ev_high_voltage_battery,317,True,False,False,False,False,False
+VOL-0404,open,Front bumper hit a bollard.,True,motor_own_damage,ev_high_voltage_battery,572,True,True,False,False,False,False
+VOL-0405,open,Low-speed rear-end collision.,True,motor_own_damage,standard,768,True,True,False,False,False,False
+VOL-0406,open,Door dent from shopping trolley.,True,motor_own_damage,standard,689,True,True,False,False,False,False
+VOL-0407,open,Side mirror broken in narrow street.,True,motor_own_damage,standard,564,True,True,False,False,False,False
+VOL-0408,open,Front bumper hit a bollard.,True,motor_own_damage,standard,1083,True,False,False,False,False,False
+VOL-0409,open,Headlight cracked by debris.,True,motor_own_damage,standard,592,True,False,False,False,True,False
+VOL-0410,closed,Two-car collision at junction.,False,theft,standard,422,True,True,False,False,False,False
+VOL-0411,closed,Headlight cracked by debris.,True,motor_own_damage,standard,714,True,True,False,False,False,
+VOL-0412,open,Front bumper hit a bollard.,True,glass,standard,1085,False,True,False,False,False,False
+VOL-0413,closed,EV battery housing damaged by kerb strike.,True,motor_own_damage,standard,532,True,True,False,False,False,False
+VOL-0414,closed,Door dent from shopping trolley.,True,motor_own_damage,standard,1440,True,True,False,False,False,False
+VOL-0415,closed,Door dent from shopping trolley.,True,motor_own_damage,standard,,True,False,False,False,False,False
+VOL-0416,open,Hail damage on bonnet and roof.,True,motor_own_damage,standard,894,False,False,False,,False,False
+VOL-0417,open,Parking scrape on rear bumper.,True,motor_own_damage,standard,321,True,True,False,False,False,False
+VOL-0418,open,Low-speed rear-end collision.,True,motor_own_damage,standard,329,True,True,False,False,False,False
+VOL-0419,open,Front bumper hit a bollard.,True,motor_own_damage,ev_high_voltage_battery,824,True,True,False,False,False,False
+VOL-0420,closed,Front bumper hit a bollard.,True,motor_own_damage,standard,549,True,True,False,,False,True
+VOL-0421,open,Headlight cracked by debris.,True,motor_own_damage,standard,1667,True,True,False,False,False,False
+VOL-0422,closed,Front bumper hit a bollard.,True,motor_own_damage,ev_high_voltage_battery,1509,True,True,False,True,False,False
+VOL-0423,open,Front bumper hit a bollard.,True,motor_own_damage,standard,1767,True,True,False,False,False,False
+VOL-0424,closed,Door dent from shopping trolley.,,motor_own_damage,standard,1008,True,True,False,False,False,False
+VOL-0425,closed,Low-speed rear-end collision.,True,motor_own_damage,standard,860,True,True,False,,False,False
+VOL-0426,open,Door dent from shopping trolley.,True,motor_own_damage,standard,310,True,True,True,False,False,False
+VOL-0427,open,Low-speed rear-end collision.,True,motor_own_damage,ev_high_voltage_battery,896,True,False,False,False,False,False
+VOL-0428,open,Front bumper hit a bollard.,True,theft,standard,734,True,True,False,False,False,False
+VOL-0429,closed,Scratched panel after car-park contact.,True,motor_own_damage,standard,407,False,False,False,False,False,False
+VOL-0430,open,EV battery housing damaged by kerb strike.,True,motor_own_damage,standard,1647,True,True,False,False,False,False
+VOL-0431,open,Headlight cracked by debris.,True,motor_own_damage,ev_high_voltage_battery,1064,False,True,False,False,False,False
+VOL-0432,open,Two-car collision at junction.,True,theft,standard,1234,True,True,False,False,False,False
+VOL-0433,closed,Low-speed rear-end collision.,True,motor_own_damage,standard,1212,False,True,False,False,True,False
+VOL-0434,open,Front bumper hit a bollard.,True,glass,standard,1020,True,False,False,False,False,False
+VOL-0435,open,Low-speed rear-end collision.,True,glass,ev_high_voltage_battery,443,True,True,False,False,False,False
+VOL-0436,open,Front bumper hit a bollard.,True,theft,standard,215,True,True,False,False,False,False
+VOL-0437,open,Two-car collision at junction.,True,motor_own_damage,standard,677,True,True,False,False,False,False
+VOL-0438,open,Headlight cracked by debris.,True,motor_own_damage,standard,890,False,True,True,False,False,False
+VOL-0439,open,EV battery housing damaged by kerb strike.,True,glass,standard,2627,True,True,False,False,False,False
+VOL-0440,open,Scratched panel after car-park contact.,True,motor_own_damage,standard,389,True,True,False,False,False,False
+VOL-0441,open,Low-speed rear-end collision.,True,motor_own_damage,standard,959,True,True,False,False,False,False
+VOL-0442,open,Front bumper hit a bollard.,True,motor_own_damage,standard,376,True,True,False,False,False,False
+VOL-0443,open,Two-car collision at junction.,True,motor_own_damage,ev_high_voltage_battery,1617,True,False,False,False,False,False
+VOL-0444,open,Two-car collision at junction.,True,motor_own_damage,standard,1356,True,False,False,False,False,False
+VOL-0445,open,Scratched panel after car-park contact.,True,motor_own_damage,standard,587,True,,False,False,False,False
+VOL-0446,open,Side mirror broken in narrow street.,True,motor_own_damage,standard,1313,False,True,False,False,False,False
+VOL-0447,open,Scratched panel after car-park contact.,True,motor_own_damage,standard,852,False,True,False,False,False,False
+VOL-0448,closed,Two-car collision at junction.,True,motor_own_damage,standard,1194,True,True,False,False,False,False
+VOL-0449,open,Scratched panel after car-park contact.,True,motor_own_damage,standard,312,True,True,False,False,False,False
+VOL-0450,open,Front bumper hit a bollard.,True,motor_own_damage,standard,990,True,True,False,False,False,False
+VOL-0451,open,EV battery housing damaged by kerb strike.,True,motor_own_damage,ev_high_voltage_battery,645,True,True,False,False,False,False
+VOL-0452,closed,Parking scrape on rear bumper.,True,theft,ev_high_voltage_battery,220,True,True,False,False,False,False
+VOL-0453,open,Side mirror broken in narrow street.,True,motor_own_damage,standard,843,True,True,False,False,False,False
+VOL-0454,open,Front bumper hit a bollard.,True,motor_own_damage,standard,954,True,True,False,False,False,False
+VOL-0455,open,Side mirror broken in narrow street.,True,motor_own_damage,standard,573,True,True,False,False,False,False
+VOL-0456,open,Scratched panel after car-park contact.,True,motor_own_damage,standard,861,True,True,,True,False,False
+VOL-0457,closed,Hail damage on bonnet and roof.,True,motor_own_damage,standard,426,True,True,False,False,False,False
+VOL-0458,open,Side mirror broken in narrow street.,True,motor_own_damage,standard,1395,True,True,False,False,False,False
+VOL-0459,open,Scratched panel after car-park contact.,True,motor_own_damage,standard,1131,True,True,False,False,False,False
+VOL-0460,open,Side mirror broken in narrow street.,True,motor_own_damage,standard,1365,True,True,False,False,False,False
+VOL-0461,open,Low-speed rear-end collision.,False,motor_own_damage,standard,435,True,True,False,False,False,False
+VOL-0462,open,Door dent from shopping trolley.,True,motor_own_damage,standard,1673,True,False,False,False,False,False
+VOL-0463,open,Two-car collision at junction.,True,motor_own_damage,standard,361,True,True,False,False,False,False
+VOL-0464,open,Scratched panel after car-park contact.,True,motor_own_damage,standard,1213,True,True,False,False,False,False
+VOL-0465,open,Door dent from shopping trolley.,True,,standard,627,True,True,False,False,False,False
+VOL-0466,open,Hail damage on bonnet and roof.,True,motor_own_damage,standard,,True,True,False,False,False,False
+VOL-0467,open,Door dent from shopping trolley.,True,motor_own_damage,standard,914,True,True,False,False,False,False
+VOL-0468,open,EV battery housing damaged by kerb strike.,True,motor_own_damage,standard,1455,True,True,False,False,False,False
+VOL-0469,closed,Scratched panel after car-park contact.,True,motor_own_damage,standard,563,True,True,False,True,False,False
+VOL-0470,open,Headlight cracked by debris.,True,motor_own_damage,standard,880,True,True,False,True,False,False
+VOL-0471,open,EV battery housing damaged by kerb strike.,True,motor_own_damage,standard,476,True,False,False,False,False,True
+VOL-0472,closed,Hail damage on bonnet and roof.,True,motor_own_damage,standard,781,True,True,False,False,False,False
+VOL-0473,closed,Two-car collision at junction.,True,glass,standard,680,True,False,False,False,False,False
+VOL-0474,open,Side mirror broken in narrow street.,True,motor_own_damage,standard,317,True,,False,False,False,False
+VOL-0475,open,Door dent from shopping trolley.,True,motor_own_damage,standard,359,True,True,False,False,False,False
+VOL-0476,open,Headlight cracked by debris.,True,motor_own_damage,standard,155,True,True,False,,False,False
+VOL-0477,closed,Headlight cracked by debris.,True,motor_own_damage,standard,485,True,True,False,False,False,False
+VOL-0478,open,Low-speed rear-end collision.,True,motor_own_damage,standard,1474,True,True,False,False,False,False
+VOL-0479,closed,Side mirror broken in narrow street.,True,motor_own_damage,standard,330,False,False,False,False,False,False
+VOL-0480,open,Low-speed rear-end collision.,True,glass,ev_high_voltage_battery,699,True,True,False,False,True,False
+VOL-0481,open,Front bumper hit a bollard.,True,motor_own_damage,standard,768,True,True,False,False,False,False
+VOL-0482,open,Headlight cracked by debris.,True,motor_own_damage,standard,588,True,True,False,False,False,False
+VOL-0483,open,Hail damage on bonnet and roof.,True,motor_own_damage,standard,651,True,True,False,False,False,False
+VOL-0484,closed,Door dent from shopping trolley.,True,motor_own_damage,standard,1418,True,True,False,False,False,False
+VOL-0485,open,Headlight cracked by debris.,True,motor_own_damage,standard,833,True,True,False,False,False,False
+VOL-0486,closed,Scratched panel after car-park contact.,True,motor_own_damage,standard,791,True,True,False,False,False,False
+VOL-0487,open,Hail damage on bonnet and roof.,True,motor_own_damage,standard,808,True,True,,False,False,False
+VOL-0488,open,Front bumper hit a bollard.,True,motor_own_damage,standard,447,True,True,False,True,False,False
+VOL-0489,closed,Headlight cracked by debris.,True,motor_own_damage,ev_high_voltage_battery,2071,True,True,False,False,False,False
+VOL-0490,closed,Hail damage on bonnet and roof.,True,motor_own_damage,standard,738,True,True,False,False,False,False
+VOL-0491,open,Hail damage on bonnet and roof.,True,motor_own_damage,standard,507,True,True,False,False,True,False
+VOL-0492,open,Front bumper hit a bollard.,True,motor_own_damage,standard,654,True,True,False,False,False,False
+VOL-0493,closed,Scratched panel after car-park contact.,True,motor_own_damage,standard,1045,True,True,False,False,False,False
+VOL-0494,open,Door dent from shopping trolley.,True,motor_own_damage,standard,741,True,True,False,False,False,False
+VOL-0495,open,EV battery housing damaged by kerb strike.,True,motor_own_damage,standard,1093,True,True,False,False,False,False
+VOL-0496,closed,Low-speed rear-end collision.,True,motor_own_damage,standard,851,True,False,False,False,False,False
+VOL-0497,closed,Side mirror broken in narrow street.,True,motor_own_damage,standard,339,True,True,False,False,False,False
+VOL-0498,closed,Headlight cracked by debris.,True,motor_own_damage,standard,642,False,True,False,False,False,False
+VOL-0499,closed,Scratched panel after car-park contact.,True,motor_own_damage,standard,395,False,False,False,False,False,False
+VOL-0500,open,Two-car collision at junction.,True,motor_own_damage,standard,1505,True,True,False,False,False,False
