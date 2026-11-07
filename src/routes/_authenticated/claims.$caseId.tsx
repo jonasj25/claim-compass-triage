@@ -6,11 +6,11 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { activePolicyQuery, caseDetailQuery, casesQuery } from "@/lib/data";
 import { readCaseNav } from "@/lib/case-nav";
+import { channelLabel, claimTypeLabel, humanize, repairTypeLabel, SOURCE_TYPE_LABEL, valueLabel } from "@/lib/labels";
 import { decide, FIELD_LABELS, POLICY_V1, RECOMMENDATION_LABELS, type Claim, type Recommendation } from "@/lib/triage";
 import { isClosed } from "@/lib/csv";
 import { queueFor, SLA_HOURS } from "@/lib/lifecycle";
 import { useRole } from "@/lib/role";
-import { claimTypeText, repairTypeText } from "@/lib/policy-text";
 import { Card, Chip, Mono, StatusDot, Unknown, fmtEur, fmtTime } from "@/components/triage/ui";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -65,6 +65,9 @@ function CaseDetail() {
   const [overrideOpen, setOverrideOpen] = useState<Recommendation | null>(null);
   const [busy, setBusy] = useState(false);
   const opened = useRef(Date.now());
+  const confirmKey = useRef<(() => void) | null>(null);
+  const overrideKey = useRef<(() => void) | null>(null);
+  const srcBox = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     opened.current = Date.now();
@@ -97,13 +100,29 @@ function CaseDetail() {
       if (overrideOpen || e.metaKey || e.ctrlKey || e.altKey) return;
       const t = e.target as HTMLElement | null;
       if (t && (t.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(t.tagName))) return;
-      if (e.key === "j" || e.key === "J") goTo(nextId);
-      if (e.key === "k" || e.key === "K") goTo(prevId);
+      if (e.key === "ArrowRight" || e.key === "j" || e.key === "J") goTo(nextId);
+      else if (e.key === "ArrowLeft" || e.key === "k" || e.key === "K") goTo(prevId);
+      else if (e.key === "c" || e.key === "C") confirmKey.current?.();
+      else if (e.key === "o" || e.key === "O") overrideKey.current?.();
+      else return;
+      e.preventDefault();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nextId, prevId, overrideOpen]);
+
+  // Keep the marked source visible inside the Sources card (never scrolls the page itself)
+  useEffect(() => {
+    const box = srcBox.current;
+    const el = box?.querySelector<HTMLElement>("[data-on]");
+    if (!box || !el || box.scrollHeight <= box.clientHeight) return;
+    const top = el.offsetTop;
+    const bottom = top + el.offsetHeight;
+    if (top < box.scrollTop + 90 || bottom > box.scrollTop + box.clientHeight - 16) {
+      box.scrollTo({ top: Math.max(0, top - box.clientHeight / 3), behavior: "smooth" });
+    }
+  }, [hover, hl, caseId, isLoading]);
 
   if (isLoading) return <p className="label-mono">Loading</p>;
   if (!data?.claim) return <p className="text-text-2">Case not found.</p>;
@@ -134,7 +153,9 @@ function CaseDetail() {
   const docs = (data.intake?.documents as unknown as IntakeDocument[] | null) ?? [];
   const facts = data.facts as Row[];
   const refOf = (f: string) => facts.find((x) => x.field === f);
-  const active = hover ?? hl;
+  // Open on the reason: the first failed (or unknown) check is marked until the reviewer points elsewhere
+  const firstIssue = live.checklist.find((c) => c.status === "fail") ?? live.checklist.find((c) => c.status === "unknown");
+  const active = hover ?? hl ?? firstIssue?.field ?? null;
   const activeSrc = active ? refOf(active) : undefined;
   const activeCheck = active ? live.checklist.find((c) => c.field === active) : undefined;
   // System checks that are not already a line in the call transcript (online-form and CSV cases)
@@ -161,8 +182,10 @@ function CaseDetail() {
       await fn();
       await refresh();
       toast(ok);
+      return true;
     } catch (e) {
       toast(`Could not save: ${(e as Error).message}`);
+      return false;
     } finally {
       setBusy(false);
     }
@@ -172,16 +195,19 @@ function CaseDetail() {
     if (error) throw error;
   };
 
-  const confirm = () =>
-    run(async () => {
+  const confirm = async (advance = false) => {
+    const handling_seconds = Math.round((Date.now() - opened.current) / 1000);
+    const ok = await run(async () => {
       if (qa && queue !== "on_you") {
-        await must(event("qa_confirmed", { recommendation: rec, rule_id: decision?.rule_id }));
+        await must(event("qa_confirmed", { recommendation: rec, rule_id: decision?.rule_id, handling_seconds }));
         await must(supabase.from("case_workflow").update({ qa_sample: false, updated_at: new Date().toISOString() }).eq("case_id", caseId));
       } else {
-        await must(event("confirmed", { recommendation: rec, rule_id: decision?.rule_id }));
+        await must(event("confirmed", { recommendation: rec, rule_id: decision?.rule_id, handling_seconds }));
         await must(supabase.from("case_workflow").update({ queue: "done", qa_sample: false, updated_at: new Date().toISOString() }).eq("case_id", caseId));
       }
-    }, "Decision confirmed");
+    }, advance && nextId ? `Confirmed in ${handling_seconds}s · next case` : `Confirmed in ${handling_seconds}s`);
+    if (ok && advance && nextId) goTo(nextId);
+  };
 
   const assignMe = () =>
     run(async () => {
@@ -229,8 +255,8 @@ function CaseDetail() {
   let stepText: ReactNode = "";
   let actions: ReactNode = null;
   const overrideBtn = (label = "Override", pre?: Recommendation) => (
-    <Button variant="outline" disabled={busy} onClick={() => setOverrideOpen(pre ?? (rec === "human_review" ? "routine_processing" : "human_review"))}>
-      {label}
+    <Button variant="outline" disabled={busy} onClick={() => setOverrideOpen(pre ?? (rec === "human_review" ? "routine_processing" : "human_review"))} title={`${label} (O)`}>
+      {label} <Kbd>O</Kbd>
     </Button>
   );
   const assignBtn = !mine && !closed && queue === "on_you" && (
@@ -245,7 +271,16 @@ function CaseDetail() {
   } else if (queue === "done" || confirmed) {
     stepTitle = "Done";
     stepText = "A reviewer has confirmed this case. It continues in the normal claims process. You can still correct it while the claim is open.";
-    actions = overrideBtn("Override");
+    actions = (
+      <>
+        {overrideBtn("Override")}
+        {nextId && (
+          <Button onClick={() => goTo(nextId)}>
+            Next case <Kbd dark>→</Kbd>
+          </Button>
+        )}
+      </>
+    );
   } else if (queue === "on_you" && rec === "human_review") {
     stepTitle = recheck ? "Check the new policy result" : "Review this claim";
     stepText = recheck
@@ -255,8 +290,9 @@ function CaseDetail() {
       <>
         {assignBtn}
         {overrideBtn("Override")}
-        <Button disabled={busy} onClick={confirm}>
-          <Check /> {recheck ? `Confirm ${version} recommendation` : "Confirm human review"}
+        <Button disabled={busy} onClick={() => confirm(true)} title="Confirm (C)">
+          <Check /> {recheck ? `Confirm ${version} result` : "Confirm human review"}
+          {nextId && " & next"} <Kbd dark>C</Kbd>
         </Button>
       </>
     );
@@ -269,8 +305,9 @@ function CaseDetail() {
       <>
         {assignBtn}
         {overrideBtn("Override")}
-        <Button disabled={busy} onClick={confirm}>
-          <Check /> Confirm {RECOMMENDATION_LABELS[rec].toLowerCase()} decision
+        <Button disabled={busy} onClick={() => confirm(true)} title="Confirm (C)">
+          <Check /> Confirm {RECOMMENDATION_LABELS[rec].toLowerCase()}
+          {nextId && " & next"} <Kbd dark>C</Kbd>
         </Button>
       </>
     );
@@ -299,6 +336,11 @@ function CaseDetail() {
     stepText = "All checks passed, so this claim went into the normal process. Nothing to do – history only. Routine is not a payment approval.";
     actions = overrideBtn("Pull into review", "human_review");
   }
+
+  // keyboard: C confirms (and moves on), O opens the override
+  const canConfirm = !closed && !busy && !(queue === "done" || confirmed) && (queue === "on_you" || qa);
+  confirmKey.current = canConfirm ? () => void confirm(true) : null;
+  overrideKey.current = !closed && !busy ? () => setOverrideOpen(rec === "human_review" ? "routine_processing" : "human_review") : null;
 
   // ---------- timeline: past + what happens next ----------
   const past = [
@@ -330,11 +372,11 @@ function CaseDetail() {
               {nav.label} · Case {pos + 1} of {nav.ids.length}
             </span>
           )}
-          <Button variant="outline" className="bg-white" disabled={!prevId} onClick={() => goTo(prevId)} title="Previous case (K)">
-            <ChevronLeft /> Previous <Kbd>K</Kbd>
+          <Button variant="outline" className="bg-white" disabled={!prevId} onClick={() => goTo(prevId)} title="Previous case (←)">
+            <ChevronLeft /> Previous <Kbd>←</Kbd>
           </Button>
-          <Button disabled={!nextId} onClick={() => goTo(nextId)} title="Next case (J)">
-            {nextId ? "Next case" : "Last case"} <Kbd dark>J</Kbd> <ArrowRight />
+          <Button variant="outline" className="bg-white font-semibold" disabled={!nextId} onClick={() => goTo(nextId)} title="Next case without deciding (→)">
+            {nextId ? "Next case" : "Last case"} <Kbd>→</Kbd> <ArrowRight />
           </Button>
         </div>
       </nav>
@@ -359,7 +401,7 @@ function CaseDetail() {
               <StatusDot rec={rec} closed={closed} plain />
             </div>
             <p className={cn("mt-3 max-w-2xl text-[15px] font-medium", tone ? "text-current" : "text-foreground")}>
-              {lastOverride ? lastOverride.reason_text : decision?.explanation ?? live.reasons.join(". ")}
+              {lastOverride ? lastOverride.reason_text : humanize(decision?.explanation ?? live.reasons.join(". "))}
             </p>
             <p className="mt-1.5 max-w-2xl text-[13.5px] text-text-2">
               <span className="label-mono mr-2">Summary</span>
@@ -390,9 +432,9 @@ function CaseDetail() {
 
         <div className="mt-6 grid grid-cols-2 gap-2 sm:grid-cols-4">
           <Fact label="Quote" value={claim.quote_eur === null ? null : fmtEur(claim.quote_eur)} flag={live.checklist.some((c) => c.field === "quote_eur" && c.status === "fail")} />
-          <Fact label="Claim type" value={claim.claim_type ? claimTypeText(claim.claim_type) : null} flag={live.checklist.some((c) => c.field === "claim_type" && c.status === "fail")} />
-          <Fact label="Repair" value={claim.repair_type ? repairTypeText(claim.repair_type) : null} flag={live.checklist.some((c) => c.field === "repair_type" && c.status === "fail")} />
-          <Fact label="Channel" value={(data.intake?.channel ?? "csv_import").replace(/_/g, " ")} />
+          <Fact label="Claim type" value={claim.claim_type ? claimTypeLabel(claim.claim_type) : null} flag={live.checklist.some((c) => c.field === "claim_type" && c.status === "fail")} />
+          <Fact label="Repair" value={claim.repair_type ? repairTypeLabel(claim.repair_type) : null} flag={live.checklist.some((c) => c.field === "repair_type" && c.status === "fail")} />
+          <Fact label="Channel" value={channelLabel(data.intake?.channel ?? "csv_import")} />
         </div>
       </div>
 
@@ -406,8 +448,9 @@ function CaseDetail() {
         {actions && <div className="ml-auto flex flex-wrap items-center gap-2">{actions}</div>}
       </div>
 
-      {/* 3 · Evidence: checklist and sources side by side, same height */}
-      <div className="mb-5 grid items-stretch gap-5 lg:grid-cols-2">
+      {/* 3 · Evidence: checklist + timeline on the left, sources follow along on the right */}
+      <div className="mb-5 grid items-start gap-5 lg:grid-cols-2">
+        <div className="flex min-w-0 flex-col gap-5">
         <Card className="flex flex-col">
           <div className="mb-4 flex items-baseline justify-between gap-3">
             <h2 className="section-title">Checklist · policy {version}</h2>
@@ -426,21 +469,37 @@ function CaseDetail() {
                     onFocus={() => setHover(c.field)}
                     onBlur={() => setHover(null)}
                     className={cn(
-                      "flex w-full items-center gap-3 rounded-[8px] px-2 py-2.5 text-left transition-colors duration-200",
-                      active === c.field ? "bg-link/10 ring-1 ring-link/30" : "hover:bg-white/70",
+                      "flex w-full items-center gap-3 rounded-[8px] px-2 py-2.5 text-left transition-[background-color,box-shadow] duration-200",
+                      c.status === "fail" && c.stage === "R1" && "my-1 bg-action-tint ring-1 ring-action-border",
+                      c.status === "fail" && c.stage !== "R1" && "my-1 bg-wait-tint ring-1 ring-wait-border",
+                      c.status === "unknown" && "my-1 border border-dashed border-text-3/60 bg-surface-2",
+                      active === c.field
+                        ? c.status === "pass"
+                          ? "bg-link/10 ring-1 ring-link/30"
+                          : "ring-2 ring-link/40"
+                        : c.status === "pass" && "hover:bg-white/70",
                     )}
                   >
                     <span
                       className={cn(
                         "inline-flex size-5 shrink-0 items-center justify-center rounded-full",
-                        c.status === "pass" && "text-text-3",
+                        c.status === "pass" && "text-ok",
                         c.status === "fail" && (c.stage === "R1" ? "text-action" : "text-wait"),
                         c.status === "unknown" && "border border-dashed border-text-3 text-text-2",
                       )}
                     >
-                      {c.status === "pass" ? <Check className="size-4" strokeWidth={1.5} /> : c.status === "fail" ? <X className="size-4" strokeWidth={2} /> : <span className="text-[11px]">?</span>}
+                      {c.status === "pass" ? <Check className="size-4" strokeWidth={2} /> : c.status === "fail" ? <X className="size-4" strokeWidth={2} /> : <span className="text-[11px]">?</span>}
                     </span>
-                    <span className={cn("flex-1 text-[13.5px]", c.status === "fail" && "font-semibold", c.status === "pass" && "text-text-2")}>{c.note}</span>
+                    <span
+                      className={cn(
+                        "flex-1 text-[13.5px]",
+                        c.status === "fail" && "font-semibold",
+                        c.status === "fail" && (c.stage === "R1" ? "text-action" : "text-wait"),
+                        c.status === "pass" && "text-text-2",
+                      )}
+                    >
+                      {humanize(c.note)}
+                    </span>
                     {src ? (
                       <span className="label-mono hidden text-[10px] sm:inline">{src.ref}</span>
                     ) : (
@@ -456,108 +515,6 @@ function CaseDetail() {
             {live.counterfactual}
           </p>
         </Card>
-
-        <Card className="flex flex-col">
-          <h2 className="section-title">Sources</h2>
-          <p className="mb-3 mt-1 text-[12.5px] text-text-2">Point at a checklist item to see where the fact came from. Click to keep it marked.</p>
-          {/* Fixed-height strip so hovering never shifts the layout */}
-          <div
-            className={cn(
-              "mb-4 min-h-[66px] rounded-[10px] px-3 py-2.5 text-[13px] ring-1 transition-colors duration-200",
-              activeSrc ? "bg-link/10 ring-link/30" : "bg-surface-2/60 ring-line",
-            )}
-          >
-            {active ? (
-              <>
-                <Mono>
-                  {FIELD_LABELS[active] ?? active} · {activeSrc ? `${SOURCE_LABEL[activeSrc.source_type] ?? activeSrc.source_type} · ${activeSrc.ref}` : "no source recorded"}
-                </Mono>
-                <p className="mt-1">
-                  {activeSrc?.quote ? `“${activeSrc.quote}”` : activeCheck?.status === "unknown" ? "Left blank. The system does not guess, it asks for it." : "No source recorded for this field."}
-                  {activeSrc?.confidence === "unconfirmed" && (
-                    <span className="ml-2">
-                      <Unknown>unconfirmed</Unknown>
-                    </span>
-                  )}
-                </p>
-              </>
-            ) : (
-              <p className="pt-2 text-text-3">Nothing selected</p>
-            )}
-          </div>
-          {transcript && (
-            <div className="mb-5">
-              <Mono>Call transcript</Mono>
-              <ol className="mt-2 space-y-1 text-[13px]">
-                {transcript.map((l) => {
-                  const on = !!activeSrc?.ref?.match(new RegExp(`line ${l.line}(\\b|$)`));
-                  return (
-                    <li key={l.line} className={cn("flex gap-2 rounded-[6px] px-1.5 py-1 transition-colors duration-200", on && "bg-link/10 ring-1 ring-link/30")}>
-                      <span className="w-5 shrink-0 font-mono text-[11px] text-text-3">{l.line}</span>
-                      <span className={cn("w-16 shrink-0 font-mono text-[10.5px] uppercase tracking-[0.06em]", l.speaker === "customer" ? "text-foreground" : "text-text-2")}>{l.speaker}</span>
-                      <span className={cn(l.speaker === "system" && "text-text-2")}>{l.text}</span>
-                    </li>
-                  );
-                })}
-              </ol>
-            </div>
-          )}
-          {form && (
-            <div className="mb-5">
-              <Mono>Online form</Mono>
-              <dl className="mt-2 divide-y divide-line/80 text-[13px]">
-                {form.map((f) => {
-                  const on = activeSrc?.ref === `field ${f.field}`;
-                  return (
-                    <div key={f.field} className={cn("flex justify-between gap-3 rounded-[6px] px-1.5 py-1.5 transition-colors duration-200", on && "bg-link/10 ring-1 ring-link/30")}>
-                      <dt className="text-text-2">
-                        <span className="mr-2 font-mono text-[11px] text-text-3">{f.field}</span>
-                        {f.label}
-                      </dt>
-                      <dd className="text-right">{f.value ?? <Unknown>empty</Unknown>}</dd>
-                    </div>
-                  );
-                })}
-              </dl>
-            </div>
-          )}
-          <div>
-            <Mono>Documents</Mono>
-            <ul className="mt-2 space-y-1.5 text-[13px]">
-              {docs.map((d) => {
-                const on = activeSrc?.ref === d.name;
-                return (
-                  <li key={d.name} className={cn("flex items-center justify-between rounded-[6px] px-1.5 py-1 transition-colors duration-200", on && "bg-link/10 ring-1 ring-link/30")}>
-                    <span className="font-mono text-[12px]">{d.name}</span>
-                    <span className={cn("text-[12px]", d.status === "missing" || d.status === "incomplete" ? "text-wait" : d.status === "unknown" ? "" : "text-text-2")}>
-                      {d.status === "unknown" ? <Unknown /> : d.note}
-                    </span>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-          {systemSources.length > 0 && (
-            <div className="mt-5">
-              <Mono>System checks</Mono>
-              <ul className="mt-2 space-y-1.5 text-[13px]">
-                {systemSources.map((f) => {
-                  const on = activeSrc?.ref === f.ref;
-                  return (
-                    <li key={f.ref} className={cn("flex items-center justify-between gap-3 rounded-[6px] px-1.5 py-1 transition-colors duration-200", on && "bg-link/10 ring-1 ring-link/30")}>
-                      <span className="font-mono text-[12px]">{f.ref}</span>
-                      <span className="text-right text-[12px] text-text-2">{f.quote}</span>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          )}
-        </Card>
-      </div>
-
-      {/* 4 · History, what happens next, comments */}
-      <div className="grid items-stretch gap-5 lg:grid-cols-[minmax(0,1fr)_380px]">
         <Card>
           <h2 className="section-title mb-5">Timeline</h2>
           {upcoming.length > 0 && (
@@ -611,9 +568,112 @@ function CaseDetail() {
             })}
           </ol>
         </Card>
+        </div>
 
-        <CommentBox disabled={busy} onPost={postComment} />
+        {/* Sources follow while scrolling; the marked source is scrolled into view inside the card */}
+        <div ref={srcBox} className="relative min-w-0 rounded-[18px] lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto">
+        <Card className="flex flex-col">
+          <h2 className="section-title">Sources</h2>
+          <p className="mb-3 mt-1 text-[12.5px] text-text-2">Point at a checklist item to see where the fact came from. Click to keep it marked.</p>
+          {/* Fixed-height strip so hovering never shifts the layout */}
+          <div
+            className={cn(
+              "sticky top-0 z-10 mb-4 min-h-[66px] rounded-[10px] px-3 py-2.5 text-[13px] ring-1 backdrop-blur transition-colors duration-200",
+              activeSrc ? "bg-[color-mix(in_oklch,var(--link)_10%,white)] ring-link/30" : "bg-surface-2 ring-line",
+            )}
+          >
+            {active ? (
+              <>
+                <Mono>
+                  {FIELD_LABELS[active] ?? active} · {activeSrc ? `${SOURCE_TYPE_LABEL[activeSrc.source_type] ?? activeSrc.source_type} · ${activeSrc.ref}` : "no source recorded"}
+                </Mono>
+                <p className="mt-1">
+                  {activeSrc?.quote ? `“${humanize(activeSrc.quote)}”` : activeCheck?.status === "unknown" ? "Left blank. The system does not guess, it asks for it." : "No source recorded for this field."}
+                  {activeSrc?.confidence === "unconfirmed" && (
+                    <span className="ml-2">
+                      <Unknown>unconfirmed</Unknown>
+                    </span>
+                  )}
+                </p>
+              </>
+            ) : (
+              <p className="pt-2 text-text-3">Nothing selected</p>
+            )}
+          </div>
+          {transcript && (
+            <div className="mb-5">
+              <Mono>Call transcript</Mono>
+              <ol className="mt-2 space-y-1 text-[13px]">
+                {transcript.map((l) => {
+                  const on = !!activeSrc?.ref?.match(new RegExp(`line ${l.line}(\\b|$)`));
+                  return (
+                    <li key={l.line} data-on={on || undefined} className={cn("flex gap-2 rounded-[6px] px-1.5 py-1 transition-colors duration-200", on && "bg-link/10 ring-1 ring-link/30")}>
+                      <span className="w-5 shrink-0 font-mono text-[11px] text-text-3">{l.line}</span>
+                      <span className={cn("w-16 shrink-0 font-mono text-[10.5px] uppercase tracking-[0.06em]", l.speaker === "customer" ? "text-foreground" : "text-text-2")}>{l.speaker}</span>
+                      <span className={cn(l.speaker === "system" && "text-text-2")}>{humanize(l.text)}</span>
+                    </li>
+                  );
+                })}
+              </ol>
+            </div>
+          )}
+          {form && (
+            <div className="mb-5">
+              <Mono>Online form</Mono>
+              <dl className="mt-2 divide-y divide-line/80 text-[13px]">
+                {form.map((f) => {
+                  const on = activeSrc?.ref === `field ${f.field}`;
+                  return (
+                    <div key={f.field} data-on={on || undefined} className={cn("flex justify-between gap-3 rounded-[6px] px-1.5 py-1.5 transition-colors duration-200", on && "bg-link/10 ring-1 ring-link/30")}>
+                      <dt className="text-text-2">
+                        <span className="mr-2 font-mono text-[11px] text-text-3">{f.field}</span>
+                        {f.label}
+                      </dt>
+                      <dd className="text-right">{f.value === null ? <Unknown>empty</Unknown> : valueLabel(f.value)}</dd>
+                    </div>
+                  );
+                })}
+              </dl>
+            </div>
+          )}
+          <div>
+            <Mono>Documents</Mono>
+            <ul className="mt-2 space-y-1.5 text-[13px]">
+              {docs.map((d) => {
+                const on = activeSrc?.ref === d.name;
+                return (
+                  <li key={d.name} data-on={on || undefined} className={cn("flex items-center justify-between rounded-[6px] px-1.5 py-1 transition-colors duration-200", on && "bg-link/10 ring-1 ring-link/30")}>
+                    <span className="font-mono text-[12px]">{d.name}</span>
+                    <span className={cn("text-[12px]", d.status === "missing" || d.status === "incomplete" ? "text-wait" : d.status === "unknown" ? "" : "text-text-2")}>
+                      {d.status === "unknown" ? <Unknown /> : humanize(d.note)}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+          {systemSources.length > 0 && (
+            <div className="mt-5">
+              <Mono>System checks</Mono>
+              <ul className="mt-2 space-y-1.5 text-[13px]">
+                {systemSources.map((f) => {
+                  const on = activeSrc?.ref === f.ref;
+                  return (
+                    <li key={f.ref} data-on={on || undefined} className={cn("flex items-center justify-between gap-3 rounded-[6px] px-1.5 py-1 transition-colors duration-200", on && "bg-link/10 ring-1 ring-link/30")}>
+                      <span className="font-mono text-[12px]">{f.ref}</span>
+                      <span className="text-right text-[12px] text-text-2">{humanize(f.quote)}</span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
+        </Card>
+        </div>
       </div>
+
+      {/* 4 · Comments, full width */}
+      <CommentBox disabled={busy} onPost={postComment} comments={comments} />
 
       <OverrideDialog
         open={overrideOpen !== null}
@@ -634,29 +694,54 @@ function Fact({ label, value, flag }: { label: string; value: ReactNode | null; 
   return (
     <div className={cn("rounded-[12px] bg-white/65 px-3.5 py-2.5 ring-1 ring-white/80", flag && "bg-white ring-action-border")}>
       <p className={cn("label-mono text-[10px]", flag && "text-action")}>{label}</p>
-      <p className={cn("mt-0.5 truncate text-[13.5px] font-medium capitalize text-foreground", flag && "text-action")}>{value ?? <Unknown />}</p>
+      <p className={cn("mt-0.5 truncate text-[13.5px] font-medium text-foreground", flag && "text-action")}>{value ?? <Unknown />}</p>
     </div>
   );
 }
 
-function CommentBox({ onPost, disabled }: { onPost: (body: string) => Promise<void>; disabled: boolean }) {
+function CommentBox({ onPost, disabled, comments }: { onPost: (body: string) => Promise<unknown>; disabled: boolean; comments: Row[] }) {
   const [body, setBody] = useState("");
+  const post = async () => {
+    if (body.trim().length < 2) return;
+    await onPost(body.trim());
+    setBody("");
+  };
+  const recent = [...comments].sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
   return (
-    <Card className="flex flex-col">
-      <h2 className="section-title">Comment</h2>
-      <p className="mb-3 mt-1 text-[12.5px] text-text-2">Notes for colleagues. Saved with your name and time; cannot be edited.</p>
-      <Textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder="e.g. Called the workshop, quote confirmed." className="min-h-[110px] flex-1 bg-white/80" />
-      <div className="mt-3 flex justify-end">
-        <Button
-          variant="outline"
-          disabled={disabled || body.trim().length < 2}
-          onClick={async () => {
-            await onPost(body.trim());
-            setBody("");
-          }}
-        >
-          Post
-        </Button>
+    <Card>
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 className="section-title">Comments</h2>
+        <span className="label-mono">{comments.length ? `${comments.length} · saved with name and time, cannot be edited` : "Saved with name and time, cannot be edited"}</span>
+      </div>
+      <div className="mt-4 grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+        <div className="flex flex-col">
+          <Textarea
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) void post();
+            }}
+            placeholder="Note for colleagues, e.g. Called the workshop, quote confirmed."
+            className="min-h-[96px] flex-1 bg-white/80"
+          />
+          <div className="mt-3 flex items-center justify-end gap-3">
+            <span className="text-[12px] text-text-3">⌘ + Enter to post</span>
+            <Button variant="outline" disabled={disabled || body.trim().length < 2} onClick={() => void post()}>
+              Post comment
+            </Button>
+          </div>
+        </div>
+        <ul className="max-h-[180px] space-y-3 overflow-y-auto pr-1">
+          {recent.length === 0 && <li className="text-[13px] text-text-3">No comments yet.</li>}
+          {recent.map((c) => (
+            <li key={c.id} className="rounded-[10px] bg-surface-2 px-3 py-2 ring-1 ring-line">
+              <p className="text-[13px]">{c.body}</p>
+              <p className="label-mono mt-1 normal-case">
+                {fmtTime(c.created_at)} · {c.author}
+              </p>
+            </li>
+          ))}
+        </ul>
       </div>
     </Card>
   );
@@ -792,10 +877,4 @@ function Kbd({ children, dark }: { children: ReactNode; dark?: boolean }) {
   );
 }
 
-const SOURCE_LABEL: Record<string, string> = {
-  transcript: "Call transcript",
-  form: "Online form",
-  document: "Document",
-  system: "System check",
-  csv: "CSV import",
-};
+

@@ -4,6 +4,7 @@ import type { CaseRow } from "@/lib/data";
 import { isClosed } from "@/lib/csv";
 import { cn } from "@/lib/utils";
 import { saveCaseNav } from "@/lib/case-nav";
+import { humanize } from "@/lib/labels";
 
 const ageLabel = (iso: string | null) => {
   if (!iso) return "";
@@ -15,7 +16,7 @@ export function contextLine(c: CaseRow) {
   const q = c.workflow?.queue;
   if (!c.decision) return "";
   if (q === "auto_processed") return c.workflow?.qa_sample ? "Random QA sample – please confirm" : "All checks passed";
-  return c.decision.explanation ?? "";
+  return humanize(c.decision.explanation ?? "");
 }
 
 export function ClaimsTable({ rows, navLabel = "Claims" }: { rows: CaseRow[]; navLabel?: string }) {
