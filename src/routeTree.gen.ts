@@ -12,7 +12,6 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as BatchRouteImport } from './routes/batch'
-import { Route as AuthenticatedAuditRouteImport } from './routes/_authenticated/audit'
 import { Route as AuthenticatedBusinessCaseRouteImport } from './routes/_authenticated/business-case'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedImpactRouteImport } from './routes/_authenticated/impact'
@@ -22,7 +21,6 @@ import { Route as AuthenticatedPhoneIntakeRouteImport } from './routes/_authenti
 import { Route as AuthenticatedPolicyRouteImport } from './routes/_authenticated/policy'
 import { Route as AuthenticatedQualityRouteImport } from './routes/_authenticated/quality'
 import { Route as AuthenticatedVersionsRouteImport } from './routes/_authenticated/versions'
-import { Route as AuthenticatedWorkloadRouteImport } from './routes/_authenticated/workload'
 import { Route as AuthenticatedClaimsIndexRouteImport } from './routes/_authenticated/claims.index'
 import { Route as AuthenticatedClaimsCaseIdRouteImport } from './routes/_authenticated/claims.$caseId'
 
@@ -39,11 +37,6 @@ const BatchRoute = BatchRouteImport.update({
   id: '/batch',
   path: '/batch',
   getParentRoute: () => rootRouteImport,
-} as any)
-const AuthenticatedAuditRoute = AuthenticatedAuditRouteImport.update({
-  id: '/audit',
-  path: '/audit',
-  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedBusinessCaseRoute =
   AuthenticatedBusinessCaseRouteImport.update({
@@ -92,11 +85,6 @@ const AuthenticatedVersionsRoute = AuthenticatedVersionsRouteImport.update({
   path: '/versions',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedWorkloadRoute = AuthenticatedWorkloadRouteImport.update({
-  id: '/workload',
-  path: '/workload',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
 const AuthenticatedClaimsIndexRoute =
   AuthenticatedClaimsIndexRouteImport.update({
     id: '/claims/',
@@ -113,7 +101,6 @@ const AuthenticatedClaimsCaseIdRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/batch': typeof BatchRoute
-  '/audit': typeof AuthenticatedAuditRoute
   '/business-case': typeof AuthenticatedBusinessCaseRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/impact': typeof AuthenticatedImpactRoute
@@ -123,14 +110,12 @@ export interface FileRoutesByFullPath {
   '/policy': typeof AuthenticatedPolicyRoute
   '/quality': typeof AuthenticatedQualityRoute
   '/versions': typeof AuthenticatedVersionsRoute
-  '/workload': typeof AuthenticatedWorkloadRoute
   '/claims/$caseId': typeof AuthenticatedClaimsCaseIdRoute
   '/claims/': typeof AuthenticatedClaimsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/batch': typeof BatchRoute
-  '/audit': typeof AuthenticatedAuditRoute
   '/business-case': typeof AuthenticatedBusinessCaseRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/impact': typeof AuthenticatedImpactRoute
@@ -140,7 +125,6 @@ export interface FileRoutesByTo {
   '/policy': typeof AuthenticatedPolicyRoute
   '/quality': typeof AuthenticatedQualityRoute
   '/versions': typeof AuthenticatedVersionsRoute
-  '/workload': typeof AuthenticatedWorkloadRoute
   '/claims/$caseId': typeof AuthenticatedClaimsCaseIdRoute
   '/claims': typeof AuthenticatedClaimsIndexRoute
 }
@@ -149,7 +133,6 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/batch': typeof BatchRoute
-  '/_authenticated/audit': typeof AuthenticatedAuditRoute
   '/_authenticated/business-case': typeof AuthenticatedBusinessCaseRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/impact': typeof AuthenticatedImpactRoute
@@ -159,7 +142,6 @@ export interface FileRoutesById {
   '/_authenticated/policy': typeof AuthenticatedPolicyRoute
   '/_authenticated/quality': typeof AuthenticatedQualityRoute
   '/_authenticated/versions': typeof AuthenticatedVersionsRoute
-  '/_authenticated/workload': typeof AuthenticatedWorkloadRoute
   '/_authenticated/claims/$caseId': typeof AuthenticatedClaimsCaseIdRoute
   '/_authenticated/claims/': typeof AuthenticatedClaimsIndexRoute
 }
@@ -168,7 +150,6 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/batch'
-    | '/audit'
     | '/business-case'
     | '/dashboard'
     | '/impact'
@@ -178,14 +159,12 @@ export interface FileRouteTypes {
     | '/policy'
     | '/quality'
     | '/versions'
-    | '/workload'
     | '/claims/$caseId'
     | '/claims/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/batch'
-    | '/audit'
     | '/business-case'
     | '/dashboard'
     | '/impact'
@@ -195,7 +174,6 @@ export interface FileRouteTypes {
     | '/policy'
     | '/quality'
     | '/versions'
-    | '/workload'
     | '/claims/$caseId'
     | '/claims'
   id:
@@ -203,7 +181,6 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/batch'
-    | '/_authenticated/audit'
     | '/_authenticated/business-case'
     | '/_authenticated/dashboard'
     | '/_authenticated/impact'
@@ -213,7 +190,6 @@ export interface FileRouteTypes {
     | '/_authenticated/policy'
     | '/_authenticated/quality'
     | '/_authenticated/versions'
-    | '/_authenticated/workload'
     | '/_authenticated/claims/$caseId'
     | '/_authenticated/claims/'
   fileRoutesById: FileRoutesById
@@ -246,13 +222,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/batch'
       preLoaderRoute: typeof BatchRouteImport
       parentRoute: typeof rootRouteImport
-    }
-    '/_authenticated/audit': {
-      id: '/_authenticated/audit'
-      path: '/audit'
-      fullPath: '/audit'
-      preLoaderRoute: typeof AuthenticatedAuditRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/business-case': {
       id: '/_authenticated/business-case'
@@ -317,13 +286,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedVersionsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/workload': {
-      id: '/_authenticated/workload'
-      path: '/workload'
-      fullPath: '/workload'
-      preLoaderRoute: typeof AuthenticatedWorkloadRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
     '/_authenticated/claims/': {
       id: '/_authenticated/claims/'
       path: '/claims'
@@ -342,7 +304,6 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedRouteRouteChildren {
-  AuthenticatedAuditRoute: typeof AuthenticatedAuditRoute
   AuthenticatedBusinessCaseRoute: typeof AuthenticatedBusinessCaseRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedImpactRoute: typeof AuthenticatedImpactRoute
@@ -352,13 +313,11 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedPolicyRoute: typeof AuthenticatedPolicyRoute
   AuthenticatedQualityRoute: typeof AuthenticatedQualityRoute
   AuthenticatedVersionsRoute: typeof AuthenticatedVersionsRoute
-  AuthenticatedWorkloadRoute: typeof AuthenticatedWorkloadRoute
   AuthenticatedClaimsCaseIdRoute: typeof AuthenticatedClaimsCaseIdRoute
   AuthenticatedClaimsIndexRoute: typeof AuthenticatedClaimsIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
-  AuthenticatedAuditRoute: AuthenticatedAuditRoute,
   AuthenticatedBusinessCaseRoute: AuthenticatedBusinessCaseRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedImpactRoute: AuthenticatedImpactRoute,
@@ -368,7 +327,6 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedPolicyRoute: AuthenticatedPolicyRoute,
   AuthenticatedQualityRoute: AuthenticatedQualityRoute,
   AuthenticatedVersionsRoute: AuthenticatedVersionsRoute,
-  AuthenticatedWorkloadRoute: AuthenticatedWorkloadRoute,
   AuthenticatedClaimsCaseIdRoute: AuthenticatedClaimsCaseIdRoute,
   AuthenticatedClaimsIndexRoute: AuthenticatedClaimsIndexRoute,
 }

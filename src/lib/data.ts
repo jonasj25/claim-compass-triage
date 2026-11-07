@@ -104,3 +104,21 @@ export const caseDetailQuery = (caseId: string) =>
       };
     },
   });
+
+export const overridesQuery = queryOptions({
+  queryKey: ["overrides"],
+  queryFn: async () => {
+    const { data, error } = await supabase.from("overrides").select("*").order("created_at", { ascending: false });
+    if (error) throw error;
+    return data;
+  },
+});
+
+export const outcomesQuery = queryOptions({
+  queryKey: ["outcomes"],
+  queryFn: async () => {
+    const { data, error } = await supabase.from("outcomes").select("*").order("recorded_at", { ascending: false });
+    if (error) throw error;
+    return data;
+  },
+});
