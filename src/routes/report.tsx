@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { ArrowLeft, ArrowRight, Check, FileText, Keyboard, Lock, Mic, MicOff, Paperclip, Send, Volume2, VolumeX } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { ArrowLeft, ArrowRight, Check, FileText, Keyboard, Lock, Mic, Paperclip, Send, Volume2, VolumeX } from "lucide-react";
 import { Logo } from "@/components/triage/Logo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,6 +19,7 @@ import {
   type ReportAnswers,
 } from "@/lib/report-intake";
 import { submitClaimReport, type ReportResult } from "@/lib/report.functions";
+import { speakText, transcribeAudio, voiceStatus } from "@/lib/voice.functions";
 
 // Public page (no sign-in): a customer reports a motor claim, by form or by voice.
 // What they say only fills answers they confirm; the recommendation comes from the rules engine on submit.
@@ -36,7 +37,7 @@ export const Route = createFileRoute("/report")({
   component: ReportPage,
 });
 
-type Mode = "start" | "form" | "voice" | "review" | "done";
+type Mode = "start" | "form" | "review" | "done";
 type Line = { speaker: "agent" | "customer"; text: string };
 
 const CUSTOMER_MISSING: Record<string, string> = {
@@ -107,15 +108,30 @@ function ReportPage() {
 
       <main className="mx-auto max-w-[1180px] px-6 pb-16">
         {mode === "start" && (
-          <Start
+          <Landing
+            qs={qs}
+            answers={answers}
+            heardIn={heardIn}
+            conversation={
+              <Conversation
+                answers={answers}
+                setAnswers={setAnswers}
+                lines={lines}
+                setLines={setLines}
+                setHeardIn={setHeardIn}
+                onStart={() => {
+                  channel.current = "phone";
+                }}
+                onDone={() => {
+                  channel.current = "phone";
+                  setMode("review");
+                }}
+              />
+            }
             onForm={() => {
               channel.current = "online_form";
               setStep(0);
               setMode("form");
-            }}
-            onVoice={() => {
-              channel.current = "phone";
-              setMode("voice");
             }}
           />
         )}
@@ -134,20 +150,6 @@ function ReportPage() {
           </Shell>
         )}
 
-        {mode === "voice" && (
-          <Shell side={<Checklist qs={qs} answers={answers} heardIn={heardIn} />}>
-            <VoiceIntake
-              answers={answers}
-              setAnswers={setAnswers}
-              lines={lines}
-              setLines={setLines}
-              setHeardIn={setHeardIn}
-              onBack={() => setMode("start")}
-              onDone={() => setMode("review")}
-            />
-          </Shell>
-        )}
-
         {mode === "review" && (
           <Review
             qs={qs}
@@ -159,7 +161,7 @@ function ReportPage() {
             setFiles={setFiles}
             busy={busy}
             error={error}
-            onBack={() => setMode(channel.current === "phone" ? "voice" : "form")}
+            onBack={() => setMode(channel.current === "phone" ? "start" : "form")}
             onSubmit={submit}
           />
         )}
@@ -170,41 +172,41 @@ function ReportPage() {
   );
 }
 
-// ------------------------------------------------------------------ start
+// ------------------------------------------------------------------ landing: the conversation is the page
 
-function Start({ onForm, onVoice }: { onForm: () => void; onVoice: () => void }) {
+function Landing({ qs, answers, heardIn, conversation, onForm }: { qs: Question[]; answers: ReportAnswers; heardIn: Partial<Record<AnswerKey, number>>; conversation: ReactNode; onForm: () => void }) {
+  const started = qs.some((q) => fieldState(q, answers) !== "missing");
   return (
-    <div className="mx-auto max-w-[880px] pt-10">
-      <p className="label-mono">Report a claim</p>
-      <h1 className="mt-3 text-[40px] font-semibold leading-[1.08] tracking-[-0.02em]">Damage to your car? Tell us what happened.</h1>
-      <p className="mt-4 max-w-[620px] text-[16px] leading-relaxed text-text-2">
-        It takes about three minutes. If you're not sure about something, just say so. We never guess: open points stay open until you or we have checked them.
-      </p>
-
-      <div className="mt-10 grid gap-4 md:grid-cols-2">
-        <ModeCard
-          icon={<Keyboard className="size-5" />}
-          title="Fill in the form"
-          text="One short question at a time. You can go back and change anything before you send it."
-          cta="Start the form"
-          onClick={onForm}
-          primary
-        />
-        <ModeCard
-          icon={<Mic className="size-5" />}
-          title="Tell us by voice"
-          text="Just talk. We tick off each point we hear and only ask about what's still missing."
-          cta="Start talking"
-          onClick={onVoice}
-        />
+    <div className="pt-6">
+      <div className="mx-auto max-w-[720px] text-center">
+        <p className="label-mono">Report a claim</p>
+        <h1 className="mt-3 text-[40px] font-semibold leading-[1.08] tracking-[-0.02em]">Damage to your car? Just tell us.</h1>
+        <p className="mx-auto mt-4 max-w-[560px] text-[16px] leading-relaxed text-text-2">
+          Our assistant asks a few short questions and records your claim in about three minutes. Not sure about something? Just say so. We never guess.
+        </p>
       </div>
 
-      <div className="card-quiet mt-8 p-5">
-        <p className="section-title">Good to have at hand</p>
-        <ul className="mt-3 grid gap-2 text-[14px] text-text-2 sm:grid-cols-2">
-          {["Your policy number", "The number plate of your car", "The repair quote from your workshop, ideally with each part listed", "An incident or police report, if there is one"].map((t) => (
-            <li key={t} className="flex items-start gap-2">
-              <Check className="mt-0.5 size-4 shrink-0 text-link" /> {t}
+      <div className={cn("mx-auto mt-10 grid gap-6", started ? "max-w-[1120px] lg:grid-cols-[minmax(0,1fr)_320px]" : "max-w-[760px]")}>
+        <div className="min-w-0">{conversation}</div>
+        {started && (
+          <aside className="lg:sticky lg:top-6 lg:self-start">
+            <Checklist qs={qs} answers={answers} heardIn={heardIn} />
+          </aside>
+        )}
+      </div>
+
+      <div className="mx-auto mt-6 max-w-[760px] text-center">
+        <button onClick={onForm} className="inline-flex items-center gap-1.5 text-[14px] text-text-2 underline-offset-4 hover:text-foreground hover:underline">
+          <Keyboard className="size-4" /> Prefer writing? Fill in the form instead <ArrowRight className="size-3.5" />
+        </button>
+      </div>
+
+      <div className="mx-auto mt-10 max-w-[760px]">
+        <p className="label-mono text-center">Good to have at hand</p>
+        <ul className="mt-3 flex flex-wrap justify-center gap-2 text-[13px] text-text-2">
+          {["Policy number", "Number plate", "Repair quote, ideally itemized", "Incident or police report"].map((t) => (
+            <li key={t} className="rounded-full border border-line bg-surface px-3 py-1">
+              {t}
             </li>
           ))}
         </ul>
@@ -213,18 +215,6 @@ function Start({ onForm, onVoice }: { onForm: () => void; onVoice: () => void })
   );
 }
 
-function ModeCard({ icon, title, text, cta, onClick, primary }: { icon: ReactNode; title: string; text: string; cta: string; onClick: () => void; primary?: boolean }) {
-  return (
-    <button onClick={onClick} className="card-quiet group flex flex-col p-6 text-left transition-colors hover:border-link/40 hover:bg-white">
-      <span className="flex size-10 items-center justify-center rounded-[10px] bg-link/10 text-link">{icon}</span>
-      <span className="mt-5 text-[18px] font-semibold">{title}</span>
-      <span className="mt-1.5 text-[14px] leading-relaxed text-text-2">{text}</span>
-      <span className={cn("mt-6 inline-flex items-center gap-1.5 text-[14px] font-medium", primary ? "text-foreground" : "text-link")}>
-        {cta} <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
-      </span>
-    </button>
-  );
-}
 
 // ------------------------------------------------------------------ layout + checklist
 
@@ -390,20 +380,71 @@ function FormStep({ q, index, total, answers, set, onBack, onNext }: { q: Questi
 
 // ------------------------------------------------------------------ voice
 
+// ------------------------------------------------------------------ conversation (ElevenLabs voice, browser fallback)
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
+const AGENT_NAME = "Mia";
+type Phase = "idle" | "speaking" | "listening" | "thinking" | "ended";
+
 const getRecognition = (): any => {
   if (typeof window === "undefined") return null;
   const R = (window as any).SpeechRecognition ?? (window as any).webkitSpeechRecognition;
   return R ? new R() : null;
 };
 
-function VoiceIntake({
+const blobToBase64 = (b: Blob) =>
+  new Promise<string>((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result).split(",")[1] ?? "");
+    r.onerror = () => reject(r.error);
+    r.readAsDataURL(b);
+  });
+
+/** Records one spoken answer: starts on voice, stops after ~1.3 s of silence (or 25 s). */
+function recordAnswer(stream: MediaStream, analyser: AnalyserNode, stopRef: { current: boolean }): Promise<{ blob: Blob; mime: string } | null> {
+  return new Promise((resolve) => {
+    const mime = typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? "audio/webm;codecs=opus" : "audio/mp4";
+    const rec = new MediaRecorder(stream, { mimeType: mime });
+    const chunks: Blob[] = [];
+    rec.ondataavailable = (e) => e.data.size && chunks.push(e.data);
+    const buf = new Uint8Array(analyser.fftSize);
+    const t0 = Date.now();
+    let spokeAt = 0;
+    let lastVoice = 0;
+    let done = false;
+    const finish = (keep: boolean) => {
+      if (done) return;
+      done = true;
+      window.clearInterval(timer);
+      rec.onstop = () => resolve(keep && chunks.length ? { blob: new Blob(chunks, { type: mime }), mime } : null);
+      rec.state !== "inactive" ? rec.stop() : resolve(null);
+    };
+    const timer = window.setInterval(() => {
+      if (stopRef.current) return finish(false);
+      analyser.getByteTimeDomainData(buf);
+      let sum = 0;
+      for (const v of buf) sum += ((v - 128) / 128) ** 2;
+      const rms = Math.sqrt(sum / buf.length);
+      const now = Date.now();
+      if (rms > 0.035) {
+        if (!spokeAt) spokeAt = now;
+        lastVoice = now;
+      }
+      if (spokeAt && now - lastVoice > 1300 && lastVoice - spokeAt > 300) finish(true);
+      else if (!spokeAt && now - t0 > 15000) finish(false);
+      else if (now - t0 > 25000) finish(!!spokeAt);
+    }, 60);
+    rec.start(250);
+  });
+}
+
+function Conversation({
   answers,
   setAnswers,
   lines,
   setLines,
   setHeardIn,
-  onBack,
+  onStart,
   onDone,
 }: {
   answers: ReportAnswers;
@@ -411,25 +452,40 @@ function VoiceIntake({
   lines: Line[];
   setLines: (fn: (l: Line[]) => Line[]) => void;
   setHeardIn: (fn: (h: Partial<Record<AnswerKey, number>>) => Partial<Record<AnswerKey, number>>) => void;
-  onBack: () => void;
+  onStart: () => void;
   onDone: () => void;
 }) {
-  const [listening, setListening] = useState(false);
-  const [interim, setInterim] = useState("");
+  const [phase, setPhase] = useState<Phase>(lines.length ? "ended" : "idle");
+  const [eleven, setEleven] = useState<boolean | null>(null);
+  const [muted, setMuted] = useState(false);
   const [typed, setTyped] = useState("");
-  const [speak, setSpeak] = useState(true);
-  const [lang, setLang] = useState<"en-GB" | "de-DE">("en-GB");
-  const [supported, setSupported] = useState(true);
-  const rec = useRef<any>(null);
-  const wantListening = useRef(false);
-  const speaking = useRef(false);
+  const [interim, setInterim] = useState("");
+  const [note, setNote] = useState<string | null>(null);
+  const [lang, setLang] = useState<"en" | "de">("en");
   const answersRef = useRef(answers);
   const linesRef = useRef(lines);
   answersRef.current = answers;
   linesRef.current = lines;
+  const stopRef = useRef(false);
+  const mic = useRef<{ stream: MediaStream; ctx: AudioContext; analyser: AnalyserNode } | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const recRef = useRef<any>(null);
   const scroller = useRef<HTMLDivElement>(null);
+  const mutedRef = useRef(muted);
+  mutedRef.current = muted;
 
-  // By voice the story comes first, then whatever is still missing
+  useEffect(() => {
+    voiceStatus()
+      .then((s) => setEleven(s.elevenlabs))
+      .catch(() => setEleven(false));
+    return () => shutdown();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    scroller.current?.scrollTo({ top: scroller.current.scrollHeight, behavior: "smooth" });
+  }, [lines.length, interim, phase]);
+
   const nextQuestion = (a: ReportAnswers) => {
     const open = activeQuestions(a)
       .filter((q) => fieldState(q, a) === "missing")
@@ -438,51 +494,62 @@ function VoiceIntake({
   };
   const pending = nextQuestion(answers);
 
-  const say = useCallback(
-    (text: string) => {
-      setLines((l) => [...l, { speaker: "agent", text }]);
-      if (!speak || typeof window === "undefined" || !window.speechSynthesis) return;
-      const u = new SpeechSynthesisUtterance(text);
-      u.lang = "en-GB";
-      u.rate = 1.03;
-      speaking.current = true;
-      u.onend = () => {
-        speaking.current = false;
-      };
-      window.speechSynthesis.cancel();
-      window.speechSynthesis.speak(u);
-    },
-    [speak, setLines],
-  );
+  function shutdown() {
+    stopRef.current = true;
+    audioRef.current?.pause();
+    recRef.current?.stop?.();
+    window.speechSynthesis?.cancel();
+    mic.current?.stream.getTracks().forEach((t) => t.stop());
+    mic.current?.ctx.close().catch(() => undefined);
+    mic.current = null;
+  }
 
-  // Greeting once
-  useEffect(() => {
-    setSupported(!!getRecognition());
-    if (linesRef.current.length === 0)
-      setLines(() => [{ speaker: "agent", text: "Hi, I'm the Clearpath claims assistant. Tell me what happened, in your own words. You can say everything at once; I'll tick off what I hear and ask about the rest." }]);
-    return () => {
-      wantListening.current = false;
-      rec.current?.stop?.();
-      window.speechSynthesis?.cancel();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // ---- speaking: ElevenLabs voice, falling back to the browser voice
+  const speak = async (text: string) => {
+    setLines((l) => [...l, { speaker: "agent", text }]);
+    if (mutedRef.current || stopRef.current) return;
+    setPhase("speaking");
+    let played = false;
+    if (eleven) {
+      try {
+        const { audio } = await speakText({ data: { text } });
+        if (audio && !stopRef.current) {
+          await new Promise<void>((resolve) => {
+            const el = new Audio(`data:audio/mpeg;base64,${audio}`);
+            audioRef.current = el;
+            el.onended = () => resolve();
+            el.onerror = () => resolve();
+            el.play().catch(() => resolve());
+          });
+          played = true;
+        }
+      } catch {
+        /* fall back below */
+      }
+    }
+    if (!played && typeof window !== "undefined" && window.speechSynthesis && !stopRef.current) {
+      await new Promise<void>((resolve) => {
+        const u = new SpeechSynthesisUtterance(text);
+        u.lang = "en-GB";
+        u.onend = () => resolve();
+        u.onerror = () => resolve();
+        window.speechSynthesis.cancel();
+        window.speechSynthesis.speak(u);
+      });
+    }
+  };
 
-  useEffect(() => {
-    scroller.current?.scrollTo({ top: scroller.current.scrollHeight, behavior: "smooth" });
-  }, [lines.length, interim]);
-
-  const handleUtterance = (text: string) => {
+  // ---- understanding one answer (deterministic keyword rules; the customer confirms everything later)
+  const understand = (text: string): string => {
     const clean = text.trim();
-    if (!clean) return;
     const before = answersRef.current;
     const asked = nextQuestion(before);
     const lineNo = linesRef.current.length + 1;
-    const heard = extractFromUtterance(clean);
-    const found = { ...(asked ? interpretReply(asked, clean) : {}), ...heard };
-    // The first free-form story becomes "what happened" if nothing else filled it
+    const found = { ...(asked ? interpretReply(asked, clean) : {}), ...extractFromUtterance(clean) };
     if (!before.what_happened && clean.split(/\s+/).length >= 6 && !found.what_happened) found.what_happened = clean;
     const merged = { ...before, ...found };
+    answersRef.current = merged;
+    linesRef.current = [...linesRef.current, { speaker: "customer", text: clean }];
     setLines((l) => [...l, { speaker: "customer", text: clean }]);
     setAnswers(() => merged);
     setHeardIn((h) => {
@@ -491,161 +558,218 @@ function VoiceIntake({
       return n;
     });
     const nq = nextQuestion(merged);
-    window.setTimeout(() => {
-      if (nq) say(Object.keys(found).length ? `Thanks. ${nq.ask}` : `Sorry, I didn't catch that. ${nq.ask}`);
-      else say("Thank you, that's everything I need. Please check your answers before you send them.");
-    }, 350);
+    if (!nq) return "";
+    return Object.keys(found).length ? `Thanks. ${nq.ask}` : `Sorry, I didn't quite catch that. ${nq.ask}`;
   };
 
-  const start = () => {
-    const r = getRecognition();
-    if (!r) {
-      setSupported(false);
-      return;
+  // ---- listening: ElevenLabs speech-to-text (recorded turns) or the browser's live recognition
+  const listenOnce = async (): Promise<string | null> => {
+    if (eleven && mic.current) {
+      setPhase("listening");
+      const rec = await recordAnswer(mic.current.stream, mic.current.analyser, stopRef);
+      if (!rec || stopRef.current) return null;
+      setPhase("thinking");
+      const { text } = await transcribeAudio({ data: { audio: await blobToBase64(rec.blob), mime: rec.mime, lang } });
+      return text;
     }
-    r.lang = lang;
-    r.continuous = true;
-    r.interimResults = true;
-    r.onresult = (e: any) => {
-      if (speaking.current) return;
-      let partial = "";
-      for (let i = e.resultIndex; i < e.results.length; i++) {
-        const res = e.results[i];
-        if (res.isFinal) handleUtterance(res[0].transcript);
-        else partial += res[0].transcript;
-      }
-      setInterim(partial);
-    };
-    r.onerror = (e: any) => {
-      if (e.error === "not-allowed") {
-        wantListening.current = false;
-        setListening(false);
-        setSupported(false);
-      }
-    };
-    r.onend = () => {
-      if (wantListening.current) {
-        try {
-          r.start();
-        } catch {
-          /* already started */
+    const r = getRecognition();
+    if (!r) return null;
+    setPhase("listening");
+    return new Promise((resolve) => {
+      r.lang = lang === "de" ? "de-DE" : "en-GB";
+      r.interimResults = true;
+      r.continuous = false;
+      let final = "";
+      r.onresult = (e: any) => {
+        let partial = "";
+        for (let i = e.resultIndex; i < e.results.length; i++) {
+          if (e.results[i].isFinal) final += e.results[i][0].transcript;
+          else partial += e.results[i][0].transcript;
         }
-      } else setListening(false);
-    };
-    rec.current = r;
-    wantListening.current = true;
-    r.start();
-    setListening(true);
-    if (linesRef.current.length <= 1) say("Go ahead, I'm listening.");
+        setInterim(partial);
+      };
+      r.onend = () => {
+        setInterim("");
+        resolve(final.trim() || null);
+      };
+      r.onerror = () => undefined;
+      recRef.current = r;
+      r.start();
+    });
+  };
+
+  const loop = async () => {
+    let misses = 0;
+    while (!stopRef.current) {
+      const heard = await listenOnce();
+      if (stopRef.current) break;
+      if (!heard) {
+        misses += 1;
+        if (misses >= 2) {
+          setNote("I couldn't hear you. Tap the microphone to try again, or type your answer below.");
+          setPhase("idle");
+          return;
+        }
+        continue;
+      }
+      misses = 0;
+      const reply = understand(heard);
+      if (!reply) {
+        await speak("Thank you, that's everything I need. Please check your answers and send them.");
+        finish();
+        return;
+      }
+      await speak(reply);
+    }
+  };
+
+  const finish = () => {
+    shutdown();
+    setPhase("ended");
+    window.setTimeout(onDone, 600);
+  };
+
+  const start = async () => {
+    setNote(null);
+    stopRef.current = false;
+    onStart();
+    if (eleven || !getRecognition()) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
+        const ctx = new AudioContext();
+        const analyser = ctx.createAnalyser();
+        analyser.fftSize = 1024;
+        ctx.createMediaStreamSource(stream).connect(analyser);
+        mic.current = { stream, ctx, analyser };
+      } catch {
+        setNote("Microphone access was blocked. You can type your answers below instead.");
+        setEleven(false);
+      }
+    }
+    const q = nextQuestion(answersRef.current);
+    const intro = linesRef.current.length
+      ? q?.ask ?? ""
+      : `Hi, I'm ${AGENT_NAME}, the Clearpath claims assistant. I'll ask you a few short questions to record your claim. If you're not sure about something, just say so. ${q?.ask ?? ""}`;
+    await speak(intro);
+    if (mic.current || getRecognition()) void loop();
+    else setPhase("idle");
   };
 
   const stop = () => {
-    wantListening.current = false;
-    rec.current?.stop?.();
-    setListening(false);
-    setInterim("");
+    shutdown();
+    setPhase(lines.length ? "ended" : "idle");
   };
 
-  const sendTyped = () => {
-    handleUtterance(typed);
+  const sendTyped = async () => {
+    const t = typed.trim();
+    if (!t) return;
     setTyped("");
+    if (!linesRef.current.length) {
+      onStart();
+      setLines(() => [{ speaker: "agent", text: `Hi, I'm ${AGENT_NAME}, the Clearpath claims assistant. ${nextQuestion(answersRef.current)?.ask ?? ""}` }]);
+      linesRef.current = [{ speaker: "agent", text: "" }];
+    }
+    const reply = understand(t);
+    if (!reply) {
+      setLines((l) => [...l, { speaker: "agent", text: "Thank you, that's everything I need. Please check your answers and send them." }]);
+      window.setTimeout(onDone, 900);
+    } else setLines((l) => [...l, { speaker: "agent", text: reply }]);
   };
+
+  const live = phase === "speaking" || phase === "listening" || phase === "thinking";
+  const status =
+    phase === "speaking" ? `${AGENT_NAME} is speaking…` : phase === "listening" ? "Listening… just answer naturally" : phase === "thinking" ? "One moment…" : phase === "ended" ? "Conversation paused" : `Talk to ${AGENT_NAME}, our claims assistant`;
 
   return (
-    <div className="card-quiet flex min-h-[560px] flex-col p-0">
-      <div className="flex items-center justify-between border-b border-line px-6 py-4">
-        <div>
-          <p className="section-title">Tell us by voice</p>
-          <p className="text-[12.5px] text-text-2">Speak naturally. Every point we hear is ticked off on the right.</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <select
-            aria-label="Language"
-            value={lang}
-            onChange={(e) => setLang(e.target.value as "en-GB" | "de-DE")}
-            disabled={listening}
-            className="h-8 rounded-[8px] border border-line bg-surface px-2 text-[12.5px]"
-          >
-            <option value="en-GB">English</option>
-            <option value="de-DE">Deutsch</option>
+    <div className="card-quiet overflow-hidden p-0">
+      <div className="flex flex-col items-center px-6 pb-6 pt-9 text-center">
+        <button
+          type="button"
+          onClick={live ? stop : start}
+          aria-label={live ? "End conversation" : "Start conversation"}
+          className={cn(
+            "relative flex size-28 items-center justify-center rounded-full text-white transition-transform duration-200 hover:scale-[1.03] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-link",
+            phase === "listening" ? "bg-action" : "bg-link",
+          )}
+        >
+          {live && (
+            <span
+              className={cn("absolute inset-0 animate-ping rounded-full opacity-30", phase === "listening" ? "bg-action" : "bg-link")}
+            />
+          )}
+          {phase === "listening" ? <Mic className="relative size-10" /> : phase === "speaking" ? <Volume2 className="relative size-10" /> : live ? <span className="relative text-[13px]">…</span> : <Mic className="relative size-10" />}
+        </button>
+        <p className="mt-5 text-[17px] font-semibold">{status}</p>
+        <p className="mt-1 text-[13px] text-text-2">
+          {live ? "Tap the circle to end the conversation." : phase === "ended" ? "Tap the circle to continue where you left off." : "Tap the circle and allow the microphone. Takes about three minutes."}
+        </p>
+        <div className="mt-3 flex items-center gap-2 text-[12px] text-text-3">
+          <span>{eleven ? "Voice by ElevenLabs" : eleven === false ? "Browser voice" : ""}</span>
+          <span>·</span>
+          <select aria-label="Your language" value={lang} disabled={live} onChange={(e) => setLang(e.target.value as "en" | "de")} className="rounded-[6px] border border-line bg-surface px-1.5 py-0.5 text-[12px] text-text-2">
+            <option value="en">I'll speak English</option>
+            <option value="de">Ich spreche Deutsch</option>
           </select>
-          <Button variant="ghost" size="icon" onClick={() => setSpeak((s) => !s)} title={speak ? "Assistant speaks questions aloud" : "Assistant is muted"} aria-label="Toggle spoken questions">
-            {speak ? <Volume2 /> : <VolumeX />}
-          </Button>
+          <button type="button" onClick={() => setMuted((m) => !m)} className="inline-flex items-center gap-1 hover:text-foreground" aria-label="Toggle assistant voice">
+            {muted ? <VolumeX className="size-3.5" /> : <Volume2 className="size-3.5" />} {muted ? "Muted" : "Sound on"}
+          </button>
         </div>
+        {note && <p className="mt-3 text-[13px] text-action">{note}</p>}
       </div>
 
-      <div ref={scroller} className="flex-1 space-y-3 overflow-y-auto px-6 py-5" style={{ maxHeight: 420 }}>
-        {lines.map((l, i) => (
-          <div key={i} className={cn("flex", l.speaker === "customer" ? "justify-end" : "justify-start")}>
-            <div className={cn("max-w-[78%] rounded-[14px] px-4 py-2.5 text-[14px] leading-relaxed", l.speaker === "customer" ? "bg-link text-white" : "bg-surface-2 ring-1 ring-line")}>
-              {l.text}
+      {(lines.length > 0 || interim) && (
+        <div ref={scroller} className="max-h-[320px] space-y-3 overflow-y-auto border-t border-line px-6 py-5">
+          {lines.map((l, i) => (
+            <div key={i} className={cn("flex", l.speaker === "customer" ? "justify-end" : "justify-start")}>
+              <div className={cn("max-w-[80%] rounded-[14px] px-4 py-2.5 text-left text-[14px] leading-relaxed", l.speaker === "customer" ? "bg-link text-white" : "bg-surface-2 ring-1 ring-line")}>{l.text}</div>
             </div>
-          </div>
-        ))}
-        {interim && (
-          <div className="flex justify-end">
-            <div className="max-w-[78%] rounded-[14px] bg-link/15 px-4 py-2.5 text-[14px] italic text-text-2">{interim}…</div>
-          </div>
-        )}
-      </div>
+          ))}
+          {interim && (
+            <div className="flex justify-end">
+              <div className="max-w-[80%] rounded-[14px] bg-link/15 px-4 py-2.5 text-[14px] italic text-text-2">{interim}…</div>
+            </div>
+          )}
+        </div>
+      )}
 
-      <div className="border-t border-line px-6 py-5">
-        {pending && (
-          <p className="mb-3 text-[13px] text-text-2">
+      <div className="border-t border-line px-6 py-4">
+        {pending && lines.length > 0 && (
+          <p className="mb-2 text-[12.5px] text-text-2">
             <span className="label-mono mr-2">Still needed</span>
             {pending.label}
           </p>
         )}
-        <div className="flex flex-wrap items-center gap-3">
-          {supported ? (
-            <Button onClick={listening ? stop : start} className={cn("h-11 rounded-full px-5", listening && "bg-action hover:bg-action/90")}>
-              {listening ? <MicOff /> : <Mic />} {listening ? "Stop listening" : "Start talking"}
-            </Button>
-          ) : (
-            <p className="text-[13px] text-text-2">Voice isn't available in this browser (try Chrome) or the microphone is blocked. You can type below instead.</p>
-          )}
-          {listening && (
-            <span className="flex items-center gap-2 text-[12.5px] text-text-2">
-              <span className="relative flex size-2.5">
-                <span className="absolute inline-flex size-full animate-ping rounded-full bg-action-dot opacity-60" />
-                <span className="relative inline-flex size-2.5 rounded-full bg-action-dot" />
-              </span>
-              Listening…
-            </span>
-          )}
-        </div>
         <form
-          className="mt-4 flex gap-2"
+          className="flex gap-2"
           onSubmit={(e) => {
             e.preventDefault();
-            sendTyped();
+            void sendTyped();
           }}
         >
-          <Input value={typed} onChange={(e) => setTyped(e.target.value)} placeholder="Or type what you would say…" className="bg-surface" />
+          <Input value={typed} onChange={(e) => setTyped(e.target.value)} placeholder="Can't talk right now? Type your answer here…" className="bg-surface" />
           <Button type="submit" variant="outline" disabled={!typed.trim()} aria-label="Send">
             <Send />
           </Button>
         </form>
-        <div className="mt-5 flex items-center justify-between">
-          <Button variant="ghost" onClick={onBack}>
-            <ArrowLeft /> Back
-          </Button>
-          <Button
-            variant={pending ? "outline" : "default"}
-            onClick={() => {
-              stop();
-              onDone();
-            }}
-          >
-            Check my answers <ArrowRight />
-          </Button>
-        </div>
+        {lines.length > 1 && (
+          <div className="mt-3 flex justify-end">
+            <Button
+              variant={pending ? "ghost" : "default"}
+              onClick={() => {
+                shutdown();
+                onDone();
+              }}
+            >
+              Check my answers <ArrowRight />
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );
 }
 /* eslint-enable @typescript-eslint/no-explicit-any */
+
 
 // ------------------------------------------------------------------ review + send
 
