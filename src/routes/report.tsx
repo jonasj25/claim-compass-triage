@@ -529,7 +529,7 @@ function Conversation({
   mutedRef.current = muted;
 
   // Loudness 0..1 that drives the orb: agent voice while it speaks, the customer's mic while listening
-  const levelBuf = useRef<Uint8Array | null>(null);
+  const levelBuf = useRef<Uint8Array<ArrayBuffer> | null>(null);
   const level = (): number => {
     const sess = session.current;
     if (sess) {

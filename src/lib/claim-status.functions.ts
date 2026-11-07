@@ -153,8 +153,10 @@ async function loadClaims(db: any, ids: string[]) { // eslint-disable-line @type
     db.from("outcomes").select("case_id,final_outcome,recorded_at").in("case_id", ids).order("recorded_at", { ascending: false }),
     db.from("case_events").select("case_id,type,actor,payload,created_at").in("case_id", ids).order("created_at", { ascending: true }),
   ]);
-  const by = <T extends { case_id: string }>(rows: T[] | null) => {
-    const m = new Map<string, T[]>();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  type Row = { case_id: string } & Record<string, any>;
+  const by = (rows: Row[] | null) => {
+    const m = new Map<string, Row[]>();
     for (const r of rows ?? []) m.set(r.case_id, [...(m.get(r.case_id) ?? []), r]);
     return m;
   };
@@ -164,7 +166,7 @@ async function loadClaims(db: any, ids: string[]) { // eslint-disable-line @type
     const workflow = W.get(id)?.[0];
     const decision = D.get(id)?.[0];
     const outcome = O.get(id)?.[0];
-    const events = (E.get(id) ?? []) as { type: string; actor: string | null; payload: Record<string, unknown> | null; created_at: string }[];
+    const events = (E.get(id) ?? []) as unknown as { type: string; actor: string | null; payload: Record<string, unknown> | null; created_at: string }[];
     const status = customerStatus({ caseStatus: c.case_status, queue: workflow?.queue, recommendation: decision?.recommendation as Recommendation | undefined, outcome: outcome?.final_outcome });
     const lastReq = [...events].reverse().find((e) => e.type === "call_requested");
     const lastEnd = [...events].reverse().find((e) => e.type === "call_ended" || e.type === "call_logged");

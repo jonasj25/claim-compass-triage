@@ -26,7 +26,7 @@ export interface ReportResult {
   missing_fields: string[];
   reasons: string[];
   /** The stored claim as one row in the case CSV format */
-  row: Record<string, unknown>;
+  row: Record<string, string | number | boolean | null>;
 }
 
 const clip = (v: unknown, n: number) => String(v ?? "").trim().slice(0, n);
@@ -199,7 +199,7 @@ export const submitClaimReport = createServerFn({ method: "POST" })
     );
     if (queue === "waiting_customer") must(await db.from("outreach").insert({ case_id, channel: "email", missing_items: d.missing_fields }));
 
-    const row = Object.fromEntries(CSV_COLUMNS.map((c) => [c, (claim as Record<string, unknown>)[c] ?? null]));
+    const row = Object.fromEntries(CSV_COLUMNS.map((c) => [c, (claim as Record<string, unknown>)[c] ?? null])) as Record<string, string | number | boolean | null>;
     return { case_id, recommendation: d.recommendation, rule_id: d.rule_id, policy_version: policy.version, missing_fields: d.missing_fields, reasons: d.reasons, row };
   });
 
@@ -262,7 +262,7 @@ export const addClaimInfo = createServerFn({ method: "POST" })
     if (fields.length) {
       const files: Record<string, string | undefined> = { ...((raw.files as Record<string, string | undefined>) ?? {}), ...data.files };
       const newRaw = { ...raw, ...(data.answers.policy_number && !isUnknownText(data.answers.policy_number) ? { policy_number: data.answers.policy_number } : {}), files };
-      must(await db.from("claims").update({ ...(changes as never), raw: newRaw as never }).eq("case_id", data.case_id));
+      must(await db.from("claims").update({ ...changes, raw: newRaw } as never).eq("case_id", data.case_id));
       const docs = buildDocuments(claim).map((doc) => {
         const f = doc.kind === "incident_report" ? files.incident_report : doc.kind === "quote" ? files.quote : undefined;
         return f ? { ...doc, name: f } : doc;
@@ -309,7 +309,7 @@ export const addClaimInfo = createServerFn({ method: "POST" })
     );
     if (queue === "waiting_customer") must(await db.from("outreach").insert({ case_id: data.case_id, channel: "email", missing_items: d.missing_fields }));
 
-    const row = Object.fromEntries(CSV_COLUMNS.map((c) => [c, (claim as Record<string, unknown>)[c] ?? null]));
+    const row = Object.fromEntries(CSV_COLUMNS.map((c) => [c, (claim as Record<string, unknown>)[c] ?? null])) as Record<string, string | number | boolean | null>;
     return { case_id: data.case_id, recommendation: d.recommendation, rule_id: d.rule_id, policy_version: policy.version, missing_fields: d.missing_fields, reasons: d.reasons, row };
   });
 
@@ -326,7 +326,7 @@ export interface ClaimStatus {
   queue: string | null;
   /** A reviewer started a call that the customer has not answered or ended yet */
   incoming_call: { requested_at: string; missing_items: string[] } | null;
-  row: Record<string, unknown>;
+  row: Record<string, string | number | boolean | null>;
 }
 
 async function ownClaim(db: any, case_id: string, email: string, plate = "") {
@@ -362,7 +362,7 @@ export const getClaimStatus = createServerFn({ method: "POST" })
       missing_fields: (dec.data?.missing_fields as string[] | undefined) ?? [],
       queue: (wf.data?.queue as string | undefined) ?? null,
       incoming_call: pending ? { requested_at: lastReq!.created_at, missing_items: ((lastReq!.payload?.missing_items as string[]) ?? []) } : null,
-      row: Object.fromEntries(CSV_COLUMNS.map((c) => [c, claim[c] ?? null])),
+      row: Object.fromEntries(CSV_COLUMNS.map((c) => [c, claim[c] ?? null])) as Record<string, string | number | boolean | null>,
     };
   });
 
