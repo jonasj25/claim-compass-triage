@@ -124,7 +124,7 @@ function Dashboard() {
       {/* Live numbers; each tile selects the same filter as its tab below */}
       <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatTile
-          color="blue"
+          color="red"
           icon={AlertTriangle}
           label="To review"
           value={onYou.length}
@@ -194,10 +194,11 @@ function Dashboard() {
 }
 
 const TILE_COLORS = {
-  blue: { bg: "bg-[linear-gradient(135deg,oklch(0.975_0.018_255),oklch(0.945_0.04_258))]", chip: "bg-[oklch(0.92_0.045_258)] text-[oklch(0.48_0.19_262)]", blob: "bg-[oklch(0.88_0.07_258/0.45)]", bar: "bg-[oklch(0.6_0.19_258)]", track: "bg-[oklch(0.88_0.05_258)]", ring: "ring-[oklch(0.75_0.1_258)]" },
-  orange: { bg: "bg-[linear-gradient(135deg,oklch(0.985_0.015_75),oklch(0.96_0.035_65))]", chip: "bg-[oklch(0.94_0.045_65)] text-[oklch(0.58_0.15_50)]", blob: "bg-[oklch(0.9_0.06_65/0.45)]", bar: "", track: "", ring: "ring-[oklch(0.8_0.09_60)]" },
-  green: { bg: "bg-[linear-gradient(135deg,oklch(0.98_0.02_155),oklch(0.955_0.045_158))]", chip: "bg-[oklch(0.92_0.06_155)] text-[oklch(0.48_0.13_155)]", blob: "bg-[oklch(0.88_0.08_155/0.45)]", bar: "", track: "", ring: "ring-[oklch(0.75_0.1_155)]" },
-  purple: { bg: "bg-[linear-gradient(135deg,oklch(0.978_0.014_295),oklch(0.952_0.03_290))]", chip: "bg-[oklch(0.93_0.035_290)] text-[oklch(0.42_0.12_290)]", blob: "bg-[oklch(0.9_0.05_290/0.45)]", bar: "", track: "", ring: "ring-[oklch(0.78_0.07_290)]" },
+  // same red family as the "Human review" recommendation: this is the tile that needs a person
+  red: { bg: "bg-[linear-gradient(135deg,oklch(0.985_0.014_35),oklch(0.955_0.038_30))]", chip: "bg-[oklch(0.93_0.05_32)] text-action", blob: "bg-[oklch(0.86_0.08_32/0.5)]", bar: "bg-action-dot", track: "bg-[oklch(0.9_0.045_32)]", hover: "hover:ring-[oklch(0.84_0.07_32)]", ring: "ring-[oklch(0.72_0.14_34)]" },
+  orange: { bg: "bg-[linear-gradient(135deg,oklch(0.985_0.015_75),oklch(0.96_0.035_65))]", chip: "bg-[oklch(0.94_0.045_65)] text-[oklch(0.58_0.15_50)]", blob: "bg-[oklch(0.9_0.06_65/0.5)]", bar: "", track: "", hover: "hover:ring-[oklch(0.88_0.06_62)]", ring: "ring-[oklch(0.78_0.11_58)]" },
+  green: { bg: "bg-[linear-gradient(135deg,oklch(0.98_0.02_155),oklch(0.955_0.045_158))]", chip: "bg-[oklch(0.92_0.06_155)] text-[oklch(0.48_0.13_155)]", blob: "bg-[oklch(0.88_0.08_155/0.5)]", bar: "", track: "", hover: "hover:ring-[oklch(0.86_0.07_155)]", ring: "ring-[oklch(0.7_0.11_155)]" },
+  purple: { bg: "bg-[linear-gradient(135deg,oklch(0.978_0.014_295),oklch(0.952_0.03_290))]", chip: "bg-[oklch(0.93_0.035_290)] text-[oklch(0.42_0.12_290)]", blob: "bg-[oklch(0.9_0.05_290/0.5)]", bar: "", track: "", hover: "hover:ring-[oklch(0.87_0.05_290)]", ring: "ring-[oklch(0.72_0.09_290)]" },
 } as const;
 
 function StatTile({
@@ -228,15 +229,26 @@ function StatTile({
       onClick={onClick}
       aria-pressed={active}
       className={cn(
-        "relative flex flex-col items-start overflow-hidden rounded-[16px] p-5 text-left ring-1 ring-white/80 shadow-[0_1px_2px_oklch(0.35_0.05_262/0.05)] transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:shadow-[var(--shadow-lift)]",
+        // Hover stays in place: the frame takes the tile's colour, the shadow deepens and the glow grows softly
+        "group relative flex cursor-pointer flex-col items-start overflow-hidden rounded-[16px] p-5 text-left outline-none ring-1 ring-white/80",
+        "shadow-[0_1px_2px_oklch(0.35_0.05_262/0.05)] transition-[box-shadow] duration-300 ease-out hover:shadow-[var(--shadow-lift)]",
+        "focus-visible:ring-2",
         c.bg,
-        active && cn("-translate-y-0.5 shadow-[var(--shadow-lift)] ring-2", c.ring),
+        c.hover,
+        active && cn("shadow-[var(--shadow-lift)] ring-2 hover:ring-2", c.ring),
       )}
     >
-      {/* soft decorative shape in the corner */}
-      <span aria-hidden className={cn("pointer-events-none absolute -bottom-12 -right-10 size-36 rounded-full blur-2xl", c.blob)} />
+      {/* soft decorative glow in the corner */}
+      <span
+        aria-hidden
+        className={cn(
+          "pointer-events-none absolute -bottom-12 -right-10 size-36 rounded-full opacity-80 blur-2xl transition-[transform,opacity] duration-500 ease-out group-hover:scale-125 group-hover:opacity-100",
+          active && "scale-125 opacity-100",
+          c.blob,
+        )}
+      />
       <span className="relative flex items-center gap-2.5">
-        <span className={cn("inline-flex size-7 items-center justify-center rounded-[8px]", c.chip)}>
+        <span className={cn("inline-flex size-7 items-center justify-center rounded-[8px] transition-transform duration-300 ease-out group-hover:scale-110", c.chip)}>
           <Icon className="size-4" strokeWidth={1.8} />
         </span>
         <span className="font-mono text-[11.5px] uppercase tracking-[0.06em] text-foreground/80">{label}</span>
