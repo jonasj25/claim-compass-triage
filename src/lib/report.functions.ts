@@ -153,7 +153,8 @@ export const submitClaimReport = createServerFn({ method: "POST" })
     const questions = activeQuestions(a);
     const form: FormField[] = questions.map((q, i) => ({ field: i + 1, label: q.label, value: answerLabel(q, a) || null }));
     const transcript: TranscriptLine[] = (data.transcript ?? []).map((l, i) => ({ line: i + 1, speaker: l.speaker, text: l.text }));
-    const docs = buildDocuments(claim).map((doc) => {
+    // Customer reports: no invented photo placeholder; uploaded files replace their entries afterwards
+    const docs = buildDocuments(claim).filter((doc) => doc.kind !== "photos").map((doc) => {
       const file = doc.kind === "incident_report" ? data.files?.incident_report : doc.kind === "quote" ? data.files?.quote : undefined;
       return file ? { ...doc, name: file } : doc;
     });
