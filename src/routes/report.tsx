@@ -102,8 +102,12 @@ function ReportPage() {
       setAnswers((a) => ({ ...a, email: r.email!, plate: a.plate || (r.plate ?? "") }));
       setFormCheck({ busy: false, error: null });
     }
-    if (step >= qs.length - 1) completeAndSubmit();
-    else setStep((s) => s + 1);
+    // Skip questions a document already answered
+    const fromDocs = new Set(Object.values(uploadSet.current).flatMap((a) => Object.keys(a ?? {})));
+    let n = step + 1;
+    while (n < qs.length && fromDocs.has(qs[n].key)) n += 1;
+    if (n >= qs.length) completeAndSubmit();
+    else setStep(n);
   };
 
   // Latest values for callbacks that fire later (voice agent, timers)
