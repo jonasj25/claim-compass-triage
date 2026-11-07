@@ -26,6 +26,8 @@ import {
 } from "@/lib/report-intake";
 import { addClaimInfo, submitClaimReport, type ReportResult } from "@/lib/report.functions";
 import { speakText, transcribeAudio, voiceStatus } from "@/lib/voice.functions";
+import { verifyCustomer } from "@/lib/customers.functions";
+import { normalizeEmail, sameName } from "@/lib/customers";
 import { VoiceOrb, type Phase } from "@/components/triage/VoiceOrb";
 
 // Public page (no sign-in): a customer reports a motor claim, by form or by voice.
@@ -562,7 +564,25 @@ function Conversation({
     scroller.current?.scrollTo({ top: scroller.current.scrollHeight, behavior: "smooth" });
   }, [lines.length, interim, phase]);
 
+  // ---- customer check: Mia asks for name and email first and only continues once they match a registered customer
+  const verified = useRef<{ name: string; email: string } | null>(null);
+  const failedChecks = useRef(0);
+  const isVerified = (a: ReportAnswers) =>
+    !!verified.current && sameName(verified.current.name, a.name) && normalizeEmail(a.email) === normalizeEmail(verified.current.email);
+  const checkCustomer = async (a: ReportAnswers): Promise<"verified" | "unknown" | "incomplete"> => {
+    if (isVerified(a)) return "verified";
+    if (!a.name.trim() || !a.email.trim()) return "incomplete";
+    const r = await verifyCustomer({ data: { name: a.name, email: a.email } }).catch(() => ({ registered: false as const, name: undefined, email: undefined }));
+    if (r.registered && r.name && r.email) {
+      verified.current = { name: r.name, email: r.email };
+      return "verified";
+    }
+    failedChecks.current += 1;
+    return "unknown";
+  };
+
   const nextQuestion = (a: ReportAnswers) => {
+    if (!isVerified(a)) return QUESTIONS.find((q) => q.key === (a.name.trim() ? "email" : "name"));
     const open = activeQuestions(a)
       .filter((q) => fieldState(q, a) === "missing")
       .sort((x, y) => Number(y.key === "what_happened") - Number(x.key === "what_happened"));
@@ -619,26 +639,57 @@ function Conversation({
   };
 
   // ---- understanding one answer (deterministic keyword rules; the customer confirms everything later)
-  const understand = (text: string): string => {
+  type Turn = { say: string; next: "continue" | "done" | "stop" };
+  const NOT_FOUND = "I couldn't find a customer account with that name and email. Could you tell me your full name and the email address you registered with?";
+  const BLOCKED = "I'm sorry, I still can't find a customer account with those details, so I can't take your claim by voice. Please check your registration or contact us, and try again.";
+  const understand = async (text: string): Promise<Turn> => {
     const clean = text.trim();
     const before = answersRef.current;
     const asked = nextQuestion(before);
     const lineNo = linesRef.current.length + 1;
-    const found = { ...(asked ? interpretReply(asked, clean) : {}), ...extractFromUtterance(clean) };
-    if (!before.what_happened && clean.split(/\s+/).length >= 6 && !found.what_happened) found.what_happened = clean;
-    const merged = { ...before, ...found };
-    answersRef.current = merged;
+    const wasVerified = isVerified(before);
+    let found: Partial<ReportAnswers> = { ...(asked ? interpretReply(asked, clean) : {}), ...extractFromUtterance(clean) };
+    if (!wasVerified) {
+      // Until the customer is verified, only name and email count
+      const id: Partial<ReportAnswers> = {};
+      if (found.email) id.email = found.email;
+      const name = found.name?.replace(/[\w.+-]+@\S+/g, "").replace(/[\s,;]+$/, "").trim();
+      if (name) id.name = name;
+      found = id;
+    } else if (!before.what_happened && clean.split(/\s+/).length >= 6 && !found.what_happened) found.what_happened = clean;
+    let merged = { ...before, ...found };
     linesRef.current = [...linesRef.current, { speaker: "customer", text: clean }];
     setLines((l) => [...l, { speaker: "customer", text: clean }]);
+
+    let check: "verified" | "unknown" | "incomplete" = "verified";
+    if (!wasVerified) {
+      check = await checkCustomer(merged);
+      if (check === "verified") merged = { ...merged, email: verified.current!.email };
+      if (check === "unknown") {
+        merged = { ...merged, name: "", email: "" };
+        found = {};
+      }
+    }
+    answersRef.current = merged;
     setAnswers(() => merged);
     setHeardIn((h) => {
       const n = { ...h };
+      if (check === "unknown") {
+        delete n.name;
+        delete n.email;
+      }
       for (const k of Object.keys(found) as AnswerKey[]) n[k] = lineNo;
       return n;
     });
+
+    if (check === "unknown") return failedChecks.current >= 3 ? { say: BLOCKED, next: "stop" } : { say: NOT_FOUND, next: "continue" };
     const nq = nextQuestion(merged);
-    if (!nq) return "";
-    return Object.keys(found).length ? `Thanks. ${nq.ask}` : `Sorry, I didn't quite catch that. ${nq.ask}`;
+    if (!wasVerified && check === "verified") {
+      const first = merged.name.split(" ")[0];
+      return nq ? { say: `Thanks, ${first}, I've found your customer account. ${nq.ask}`, next: "continue" } : { say: "", next: "done" };
+    }
+    if (!nq) return { say: "", next: "done" };
+    return { say: Object.keys(found).length ? `Thanks. ${nq.ask}` : `Sorry, I didn't quite catch that. ${nq.ask}`, next: "continue" };
   };
 
   // ---- listening: ElevenLabs speech-to-text (recorded turns) or the browser's live recognition
@@ -692,13 +743,18 @@ function Conversation({
         continue;
       }
       misses = 0;
-      const reply = understand(heard);
-      if (!reply) {
+      const turn = await understand(heard);
+      if (turn.next === "done") {
         await speak("Thank you, that's everything I need. Please check your answers and send them.");
         finish();
         return;
       }
-      await speak(reply);
+      await speak(turn.say);
+      if (turn.next === "stop") {
+        shutdown();
+        setPhase("ended");
+        return;
+      }
     }
   };
 
@@ -720,8 +776,27 @@ function Conversation({
         connectionType: "websocket",
         clientTools: {
           update_claim: async (params: Record<string, unknown>) => {
-            const found = cleanAgentAnswers(params ?? {});
-            const merged = { ...answersRef.current, ...found };
+            let found = cleanAgentAnswers(params ?? {});
+            let merged = { ...answersRef.current, ...found };
+            let greeting = "";
+            if (!isVerified(answersRef.current)) {
+              // Nothing about the claim is saved until the caller is a registered customer
+              found = { ...(found.name ? { name: found.name } : {}), ...(found.email ? { email: found.email } : {}) };
+              merged = { ...answersRef.current, ...found };
+              const check = await checkCustomer(merged);
+              if (check !== "verified") {
+                const keep = check === "unknown" ? { ...merged, name: "", email: "" } : merged;
+                answersRef.current = keep;
+                setAnswers(() => keep);
+                if (check === "incomplete")
+                  return `Not saved. First check the caller is a registered customer: ask for their ${merged.name ? "email address" : "full name"} and call update_claim with name and email. Do not ask about the claim yet.`;
+                if (failedChecks.current >= 3)
+                  return "Not saved. Still no registered customer with that name and email. Apologise, explain you can only take claims from registered customers, ask them to check their registration or contact Clearpath, and end the conversation.";
+                return "Not saved. No registered customer matches that name and email. Tell the caller politely, ask them to repeat their full name and the email address they registered with, and call update_claim again. Do not ask about the claim until the customer is verified.";
+              }
+              merged = { ...merged, email: verified.current!.email };
+              greeting = `Customer verified: ${merged.name}. `;
+            }
             answersRef.current = merged;
             setAnswers(() => merged);
             const lastCustomer = linesRef.current.map((l) => l.speaker).lastIndexOf("customer") + 1;
@@ -733,8 +808,8 @@ function Conversation({
               });
             const open = activeQuestions(merged).filter((q) => fieldState(q, merged) === "missing");
             const nq = nextQuestion(merged);
-            if (!nq) return "Saved. Nothing is missing. Close the conversation now.";
-            return `Saved. Still missing: ${open.map((q) => q.label + (q.optional ? " (optional)" : "")).join(", ")}. Ask next: "${nq.ask}"`;
+            if (!nq) return `${greeting}Saved. Nothing is missing. Close the conversation now.`;
+            return `${greeting}Saved. Still missing: ${open.map((q) => q.label + (q.optional ? " (optional)" : "")).join(", ")}. Ask next: "${nq.ask}"`;
           },
         },
         onMessage: (m: any) => {
@@ -754,6 +829,9 @@ function Conversation({
         onError: () => setNote("The voice connection had a problem. You can continue by typing below."),
       });
       session.current = sess;
+      sess.sendContextualUpdate?.(
+        "Before any question about the claim, ask for the caller's full name and the email address they registered with, and call update_claim with name and email. Only continue with the claim once update_claim says the customer is verified.",
+      );
       setViaAgent(true);
       return true;
     } catch {
@@ -782,7 +860,7 @@ function Conversation({
     const q = nextQuestion(answersRef.current);
     const intro = linesRef.current.length
       ? q?.ask ?? ""
-      : `Hi, I'm ${AGENT_NAME}, the Clearpath claims assistant. I'll ask you a few short questions to record your claim. If you're not sure about something, just say so. ${q?.ask ?? ""}`;
+      : `Hi, I'm ${AGENT_NAME}, the Clearpath claims assistant. I'll ask you a few short questions to record your claim. If you're not sure about something, just say so. First I need to check that you're registered with us. ${q?.ask ?? ""}`;
     await speak(intro);
     if (mic.current || getRecognition()) void loop();
     else setPhase("idle");
@@ -805,14 +883,15 @@ function Conversation({
     }
     if (!linesRef.current.length) {
       onStart();
-      setLines(() => [{ speaker: "agent", text: `Hi, I'm ${AGENT_NAME}, the Clearpath claims assistant. ${nextQuestion(answersRef.current)?.ask ?? ""}` }]);
-      linesRef.current = [{ speaker: "agent", text: "" }];
+      const hello = `Hi, I'm ${AGENT_NAME}, the Clearpath claims assistant. First I need to check that you're registered with us. ${nextQuestion(answersRef.current)?.ask ?? ""}`;
+      setLines(() => [{ speaker: "agent", text: hello }]);
+      linesRef.current = [{ speaker: "agent", text: hello }];
     }
-    const reply = understand(t);
-    if (!reply) {
+    const turn = await understand(t);
+    if (turn.next === "done") {
       setLines((l) => [...l, { speaker: "agent", text: "Thank you, that's everything I need. Please check your answers and send them." }]);
       window.setTimeout(onComplete, 900);
-    } else setLines((l) => [...l, { speaker: "agent", text: reply }]);
+    } else setLines((l) => [...l, { speaker: "agent", text: turn.say }]);
   };
 
   const live = phase === "speaking" || phase === "listening" || phase === "thinking";

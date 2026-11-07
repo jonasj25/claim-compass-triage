@@ -3,6 +3,7 @@ import { decide, type Claim, type Policy, type Recommendation } from "./triage";
 import { queueFor } from "./lifecycle";
 import { secondCheckReason } from "./second-check";
 import { tryAutoAssign } from "./auto-assign";
+import { findCustomer } from "./customers";
 import { buildDocuments, type FactSource, type FormField, type TranscriptLine } from "./intake";
 import { activeQuestions, answerLabel, CSV_COLUMNS, EMPTY_ANSWERS, FIELD_SOURCE, isUnknownText, knownClaimFields, toClaimFields, type AnswerKey, type ReportAnswers } from "./report-intake";
 
@@ -55,6 +56,14 @@ export const submitClaimReport = createServerFn({ method: "POST" })
   .handler(async ({ data }): Promise<ReportResult> => {
     const { supabaseAdmin: db } = await import("@/integrations/supabase/client.server");
     const a = data.answers;
+
+    // Claims reported through Mia only come from registered customers (checked again here, not just in the browser)
+    if (data.channel === "phone") {
+      const { REGISTERED_CUSTOMERS } = await import("./customers.server");
+      const customer = findCustomer(REGISTERED_CUSTOMERS, a.name, a.email);
+      if (!customer) throw new Error("We couldn't find a registered customer with this name and email. Please check both and try again.");
+      a.email = customer.email;
+    }
 
     const pol = await db.from("policy_versions").select("config").eq("status", "active").order("created_at", { ascending: false }).limit(1).single();
     if (pol.error) throw new Error(pol.error.message);
