@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import type { ComponentType, ReactNode } from "react";
 import {
@@ -16,7 +16,8 @@ import {
   ShieldOff,
   Wrench,
 } from "lucide-react";
-import { activePolicyQuery } from "@/lib/data";
+import { activePolicyQuery, policyVersionsQuery } from "@/lib/data";
+import { NewPolicyDialog } from "@/components/triage/NewPolicyDialog";
 import { Mono, PageHeader, fmtEur } from "@/components/triage/ui";
 import { FIELD_LABELS, type Policy } from "@/lib/triage";
 import { cn } from "@/lib/utils";
@@ -168,6 +169,7 @@ function Conditions({ items }: { items: Item[] }) {
 
 function PolicyPage() {
   const { data: p } = useQuery(activePolicyQuery);
+  const { data: versions = [] } = useQuery(policyVersionsQuery);
   if (!p) return <p className="label-mono">Loading</p>;
   const v = p.version.toUpperCase();
   const triggers = reviewTriggers(p);
@@ -180,6 +182,7 @@ function PolicyPage() {
         eyebrow={`Policy ${p.version} · active`}
         title="How a claim is decided"
         sub="Every claim goes through these four checks from top to bottom. The first check that applies decides the next step. Rules decide, people confirm."
+        right={<NewPolicyDialog base={p} existingIds={versions.map((x) => x.id)} />}
       />
 
       <div className="card-quiet mb-8 flex flex-wrap items-center gap-x-6 gap-y-3 px-6 py-4">
@@ -248,6 +251,31 @@ function PolicyPage() {
         Every recommendation stores the policy version and the check that produced it, for example{" "}
         <span className="font-mono text-[11.5px]">{v}.R1</span>.
       </p>
+
+      <Drafts versions={versions} />
+    </div>
+  );
+}
+
+function Drafts({ versions }: { versions: { id: string; status: string; description: string | null }[] }) {
+  const drafts = versions.filter((x) => x.status === "draft");
+  if (!drafts.length) return null;
+  return (
+    <div className="card-quiet mt-8 px-6 py-4">
+      <p className="label-mono mb-2">Drafts waiting for review</p>
+      <ul className="divide-y divide-line text-[13px]">
+        {drafts.map((d) => (
+          <li key={d.id} className="flex items-center justify-between gap-3 py-2.5">
+            <span>
+              <span className="font-mono uppercase">{d.id}</span>
+              {d.description && <span className="ml-2 text-text-2">{d.description}</span>}
+            </span>
+            <Link to="/impact" search={{ v: d.id }} className="shrink-0 text-link hover:underline">
+              See impact →
+            </Link>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
