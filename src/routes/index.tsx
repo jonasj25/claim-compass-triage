@@ -46,7 +46,13 @@ function SignIn() {
     setError(null);
     let res = await supabase.auth.signInWithPassword({ email: e, password: p });
     if (res.error && DEMO_USERS.some((u) => u.email === e) && p === DEMO_PASSWORD) {
-      await ensureDemoUsers();
+      try {
+        await ensureDemoUsers();
+      } catch (err) {
+        setError((err as Error).message);
+        setBusy(false);
+        return;
+      }
       res = await supabase.auth.signInWithPassword({ email: e, password: p });
     }
     if (res.error || !res.data.user) {

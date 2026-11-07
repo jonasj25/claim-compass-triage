@@ -28,3 +28,11 @@ use the editor.
   own key and store it in Secrets.
 - **Secrets.** Lovable manages them. Do not put secret values in the repo.
 <!-- LOVABLE:END -->
+
+## Project rules
+- Triage decisions come only from the pure `decide()` in src/lib/triage.ts; it must match the backend's Python engine (engine/triage.py), so never add rules beyond the policy JSON.
+- Blank/unreadable fields stay `null` end to end (CSV → DB → UI as "unknown"); never coerce to false/0.
+- Policies are stored as JSON in `policy_versions.config`; the active one drives all re-evaluation. Never hardcode a future version.
+- Overrides, outcomes, case_events, comments and fact_sources are append-only (insert/select RLS only).
+- Roles live in `user_roles`; the top-bar role switcher is a demo view toggle only, not a permission.
+- Design tokens live in src/styles.css; colour is reserved for states where a human must act.
