@@ -47,11 +47,10 @@ export function ClaimsTable({ rows, navLabel = "Claims" }: { rows: CaseRow[]; na
             return (
               <tr key={c.claim.case_id} className="relative h-14 border-b border-line/70 last:border-0 hover:bg-white/80">
                 <td className="whitespace-nowrap px-3 font-mono text-[12px]">
-                  {/* The link's overlay covers the whole row, so the full-summary tooltip lives here. */}
+                  {/* The link's overlay covers the whole row. */}
                   <Link
                     to="/claims/$caseId"
                     params={{ caseId: c.claim.case_id }}
-                    title={c.claim.claim_summary ?? undefined}
                     onClick={() => saveCaseNav(navLabel, rows.map((r) => r.claim.case_id))}
                     className="after:absolute after:inset-0 focus-visible:outline-none"
                   >
