@@ -16,7 +16,6 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { cn } from "@/lib/utils";
 import type { TranscriptLine, FormField, IntakeDocument } from "@/lib/intake";
 
@@ -62,6 +61,7 @@ function CaseDetail() {
   const { data, isLoading } = useQuery(caseDetailQuery(caseId));
   const policyQ = useQuery(activePolicyQuery);
   const [hl, setHl] = useState<string | null>(null);
+  const [hover, setHover] = useState<string | null>(null);
   const [overrideOpen, setOverrideOpen] = useState<Recommendation | null>(null);
   const [busy, setBusy] = useState(false);
   const opened = useRef(Date.now());
@@ -69,6 +69,7 @@ function CaseDetail() {
   useEffect(() => {
     opened.current = Date.now();
     setHl(null);
+    setHover(null);
   }, [caseId]);
 
   // ---------- step through the list the case was opened from (like a task queue) ----------
@@ -133,6 +134,13 @@ function CaseDetail() {
   const docs = (data.intake?.documents as unknown as IntakeDocument[] | null) ?? [];
   const facts = data.facts as Row[];
   const refOf = (f: string) => facts.find((x) => x.field === f);
+  const active = hover ?? hl;
+  const activeSrc = active ? refOf(active) : undefined;
+  const activeCheck = active ? live.checklist.find((c) => c.field === active) : undefined;
+  // System checks that are not already a line in the call transcript (online-form and CSV cases)
+  const systemSources = facts
+    .filter((x) => x.source_type === "system" && !String(x.ref ?? "").startsWith("line"))
+    .filter((x, i, arr) => arr.findIndex((y) => y.ref === x.ref) === i);
 
   const slaDue = workflow?.sla_due_at ? new Date(workflow.sla_due_at) : null;
   const slaText = slaDue
@@ -407,16 +415,20 @@ function CaseDetail() {
               {live.checklist.filter((c) => c.status === "fail").length} failed · {unknownCount} unknown
             </span>
           </div>
-          <ul className="divide-y divide-line/80">
+          <ul className="divide-y divide-line/80" onMouseLeave={() => setHover(null)}>
             {live.checklist.map((c) => {
               const src = refOf(c.field);
               return (
                 <li key={c.key}>
-                  <HoverCard openDelay={120} closeDelay={60}>
-                  <HoverCardTrigger asChild>
                   <button
-                    onClick={() => setHl(c.field)}
-                    className={cn("flex w-full items-center gap-3 rounded-[8px] px-2 py-2.5 text-left hover:bg-white/70", hl === c.field && "bg-white ring-1 ring-line")}
+                    onClick={() => setHl(hl === c.field ? null : c.field)}
+                    onMouseEnter={() => setHover(c.field)}
+                    onFocus={() => setHover(c.field)}
+                    onBlur={() => setHover(null)}
+                    className={cn(
+                      "flex w-full items-center gap-3 rounded-[8px] px-2 py-2.5 text-left transition-colors duration-200",
+                      active === c.field ? "bg-link/10 ring-1 ring-link/30" : "hover:bg-white/70",
+                    )}
                   >
                     <span
                       className={cn(
@@ -435,11 +447,6 @@ function CaseDetail() {
                       <span className="label-mono hidden text-[10px] text-text-3 sm:inline">no source</span>
                     )}
                   </button>
-                  </HoverCardTrigger>
-                  <HoverCardContent side="top" align="start" className="w-80 rounded-[12px] border-line p-4 text-[13px] shadow-[0_8px_24px_rgba(0,0,0,.08)]">
-                    <SourcePeek status={c.status} stage={c.stage} label={FIELD_LABELS[c.field] ?? c.field} src={src} doc={src ? docs.find((d) => d.name === src.ref) : undefined} />
-                  </HoverCardContent>
-                  </HoverCard>
                 </li>
               );
             })}
@@ -452,28 +459,40 @@ function CaseDetail() {
 
         <Card className="flex flex-col">
           <h2 className="section-title">Sources</h2>
-          <p className="mb-4 mt-1 text-[12.5px] text-text-2">Click a checklist item to see where the fact came from.</p>
-          {hl && refOf(hl) && (
-            <div className="mb-4 rounded-[10px] bg-wait-tint p-3 text-[13px] ring-1 ring-wait-border">
-              <Mono>
-                {FIELD_LABELS[hl] ?? hl} · {refOf(hl)!.source_type} · {refOf(hl)!.ref}
-              </Mono>
-              <p className="mt-1">“{refOf(hl)!.quote}”</p>
-              {refOf(hl)!.confidence === "unconfirmed" && (
+          <p className="mb-3 mt-1 text-[12.5px] text-text-2">Point at a checklist item to see where the fact came from. Click to keep it marked.</p>
+          {/* Fixed-height strip so hovering never shifts the layout */}
+          <div
+            className={cn(
+              "mb-4 min-h-[66px] rounded-[10px] px-3 py-2.5 text-[13px] ring-1 transition-colors duration-200",
+              activeSrc ? "bg-link/10 ring-link/30" : "bg-surface-2/60 ring-line",
+            )}
+          >
+            {active ? (
+              <>
+                <Mono>
+                  {FIELD_LABELS[active] ?? active} · {activeSrc ? `${SOURCE_LABEL[activeSrc.source_type] ?? activeSrc.source_type} · ${activeSrc.ref}` : "no source recorded"}
+                </Mono>
                 <p className="mt-1">
-                  <Unknown>unconfirmed</Unknown>
+                  {activeSrc?.quote ? `“${activeSrc.quote}”` : activeCheck?.status === "unknown" ? "Left blank. The system does not guess, it asks for it." : "No source recorded for this field."}
+                  {activeSrc?.confidence === "unconfirmed" && (
+                    <span className="ml-2">
+                      <Unknown>unconfirmed</Unknown>
+                    </span>
+                  )}
                 </p>
-              )}
-            </div>
-          )}
+              </>
+            ) : (
+              <p className="pt-2 text-text-3">Nothing selected</p>
+            )}
+          </div>
           {transcript && (
             <div className="mb-5">
               <Mono>Call transcript</Mono>
               <ol className="mt-2 space-y-1 text-[13px]">
                 {transcript.map((l) => {
-                  const active = hl && refOf(hl)?.ref?.match(new RegExp(`line ${l.line}(\\b|$)`));
+                  const on = !!activeSrc?.ref?.match(new RegExp(`line ${l.line}(\\b|$)`));
                   return (
-                    <li key={l.line} className={cn("flex gap-2 rounded px-1.5 py-1", active && "bg-wait-tint")}>
+                    <li key={l.line} className={cn("flex gap-2 rounded-[6px] px-1.5 py-1 transition-colors duration-200", on && "bg-link/10 ring-1 ring-link/30")}>
                       <span className="w-5 shrink-0 font-mono text-[11px] text-text-3">{l.line}</span>
                       <span className={cn("w-16 shrink-0 font-mono text-[10.5px] uppercase tracking-[0.06em]", l.speaker === "customer" ? "text-foreground" : "text-text-2")}>{l.speaker}</span>
                       <span className={cn(l.speaker === "system" && "text-text-2")}>{l.text}</span>
@@ -488,9 +507,9 @@ function CaseDetail() {
               <Mono>Online form</Mono>
               <dl className="mt-2 divide-y divide-line/80 text-[13px]">
                 {form.map((f) => {
-                  const active = hl && refOf(hl)?.ref === `field ${f.field}`;
+                  const on = activeSrc?.ref === `field ${f.field}`;
                   return (
-                    <div key={f.field} className={cn("flex justify-between gap-3 rounded px-1.5 py-1.5", active && "bg-wait-tint")}>
+                    <div key={f.field} className={cn("flex justify-between gap-3 rounded-[6px] px-1.5 py-1.5 transition-colors duration-200", on && "bg-link/10 ring-1 ring-link/30")}>
                       <dt className="text-text-2">
                         <span className="mr-2 font-mono text-[11px] text-text-3">{f.field}</span>
                         {f.label}
@@ -506,9 +525,9 @@ function CaseDetail() {
             <Mono>Documents</Mono>
             <ul className="mt-2 space-y-1.5 text-[13px]">
               {docs.map((d) => {
-                const active = hl && refOf(hl)?.ref === d.name;
+                const on = activeSrc?.ref === d.name;
                 return (
-                  <li key={d.name} className={cn("flex items-center justify-between rounded px-1.5 py-1", active && "bg-wait-tint")}>
+                  <li key={d.name} className={cn("flex items-center justify-between rounded-[6px] px-1.5 py-1 transition-colors duration-200", on && "bg-link/10 ring-1 ring-link/30")}>
                     <span className="font-mono text-[12px]">{d.name}</span>
                     <span className={cn("text-[12px]", d.status === "missing" || d.status === "incomplete" ? "text-wait" : d.status === "unknown" ? "" : "text-text-2")}>
                       {d.status === "unknown" ? <Unknown /> : d.note}
@@ -518,6 +537,22 @@ function CaseDetail() {
               })}
             </ul>
           </div>
+          {systemSources.length > 0 && (
+            <div className="mt-5">
+              <Mono>System checks</Mono>
+              <ul className="mt-2 space-y-1.5 text-[13px]">
+                {systemSources.map((f) => {
+                  const on = activeSrc?.ref === f.ref;
+                  return (
+                    <li key={f.ref} className={cn("flex items-center justify-between gap-3 rounded-[6px] px-1.5 py-1 transition-colors duration-200", on && "bg-link/10 ring-1 ring-link/30")}>
+                      <span className="font-mono text-[12px]">{f.ref}</span>
+                      <span className="text-right text-[12px] text-text-2">{f.quote}</span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
         </Card>
       </div>
 
@@ -764,46 +799,3 @@ const SOURCE_LABEL: Record<string, string> = {
   system: "System check",
   csv: "CSV import",
 };
-
-/** Hover card on a checklist row: where the fact comes from, or why it is missing. */
-function SourcePeek({ status, stage, label, src, doc }: { status: string; stage: string; label: string; src?: Row; doc?: IntakeDocument }) {
-  const head =
-    status === "pass"
-      ? { text: "Confirmed", cls: "text-text-2" }
-      : status === "unknown"
-        ? { text: "Unknown · not provided", cls: "text-text-2" }
-        : stage === "R2"
-          ? { text: "Missing", cls: "text-wait" }
-          : { text: "Review trigger", cls: "text-action" };
-  return (
-    <div className="space-y-2">
-      <div className="flex items-baseline justify-between gap-3">
-        <span className="font-medium">{label}</span>
-        <span className={cn("label-mono", head.cls)}>{head.text}</span>
-      </div>
-      {src ? (
-        <>
-          <p className="label-mono">
-            {SOURCE_LABEL[src.source_type] ?? src.source_type} · {src.ref}
-          </p>
-          {src.quote && <p className="rounded-[8px] bg-surface-2 px-2.5 py-2 text-[13px] leading-snug ring-1 ring-line">“{src.quote}”</p>}
-          {doc && (
-            <p className="text-[12px] text-text-2">
-              {doc.name}: {doc.status === "unknown" ? "unknown" : doc.note}
-            </p>
-          )}
-          {src.confidence === "unconfirmed" && (
-            <p className="text-[12px] text-text-2">
-              <Unknown>unconfirmed</Unknown> Captured but not yet confirmed by the customer.
-            </p>
-          )}
-        </>
-      ) : (
-        <p className="text-[12.5px] text-text-2">No source is recorded for this field.</p>
-      )}
-      {status === "unknown" && <p className="text-[12.5px] text-text-2">Left blank, so the system does not guess. It has to be requested.</p>}
-      {status === "fail" && stage === "R2" && <p className="text-[12.5px] text-text-2">Not received yet. The customer is asked for it.</p>}
-      <p className="label-mono pt-1 text-text-3">Click to show it in Sources</p>
-    </div>
-  );
-}
