@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as BatchRouteImport } from './routes/batch'
 import { Route as ReportRouteImport } from './routes/report'
+import { Route as StatusRouteImport } from './routes/status'
 import { Route as AuthenticatedAdvisorRouteImport } from './routes/_authenticated/advisor'
 import { Route as AuthenticatedBusinessCaseRouteImport } from './routes/_authenticated/business-case'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
@@ -43,6 +44,11 @@ const BatchRoute = BatchRouteImport.update({
 const ReportRoute = ReportRouteImport.update({
   id: '/report',
   path: '/report',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StatusRoute = StatusRouteImport.update({
+  id: '/status',
+  path: '/status',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedAdvisorRoute = AuthenticatedAdvisorRouteImport.update({
@@ -114,6 +120,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/batch': typeof BatchRoute
   '/report': typeof ReportRoute
+  '/status': typeof StatusRoute
   '/advisor': typeof AuthenticatedAdvisorRoute
   '/business-case': typeof AuthenticatedBusinessCaseRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
@@ -131,6 +138,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/batch': typeof BatchRoute
   '/report': typeof ReportRoute
+  '/status': typeof StatusRoute
   '/advisor': typeof AuthenticatedAdvisorRoute
   '/business-case': typeof AuthenticatedBusinessCaseRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
@@ -150,6 +158,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/batch': typeof BatchRoute
   '/report': typeof ReportRoute
+  '/status': typeof StatusRoute
   '/_authenticated/advisor': typeof AuthenticatedAdvisorRoute
   '/_authenticated/business-case': typeof AuthenticatedBusinessCaseRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
@@ -169,6 +178,7 @@ export interface FileRouteTypes {
     | '/'
     | '/batch'
     | '/report'
+    | '/status'
     | '/advisor'
     | '/business-case'
     | '/dashboard'
@@ -186,6 +196,7 @@ export interface FileRouteTypes {
     | '/'
     | '/batch'
     | '/report'
+    | '/status'
     | '/advisor'
     | '/business-case'
     | '/dashboard'
@@ -204,6 +215,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/batch'
     | '/report'
+    | '/status'
     | '/_authenticated/advisor'
     | '/_authenticated/business-case'
     | '/_authenticated/dashboard'
@@ -223,6 +235,7 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   BatchRoute: typeof BatchRoute
   ReportRoute: typeof ReportRoute
+  StatusRoute: typeof StatusRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -253,6 +266,13 @@ declare module '@tanstack/react-router' {
       path: '/report'
       fullPath: '/report'
       preLoaderRoute: typeof ReportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/status': {
+      id: '/status'
+      path: '/status'
+      fullPath: '/status'
+      preLoaderRoute: typeof StatusRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/advisor': {
@@ -380,6 +400,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   BatchRoute: BatchRoute,
   ReportRoute: ReportRoute,
+  StatusRoute: StatusRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -123,8 +123,13 @@ function ReportPage() {
             <span className="label-mono mt-1 text-[9.5px]">Motor claims</span>
           </span>
         </button>
-        <span className="flex items-center gap-1.5 text-[12.5px] text-text-2">
-          <Lock className="size-3.5" /> Your answers are sent securely
+        <span className="flex items-center gap-4 text-[12.5px] text-text-2">
+          <Link to="/status" className="hover:text-foreground">
+            Check claim status
+          </Link>
+          <span className="flex items-center gap-1.5">
+            <Lock className="size-3.5" /> Your answers are sent securely
+          </span>
         </span>
       </header>
 
@@ -1143,6 +1148,11 @@ function Done({ result, setResult, name, email }: { result: ReportResult; setRes
       <h1 className="mt-6 text-[32px] font-semibold tracking-[-0.02em]">Thank you, {first}. We've got your claim.</h1>
       <p className="mt-2 text-[15px] text-text-2">
         Your reference number is <span className="font-mono font-medium text-foreground">{result.case_id}</span>. Please keep it for any questions.
+      </p>
+      <p className="mt-3">
+        <Link to="/status" search={{ case: result.case_id }} className="text-[14px] font-medium text-link hover:underline">
+          Track your claim status
+        </Link>
       </p>
 
       {rechecked && (

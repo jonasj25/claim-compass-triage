@@ -48,6 +48,7 @@ import { useRole } from "@/lib/role";
 import { Card, Chip, Mono, StatusDot, Unknown, fmtEur, fmtTime } from "@/components/triage/ui";
 import { CustomerChat, type TemplateKey } from "@/components/triage/CustomerChat";
 import { secondCheckReason } from "@/lib/second-check";
+import { CUSTOMER_STATUS_LABEL, customerStatus } from "@/lib/customer-status";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
@@ -468,6 +469,13 @@ function CaseDetail() {
     ]),
   ] as string[];
   const triggers = live.checklist.filter((c) => c.status === "fail");
+  const lastClose = [...((data.events ?? []) as Row[])].reverse().find((e) => e.type === "closed");
+  const custStatus = customerStatus({
+    caseStatus: claim.case_status as string | null,
+    queue,
+    recommendation: rec,
+    outcome: ((lastClose?.payload ?? {}) as Row).outcome as string | undefined,
+  });
   const status = closed
     ? "Closed"
     : queue === "done" || confirmed
@@ -564,6 +572,12 @@ function CaseDetail() {
           )}
         >
           {status}
+        </span>
+        <span
+          className="rounded-full bg-surface-2 px-2 py-0.5 text-[11px] text-text-2 ring-1 ring-line"
+          title="What the customer sees on the public status page"
+        >
+          Customer sees: <span className="font-medium text-foreground">{CUSTOMER_STATUS_LABEL[custStatus]}</span>
         </span>
         <div className="ml-auto flex items-center gap-2">
           {!closed &&
