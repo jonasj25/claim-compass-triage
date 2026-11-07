@@ -32,7 +32,7 @@ describe("reviewer workstream", () => {
     const result = stream([qa, near, policy, risk, replied, silent, risk],
       [event("reply", "message_received"), event("reply", "retriaged"), event("silent", "reminder_sent"), event("silent", "reminder_sent", "2026-11-07T11:00:00Z")]);
     expect(result.groups.map((g) => g.key)).toEqual(["decision", "policy_change", "no_reply", "double_check"]);
-    expect(result.ordered.map((i) => i.row.claim.case_id)).toEqual(["reply", "risk", "policy", "silent", "near", "qa"]);
+    expect(result.ordered.map((i) => i.row.claim.case_id)).toEqual(["reply", "policy", "risk", "silent", "near", "qa"]);
     expect(new Set(result.ordered.map((i) => i.row.claim.case_id)).size).toBe(6);
     expect(result.ordered.find((i) => i.row.claim.case_id === "reply")?.replied).toBe(true);
   });

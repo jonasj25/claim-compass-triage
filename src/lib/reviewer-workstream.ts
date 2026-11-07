@@ -116,9 +116,9 @@ export function buildWorkstream(cases: CaseRow[], policy: Policy, events: WorkEv
     const limit = policy.human_review.quote_limit_eur;
     const nearLimit = near && limit !== null && claim.quote_eur !== null ? limitNote(claim.quote_eur, limit) : null;
 
-    const group: GroupKey = replied || flagged.length ? "decision" : decision.needs_recheck ? "policy_change" :
-      near || qa ? "double_check" : "decision";
-    const why = group === "policy_change" ? policyWhy :
+    const group: GroupKey = replied ? "decision" : decision.needs_recheck ? "policy_change" :
+      flagged.length ? "decision" : near || qa ? "double_check" : "decision";
+    const why = group === "policy_change" ? [policyWhy, riskWhy].filter(Boolean).join(" · ") :
       group === "double_check" ? nearLimit ?? "Picked at random to check the rules still work." :
       replied ? `Customer replied · ${riskWhy || "New information needs your decision"}` :
       riskWhy || humanize(decision.explanation)?.replace(/\bV?\d*\.?R[123]\b/gi, "").trim() || "A person needs to check this claim";
