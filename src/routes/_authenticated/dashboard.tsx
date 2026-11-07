@@ -148,11 +148,12 @@ function Dashboard() {
   };
 
   const term = search.trim().toLowerCase();
-  const matches = (item: WorkItem) => {
+  // Every filter except the tab itself (Mine / Everyone / Unassigned, channel, search);
+  // the tab counts use this, so they follow the current filters live.
+  const matchesFilters = (item: WorkItem) => {
     const { row } = item;
     if (scope === "mine" && row.workflow?.assignee !== me.name) return false;
     if (scope === "unassigned" && row.workflow?.assignee) return false;
-    if (task !== "all" && workTab(item) !== task) return false;
     if (channel !== "all" && row.intake?.channel !== channel) return false;
     if (!term) return true;
     return [
@@ -163,6 +164,7 @@ function Dashboard() {
       item.why,
     ].some((v) => v?.toLowerCase().includes(term));
   };
+  const matches = (item: WorkItem) => (task === "all" || workTab(item) === task) && matchesFilters(item);
   const prio = (i: WorkItem) => claimPriority(i.row.claim, workTab(i));
   const sorter = (a: WorkItem, b: WorkItem) => {
     if (sort === "priority") {
@@ -398,7 +400,7 @@ function Dashboard() {
             >
               {tab === "all" ? "All" : tab}
               <span className="num text-text-3">
-                {tab === "all" ? total : work.ordered.filter((i) => workTab(i) === tab).length}
+                {work.ordered.filter((i) => (tab === "all" || workTab(i) === tab) && matchesFilters(i)).length}
               </span>
             </Button>
           ))}
