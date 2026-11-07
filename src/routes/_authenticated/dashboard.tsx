@@ -229,7 +229,6 @@ function Dashboard() {
           <div className="flex divide-x divide-line">
             {[
               [total, "To review"],
-              [work.ordered.filter((i) => workTab(i) === "Overdue").length, "Overdue"],
               [work.ordered.filter((i) => !i.row.workflow?.assignee).length, "Unassigned"],
             ].map(([v, label]) => (
               <div key={label} className="px-5 first:pl-0">

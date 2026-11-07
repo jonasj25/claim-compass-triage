@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { workPriority } from "./workstream-presentation";
 describe("reviewer priority presentation", () => {
-  it("marks overdue and risk cases High", () => {
-    expect(workPriority("Overdue")).toBe("High");
+  it("marks no-reply and risk cases High", () => {
+    expect(workPriority("No reply")).toBe("High");
     expect(workPriority("Risk cases")).toBe("High");
   });
   it("marks policy change and replies Medium", () => {
