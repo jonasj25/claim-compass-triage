@@ -251,13 +251,9 @@ function PolicyPage() {
             Goes into the normal claims process. This is not a payment approval.
           </p>
           {band && (
-            <p
-              className="mt-2 text-[13px] text-text-2"
-              title={`Assumes repair costs can rise up to ${Math.round(SECOND_CHECK.ESTIMATE_UPLIFT * 100)}% after the first quote. A check costs about €${SECOND_CHECK.REVIEW_COST_EUR}; a wrong routine decision about €${SECOND_CHECK.WRONG_ROUTINE_COST_EUR}.`}
-            >
-              Quotes above {fmtEur(band.from)} up to {fmtEur(band.to)} still go routine, but a
-              person double-checks them: a {Math.round(SECOND_CHECK.ESTIMATE_UPLIFT * 100)}% cost
-              increase during repair would cross the limit.
+            <p className="mt-2 text-[13px] text-text-2">
+              Quotes within {fmtEur(SECOND_CHECK.MARGIN_EUR)} of the limit ({fmtEur(band.from)} to {fmtEur(band.to)}) still
+              go routine, but a person double-checks them.
             </p>
           )}
         </Row>

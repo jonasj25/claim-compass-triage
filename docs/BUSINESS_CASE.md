@@ -32,12 +32,8 @@ Show best / base / worst cases for the 2–3 assumptions that move the result mo
 
 ## 4. Second check near the limit (threshold logic)
 
-Routine claims just under the quote limit stay routine (the policy decides), but are flagged for a person to double-check. The band and its justification live in `src/lib/second-check.ts`. **The figures below are placeholders: replace them with sourced numbers.**
+Routine claims just under the quote limit stay routine (the policy decides), but are flagged for a person to double-check. Setting: `MARGIN_EUR = 50` in `src/lib/second-check.ts`.
 
-| Assumption | Value now | Meaning |
-|---|---|---|
-| `ESTIMATE_UPLIFT` | 20% | How much a first repair quote can grow once the car is opened up. Band = limit / (1 + uplift) … limit, so €1,000.01–€1,200 under v2 and €1,250.01–€1,500 under v1. |
-| `REVIEW_COST_EUR` | €15 | Reviewer time for one second check |
-| `WRONG_ROUTINE_COST_EUR` | €300 | Average loss when a claim that needed review goes routine |
-
-The check pays off when at least REVIEW_COST / WRONG_ROUTINE_COST (now 5%, i.e. 1 in 20) of the claims in the band would have needed review. Show this break-even in the pitch, plus the volume it adds for reviewers (count of flagged claims on the volume set).
+- Band: quote within €50 below the limit. v2: €1,150.01–€1,200; v1: €1,450.01–€1,500.
+- Why: a small correction to the quote after the car is opened up would push these claims over the limit, so they are the routine claims most likely to have needed a person.
+- For the pitch: show how many claims this adds for reviewers (count flagged on the volume set) against the cost of one wrong routine decision. The check pays off if (cost of a check) / (cost of a wrong routine decision) is smaller than the share of flagged claims that really needed review.
