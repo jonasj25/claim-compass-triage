@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { Camera, FileText, Paperclip, Receipt, Sparkles, X } from "lucide-react";
+import { Camera, Check, FileText, Loader2, Paperclip, Receipt, Sparkles, X } from "lucide-react";
 import type { ReportAnswers } from "@/lib/report-intake";
 import { cn } from "@/lib/utils";
 
@@ -15,6 +15,10 @@ export interface PendingFile {
   size: number;
   b64: string;
   demo: boolean;
+  /** Reading the document with AI: what it found ("Repair quote: €980") */
+  reading?: "reading" | "done" | "failed";
+  found?: string[];
+  summary?: string | null;
 }
 
 const MAX = 10 * 1024 * 1024;
@@ -109,7 +113,7 @@ export function DocumentUploads({
         <p className="section-title">Documents</p>
         <span className="label-mono">{files.length} / 3</span>
       </div>
-      <p className="mt-1 text-[12.5px] text-text-2">Add them now and we won't need to ask about them.</p>
+      <p className="mt-1 text-[12.5px] text-text-2">Add them and we read them for you: what's in them doesn't need to be asked.</p>
       <ul className="mt-3 space-y-2">
         {UPLOAD_SLOTS.map((slot) => {
           const f = files.find((x) => x.kind === slot.kind);
@@ -149,6 +153,24 @@ export function DocumentUploads({
                   }}
                 />
               </div>
+              {f?.reading === "reading" && (
+                <p className="ml-[26px] mt-1 flex items-center gap-1.5 text-[11.5px] text-text-2">
+                  <Loader2 className="size-3 animate-spin" /> Reading the document…
+                </p>
+              )}
+              {f?.reading === "done" && (f.found?.length ?? 0) > 0 && (
+                <ul className="ml-[26px] mt-1 space-y-0.5">
+                  {f.found!.map((x) => (
+                    <li key={x} className="flex items-start gap-1.5 text-[11.5px] text-text-2">
+                      <Check className="mt-0.5 size-3 shrink-0 text-link" /> {x}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {f?.reading === "done" && !(f.found?.length ?? 0) && (
+                <p className="ml-[26px] mt-1 text-[11.5px] text-text-3">Read, nothing new for your claim in it.</p>
+              )}
+              {f?.reading === "failed" && <p className="ml-[26px] mt-1 text-[11.5px] text-text-3">Attached. We couldn't read it automatically.</p>}
               {!f && (
                 <button onClick={() => void addDemo(slot)} className="ml-[26px] mt-1 inline-flex items-center gap-1 text-[11.5px] text-link hover:underline">
                   <Sparkles className="size-3" /> Use demo file

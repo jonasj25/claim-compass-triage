@@ -26,6 +26,7 @@ import {
 } from "@/lib/report-intake";
 import { addClaimInfo, submitClaimReport, type ReportResult } from "@/lib/report.functions";
 import { uploadClaimFile } from "@/lib/files.functions";
+import { readClaimDocument } from "@/lib/doc-reader.functions";
 import { DocumentUploads, UPLOAD_SLOTS, type PendingFile, type UploadKind } from "@/components/triage/DocumentUploads";
 import { speakText, transcribeAudio, voiceStatus } from "@/lib/voice.functions";
 import { verifyCustomer } from "@/lib/customers.functions";
@@ -127,15 +128,31 @@ function ReportPage() {
   const latest = useRef({ answers, lines, heardIn, files, uploads });
   latest.current = { answers, lines, heardIn, files, uploads };
 
-  // An added document answers its question at once (checklist ticks, Mia skips it)
-  const addUpload = (f: PendingFile, ans: Partial<ReportAnswers>) => {
-    setUploads((u) => [...u.filter((x) => x.kind !== f.kind), f]);
-    setFiles((fs) => (f.kind === "photos" ? fs : { ...fs, [f.kind]: f.name }));
-    uploadSet.current[f.kind] = ans;
-    if (Object.keys(ans).length) setAnswers((a) => ({ ...a, ...ans }));
+  // An added document is read right away; what it clearly states ticks the checklist and Mia skips it.
+  // Only empty answers are filled: what the customer said themselves is never overwritten.
+  const addUpload = (f: PendingFile, slotAnswers: Partial<ReportAnswers>) => {
     const label = UPLOAD_SLOTS.find((x) => x.kind === f.kind)?.label ?? f.kind;
-    const said = Object.entries(ans).map(([k, v]) => `${k}=${v}`).join(", ");
-    setUploadNote(`The customer just uploaded: ${label} (${f.name}).${said ? ` Already recorded from it: ${said}. Do not ask about these.` : ""}`);
+    setUploads((u) => [...u.filter((x) => x.kind !== f.kind), { ...f, reading: "reading" }]);
+    setFiles((fs) => (f.kind === "photos" ? fs : { ...fs, [f.kind]: f.name }));
+    // An incident report slot always means "yes, there is a report"
+    const base: Partial<ReportAnswers> = f.kind === "incident_report" ? { incident_report: "yes" } : {};
+    const apply = (found: Partial<ReportAnswers>, summary: string | null, ok: boolean) => {
+      const cur = latest.current.answers as unknown as Record<string, string>;
+      const fresh = Object.fromEntries(Object.entries({ ...found, ...base }).filter(([k, v]) => v && !cur[k])) as Partial<ReportAnswers>;
+      uploadSet.current[f.kind] = fresh;
+      if (Object.keys(fresh).length) setAnswers((a) => ({ ...a, ...fresh }));
+      const shown = Object.entries(fresh).map(([k, v]) => {
+        const q = QUESTIONS.find((x) => x.key === k);
+        const val = q?.choices?.find((c) => c.value === v)?.label ?? (k === "quote_amount" ? `€${v}` : String(v));
+        return `${q?.label ?? k}: ${val}`;
+      });
+      setUploads((u) => u.map((x) => (x.kind === f.kind && x.name === f.name ? { ...x, reading: ok ? "done" : "failed", found: shown, summary } : x)));
+      const said = Object.entries(fresh).map(([k, v]) => `${k}=${v}`).join(", ");
+      setUploadNote(`The customer just uploaded: ${label} (${f.name}).${said ? ` Read from it and recorded: ${said}. Do not ask about these.` : ""}`);
+    };
+    void readClaimDocument({ data: { name: f.name, type: f.type, b64: f.b64 } })
+      .then((r) => (r.ok ? apply(r.facts, r.summary, true) : apply(f.demo ? slotAnswers : {}, null, f.demo)))
+      .catch(() => apply(f.demo ? slotAnswers : {}, null, f.demo));
   };
   const removeUpload = (kind: UploadKind) => {
     setUploads((u) => u.filter((x) => x.kind !== kind));
@@ -246,8 +263,8 @@ function ReportPage() {
           <Shell
             side={
               <div className="space-y-4">
-                <Checklist qs={qs} answers={answers} heardIn={{}} onJump={(i) => setStep(!formIsVerified(answers) ? Math.min(i, emailStep) : formPlateOk(answers) ? i : Math.min(i, plateStep))} current={qs[step]?.key} />
                 {uploadsCard(true)}
+                <Checklist qs={qs} answers={answers} heardIn={{}} onJump={(i) => setStep(!formIsVerified(answers) ? Math.min(i, emailStep) : formPlateOk(answers) ? i : Math.min(i, plateStep))} current={qs[step]?.key} />
               </div>
             }
           >
@@ -333,8 +350,8 @@ function Landing({ qs, answers, heardIn, conversation, onForm, uploads }: { qs: 
         {started && (
           <aside className="lg:sticky lg:top-6 lg:self-start">
             <div className="space-y-4">
-              <Checklist qs={ordered} answers={answers} heardIn={heardIn} current={current} />
               {uploads}
+              <Checklist qs={ordered} answers={answers} heardIn={heardIn} current={current} />
             </div>
           </aside>
         )}
