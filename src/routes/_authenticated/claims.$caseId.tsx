@@ -465,6 +465,8 @@ function CaseDetail() {
         decisionId={(decision?.id as string | undefined) ?? null}
         reviewer={me.name}
         events={data.events as Row[]}
+        claim={claim}
+        policy={policy}
       />
 
       {/* 3 · Evidence: checklist and sources side by side, same height */}

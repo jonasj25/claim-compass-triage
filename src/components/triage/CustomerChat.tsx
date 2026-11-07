@@ -6,7 +6,9 @@ import { useQueryClient } from "@tanstack/react-query";
 import { BellRing, CircleCheck, FileQuestion, Lock, Mail, MessageSquareText, Send, CircleX } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { FIELD_LABELS, type Recommendation } from "@/lib/triage";
+import { FIELD_LABELS, RECOMMENDATION_LABELS, type Claim, type Policy, type Recommendation } from "@/lib/triage";
+import { QUEUE_LABELS, type Queue } from "@/lib/lifecycle";
+import { SimulateReplyDialog } from "./SimulateReplyDialog";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
@@ -72,6 +74,8 @@ export function CustomerChat({
   reviewer,
   events,
   className,
+  claim,
+  policy,
 }: {
   caseId: string;
   customer: string | null;
@@ -88,6 +92,9 @@ export function CustomerChat({
   reviewer: string;
   events: Row[];
   className?: string;
+  /** Needed for the demo "customer reply → re-check" flow. */
+  claim?: Claim;
+  policy?: Policy;
 }) {
   const qc = useQueryClient();
   const recommended: TemplateKey[] =
@@ -126,7 +133,7 @@ export function CustomerChat({
   }, [caseId]);
 
   const thread = events
-    .filter((e) => ["message_sent", "message_received", "outreach_sent", "reminder_sent", "closed"].includes(e.type))
+    .filter((e) => ["message_sent", "message_received", "outreach_sent", "reminder_sent", "closed", "retriaged"].includes(e.type))
     .sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)));
 
   useEffect(() => {
@@ -196,7 +203,12 @@ export function CustomerChat({
             <Lock className="size-3.5" /> Claim closed – conversation archived
           </span>
         ) : (
-          <span className="text-[12.5px] text-text-2">Templates are filled from the claim data. No AI.</span>
+          <span className="flex flex-wrap items-center gap-3 text-[12.5px] text-text-2">
+            {queue === "waiting_customer" && claim && policy && (
+              <SimulateReplyDialog caseId={caseId} claim={claim} policy={policy} customer={customer} actor={reviewer} />
+            )}
+            Templates are filled from the claim data. No AI.
+          </span>
         )}
       </div>
 
@@ -224,6 +236,16 @@ export function CustomerChat({
                   <div className="whitespace-pre-line rounded-[16px] rounded-bl-[4px] bg-white px-4 py-3 text-[13px] leading-relaxed ring-1 ring-line">{p.body}</div>
                   <p className="label-mono mt-1 normal-case">{fmtTime(e.created_at)} · {customer}</p>
                 </div>
+              );
+            if (e.type === "retriaged")
+              return (
+                <p key={e.id} className="flex items-center justify-center gap-1.5 py-1 text-center text-[12px] text-text-2">
+                  <CircleCheck className="size-3" /> Documents received · re-checked under {String(p.policy_version ?? "").toUpperCase()} →{" "}
+                  <strong className="font-medium text-foreground">
+                    {RECOMMENDATION_LABELS[p.after as Recommendation] ?? p.after}
+                  </strong>
+                  {p.queue ? ` · ${QUEUE_LABELS[p.queue as Queue] ?? p.queue}` : ""} · {fmtTime(e.created_at)}
+                </p>
               );
             if (e.type === "closed")
               return (
