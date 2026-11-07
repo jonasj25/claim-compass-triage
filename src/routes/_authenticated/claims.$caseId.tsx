@@ -1359,6 +1359,11 @@ function DecisionPanel({
             <PhoneCall className="size-4" /> Call customer (Mia)
           </Button>
         )}
+        {onCall && portalUrl && (
+          <a href={portalUrl} target="_blank" rel="noreferrer" className="mt-1.5 block text-center text-[11.5px] text-link hover:underline">
+            Open the customer's claim page (demo)
+          </a>
+        )}
         <p className="mt-2 text-[10.5px] text-text-3">Opens the message to the customer. Nothing is sent before you confirm.</p>
         {change}
       </>
