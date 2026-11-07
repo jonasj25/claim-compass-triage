@@ -263,29 +263,30 @@ function Dashboard() {
     .filter(([, n]) => n > 0)
     .sort((a, b) => b[1] - a[1]);
   const fmtK = (n: number) => (n >= 10_000 ? `€${Math.round(n / 1000)}k` : money(n));
-  const kpis: { value: string; label: string; sub: string; caseItem?: WorkItem | null; tone?: "action" }[] = [
+  const startOfToday = new Date(now);
+  startOfToday.setHours(0, 0, 0, 0);
+  const newToday = work.ordered.filter(
+    (i) => Date.parse(i.row.claim.received_at ?? "") >= startOfToday.getTime(),
+  ).length;
+  const oldestDays = oldest
+    ? Math.floor((now.getTime() - Date.parse(oldest.row.claim.received_at ?? "")) / 86_400_000)
+    : null;
+  const kpis: { value: string; label: string; sub: string; caseItem?: WorkItem | null }[] = [
     {
       value: String(total),
       label: "To review",
-      sub: byTab.length ? byTab.slice(0, 3).map(([t, n]) => `${n} ${t.toLowerCase()}`).join(" · ") : "nothing waiting",
-      tone: total > 0 ? "action" : undefined,
-    },
-    {
-      value: oldestAge ?? "–",
-      label: "Longest waiting",
-      sub: avgDays !== null ? `${oldest?.row.claim.case_id} · avg ${avgDays < 1 ? "<1" : Math.round(avgDays)}d in queue` : "nothing waiting",
-      caseItem: oldest,
+      sub: newToday ? `+${newToday} new today` : "no new cases today",
     },
     {
       value: fmtK(reviewVolume),
       label: "Quote volume to review",
-      sub: largest?.row.claim.quote_eur ? `largest ${money(largest.row.claim.quote_eur)} · ${largest.row.claim.case_id}` : "nothing waiting",
-      caseItem: largest,
+      sub: total ? `avg ${money(Math.round(reviewVolume / total))} per case` : "nothing waiting",
     },
     {
-      value: handling.data?.avg ? fmtSecs(handling.data.avg) : "–",
-      label: "Avg time per decision",
-      sub: handling.data?.n ? `${handling.data.n} decisions today` : "no decisions yet today",
+      value: oldestDays === null ? "–" : oldestDays < 1 ? "today" : `${oldestDays} ${oldestDays === 1 ? "day" : "days"}`,
+      label: "Oldest open case",
+      sub: oldest ? `${oldest.row.claim.case_id} · open it →` : "nothing waiting",
+      caseItem: oldest,
     },
   ];
 
@@ -294,51 +295,10 @@ function Dashboard() {
 
   return (
     <div>
-      <header className="mb-5 flex items-end justify-between gap-4">
-        <div>
-          <p className="mb-3 text-[14px] font-medium">
-            {greet}, {me.name.split(" ")[0]}
-          </p>
-          <div className="flex flex-wrap items-end divide-x divide-line">
-            {kpis.map((k) => {
-              const body = (
-                <>
-                  <div className={cn("num text-[22px] font-semibold leading-tight", k.tone === "action" && "text-action")}>
-                    {k.value}
-                  </div>
-                  <div className="text-[11px] font-medium text-foreground">{k.label}</div>
-                  <div className="text-[11px] text-text-2">{k.sub}</div>
-                </>
-              );
-              const item = k.caseItem;
-              return item ? (
-                <Link
-                  key={k.label}
-                  to="/claims/$caseId"
-                  params={{ caseId: item.row.claim.case_id }}
-                  onClick={() => remember(item)}
-                  className="px-5 first:pl-0 hover:opacity-80"
-                >
-                  {body}
-                </Link>
-              ) : (
-                <div key={k.label} className="px-5 first:pl-0">
-                  {body}
-                </div>
-              );
-            })}
-            <Link
-              to="/claims"
-              search={{ status: "waiting_customer" }}
-              className="px-5 text-[11px] leading-relaxed text-text-3 hover:text-text-2"
-            >
-              <span className="block font-medium text-text-2">Running on its own</span>
-              {counts.waiting_customer} waiting on customer · {counts.auto_processed} auto-processed
-              <br />
-              {Math.round(autoShare * 100)}% of open claims need no reviewer
-            </Link>
-          </div>
-        </div>
+      <header className="mb-4 flex items-center justify-between gap-4">
+        <p className="text-[14px] font-medium">
+          {greet}, {me.name.split(" ")[0]}
+        </p>
         {visible[0] && (
           <Button
             onClick={() => {
@@ -350,6 +310,52 @@ function Dashboard() {
           </Button>
         )}
       </header>
+      {/* Four equal tiles: three about the reviewer's queue, the fourth (muted) is what runs on its own */}
+      <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {kpis.map((k) => {
+          const body = (
+            <>
+              <div className="text-[11px] font-medium text-text-2">{k.label}</div>
+              <div className="num mt-1 text-[24px] font-semibold leading-tight">{k.value}</div>
+              <div className="mt-0.5 text-[11px] text-text-2">{k.sub}</div>
+            </>
+          );
+          const item = k.caseItem;
+          return item ? (
+            <Link
+              key={k.label}
+              to="/claims/$caseId"
+              params={{ caseId: item.row.claim.case_id }}
+              onClick={() => remember(item)}
+              className="card-quiet block p-4 hover:border-text-3/40"
+            >
+              {body}
+            </Link>
+          ) : (
+            <div key={k.label} className="card-quiet p-4">
+              {body}
+            </div>
+          );
+        })}
+        <Link
+          to="/claims"
+          search={{ status: "waiting_customer" }}
+          className="block rounded-[8px] border border-dashed border-line p-4 text-text-3 hover:text-text-2"
+        >
+          <div className="text-[11px] font-medium">Running on its own</div>
+          <ul className="mt-1.5 space-y-1 text-[12px]">
+            <li>
+              <span className="num font-medium text-text-2">{counts.waiting_customer}</span> waiting on customer reply
+            </li>
+            <li>
+              <span className="num font-medium text-text-2">{counts.auto_processed}</span> auto-processed
+            </li>
+            <li>
+              <span className="num font-medium text-text-2">{Math.round(autoShare * 100)}%</span> of open claims need no reviewer
+            </li>
+          </ul>
+        </Link>
+      </div>
 
       <div className="card-quiet overflow-hidden">
         <div
