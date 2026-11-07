@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowRight, CheckCircle2, ChevronDown, Phone, Search } from "lucide-react";
+import { ArrowRight, CheckCircle2, ChevronDown, Phone, Search, TriangleAlert, ListFilter } from "lucide-react";
 import { activePolicyQuery, casesQuery } from "@/lib/data";
 import { dashboardActivityQuery, outreachRemindersQuery } from "@/lib/dashboard-activity";
 import {
@@ -13,6 +13,8 @@ import { channelLabel } from "@/lib/labels";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { WORK_TABS, workTab, workPriority, type WorkTab } from "@/lib/workstream-presentation";
+import { Avatar, Chip } from "@/components/triage/ui";
 import { ClaimsProgress } from "@/components/triage/ClaimsProgress";
 import { Unknown } from "@/components/triage/ui";
 import { saveCaseNav } from "@/lib/case-nav";
@@ -58,7 +60,7 @@ function Dashboard() {
   const [collapsed, setCollapsed] = useState<Set<GroupKey>>(() => new Set());
   const [selected, setSelected] = useState<string | null>(null);
   const [search, setSearch] = useState("");
-  const [task, setTask] = useState<"all" | GroupKey>("all");
+  const [task, setTask] = useState<"all" | WorkTab>("all");
   const [channel, setChannel] = useState("all");
   const [sort, setSort] = useState<Sort>("oldest");
   const links = useRef(new Map<string, HTMLAnchorElement>());
@@ -80,7 +82,7 @@ function Dashboard() {
   const term = search.trim().toLowerCase();
   const matches = (item: WorkItem) => {
     const { row } = item;
-    if (task !== "all" && item.group !== task) return false;
+    if (task !== "all" && workTab(item) !== task) return false;
     if (channel !== "all" && row.intake?.channel !== channel) return false;
     if (!term) return true;
     return [row.claim.case_id, row.claim.claim_summary, row.intake?.customer_name, row.intake?.plate, item.why]
@@ -91,13 +93,13 @@ function Dashboard() {
     const ta = Date.parse(a.row.claim.received_at ?? "") || Infinity, tb = Date.parse(b.row.claim.received_at ?? "") || Infinity;
     return sort === "oldest" ? ta - tb : (tb === Infinity ? -Infinity : tb) - (ta === Infinity ? -Infinity : ta);
   };
-  const groups = work.groups.map((g) => ({ ...g, items: g.items.filter(matches).sort(sorter) })).filter((g) => g.items.length);
+  const groups = WORK_TABS.map((label) => ({ key: label, label, items: work.ordered.filter((item) => workTab(item) === label && matches(item)).sort(sorter) })).filter((g) => g.items.length);
   const visible = groups.flatMap((g) => g.items);
   const filtering = !!term || task !== "all" || channel !== "all";
   const reset = () => { setSearch(""); setTask("all"); setChannel("all"); };
 
   const ids = visible.map((item) => item.row.claim.case_id);
-  const labels = Object.fromEntries(visible.map((item) => [item.row.claim.case_id, WORK_GROUPS.find((g) => g.key === item.group)?.label ?? "To review"]));
+  const labels = Object.fromEntries(visible.map((item) => [item.row.claim.case_id, workTab(item)]));
   const remember = (item: WorkItem) => saveCaseNav(labels[item.row.claim.case_id] ?? "To review", ids, labels);
   const open = (item: WorkItem) => {
     remember(item);
@@ -117,7 +119,7 @@ function Dashboard() {
         return;
       }
       event.preventDefault();
-      const shown = visible.filter((i) => !collapsed.has(i.group));
+      const shown = visible;
       if (!shown.length) return;
       const current = shown.findIndex((i) => i.row.claim.case_id === selected);
       const index = current < 0 ? (key === "j" ? 0 : shown.length - 1) : Math.max(0, Math.min(shown.length - 1, current + (key === "j" ? 1 : -1)));
@@ -137,133 +139,19 @@ function Dashboard() {
 
   return (
     <div>
-      <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
-        <div className="min-w-0">
-          <p className="label-mono mb-2 tracking-normal">
-            {greet}, {me.name.split(" ")[0]} · {now.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}
-          </p>
-          <h1 className="page-title tracking-normal">To review</h1>
-          <p className="mt-2 text-text-2">
-            {total ? <><span className="num font-medium text-foreground">{total}</span> {total === 1 ? "case needs" : "cases need"} you. Everything else runs on its own.</> : "Nothing needs you right now."}
-          </p>
+      <header className="mb-5 flex items-end justify-between gap-4">
+        <div><p className="mb-3 text-[14px] font-medium">{greet}, {me.name.split(" ")[0]}</p>
+          <div className="flex divide-x divide-line">
+            {[[total, "To review"], [work.ordered.filter((i) => workTab(i) === "Overdue").length, "Overdue"], [work.ordered.filter((i) => !i.row.workflow?.assignee).length, "Unassigned"], [`~${work.ordered.reduce((n, i) => n + (i.group === "double_check" ? 1 : 3), 0)} min`, "Estimated effort"]].map(([v, label]) => <div key={label} className="px-5 first:pl-0"><div className="num text-[20px] font-semibold">{v}</div><div className="text-[11px] text-text-2">{label}</div></div>)}
+          </div>
         </div>
-        {visible[0] && (
-          <Button size="lg" onClick={() => { const first = visible[0]; if (first) open(first); }}>
-            Start reviewing <ArrowRight className="size-4" />
-          </Button>
-        )}
+        {visible[0] && <Button onClick={() => { const first = visible[0]; if (first) open(first); }}>Start reviewing <ArrowRight className="size-4" /></Button>}
       </header>
-
-      <ClaimsProgress counts={counts} className="mb-6" />
 
       {total === 0 ? (
         <div className="card-quiet flex flex-col items-center px-6 py-16 text-center">
           <CheckCircle2 className="size-8 text-ok" strokeWidth={1.5} />
-          <p className="mt-4 text-[15px] font-medium">All caught up</p>
-          <p className="mt-1 max-w-sm text-[13px] text-text-2">No case needs a decision right now. New claims that need you will show up here automatically.</p>
-          <Link to="/claims" className="mt-5 text-[13px] text-text-2 underline underline-offset-4 hover:text-foreground">See all claims</Link>
-        </div>
-      ) : (
-        <>
-          <div className="mb-3 flex flex-wrap items-center gap-2">
-            <label className="relative min-w-[220px] flex-1">
-              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-text-3" />
-              <Input aria-label="Search cases" placeholder="Search case number, customer, plate…" value={search}
-                onChange={(e) => setSearch(e.target.value)} className="h-9 bg-white/70 pl-9" />
-            </label>
-            <Select value={task} onValueChange={(v) => setTask(v as typeof task)}>
-              <SelectTrigger aria-label="Task" className="h-9 w-auto min-w-[170px] bg-white/70"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All tasks</SelectItem>
-                {work.groups.map((g) => <SelectItem key={g.key} value={g.key}>{g.label} ({g.items.length})</SelectItem>)}
-              </SelectContent>
-            </Select>
-            <Select value={channel} onValueChange={setChannel}>
-              <SelectTrigger aria-label="Channel" className="h-9 w-auto min-w-[150px] bg-white/70"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All channels</SelectItem>
-                {channels.map((c) => <SelectItem key={c} value={c}>{channelLabel(c)}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            <Select value={sort} onValueChange={(v) => setSort(v as Sort)}>
-              <SelectTrigger aria-label="Sort" className="h-9 w-auto min-w-[140px] bg-white/70"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {(Object.keys(SORT_LABEL) as Sort[]).map((s) => <SelectItem key={s} value={s}>{SORT_LABEL[s]}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            {filtering && <Button variant="ghost" size="sm" onClick={reset} className="text-text-2">Clear filters</Button>}
-          </div>
-
-          <div className="card-quiet overflow-hidden p-0">
-            {visible.length === 0 ? (
-              <div className="px-6 py-12 text-center text-[13px] text-text-2">
-                No case matches these filters. <button onClick={reset} className="underline underline-offset-4 hover:text-foreground">Clear filters</button>
-              </div>
-            ) : (
-              <table className="w-full table-fixed text-left text-[13px]">
-                <thead>
-                  <tr className="border-b border-line">
-                    {["Case", "What happened", "Why it's here", "Quote", "Waiting since"].map((h, i) => (
-                      <th key={h} className={cn("label-mono px-4 py-2.5 font-normal", ["w-[108px]", "", "hidden w-[38%] md:table-cell", "w-[96px] text-right", "w-[108px] text-right"][i])}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                {groups.map((group) => {
-                  const isCollapsed = collapsed.has(group.key);
-                  return (
-                    <tbody key={group.key}>
-                      <tr className="border-b border-line bg-surface-2/60">
-                        <td colSpan={5} className="p-0">
-                          <button type="button" aria-expanded={!isCollapsed}
-                            onClick={() => setCollapsed((cur) => { const next = new Set(cur); if (next.has(group.key)) next.delete(group.key); else next.add(group.key); return next; })}
-                            className="flex w-full flex-wrap items-baseline gap-x-2 gap-y-0.5 px-4 py-2.5 text-left">
-                            <ChevronDown className={cn("size-3.5 shrink-0 self-center transition-transform motion-reduce:transition-none", isCollapsed && "-rotate-90")} />
-                            <span className="text-[13px] font-semibold">{group.label}</span>
-                            <span className="num rounded-full bg-white px-1.5 text-[11px] font-medium text-text-2">{group.items.length}</span>
-                            <span className="text-[12px] text-text-2">{group.instruction}</span>
-                          </button>
-                        </td>
-                      </tr>
-                      {!isCollapsed && group.items.map((item) => {
-                        const { row } = item;
-                        const id = row.claim.case_id;
-                        const waited = age(row.claim.received_at, now);
-                        return (
-                          <tr key={id} className={cn("relative border-b border-line/70 last:border-0 hover:bg-white/70", selected === id && "bg-white/80")}>
-                            <td className="whitespace-nowrap px-4 py-2.5 font-mono text-[12px]">
-                              <Link to="/claims/$caseId" params={{ caseId: id }} data-work-case={id}
-                                ref={(el) => { if (el) links.current.set(id, el); else links.current.delete(id); }}
-                                onFocus={() => setSelected(id)} onClick={() => remember(item)}
-                                className="after:absolute after:inset-0 focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-ring">
-                                {id}
-                              </Link>
-                            </td>
-                            <td className="px-4 py-2.5">
-                              <span className="flex items-center gap-1.5">
-                                {row.intake?.channel === "phone" && <Phone aria-label="Reported by phone" className="size-3.5 shrink-0 text-text-3" />}
-                                <span className="truncate">{row.claim.claim_summary || "Claim summary unknown"}</span>
-                              </span>
-                              <span className="mt-0.5 block truncate text-[12px] text-text-2 md:hidden">{item.why}</span>
-                            </td>
-                            <td className={cn("hidden truncate px-4 py-2.5 text-text-2 md:table-cell", item.nearLimit && "text-wait", item.group === "no_reply" && "text-wait")} title={item.why}>
-                              {item.why}
-                            </td>
-                            <td className="num px-4 py-2.5 text-right">{row.claim.quote_eur === null ? <Unknown /> : money(row.claim.quote_eur)}</td>
-                            <td className="num px-4 py-2.5 text-right font-mono text-[12px] text-text-2">{waited ?? <Unknown />}</td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  );
-                })}
-              </table>
-            )}
-          </div>
-          <p className="mt-4 text-[12px] text-text-2">
-            <kbd className="rounded border border-line bg-white px-1 font-mono text-[11px]">J</kbd> / <kbd className="rounded border border-line bg-white px-1 font-mono text-[11px]">K</kbd> to move,{" "}
-            <kbd className="rounded border border-line bg-white px-1 font-mono text-[11px]">Enter</kbd> to open ·{" "}
-            <Link to="/claims" className="underline underline-offset-4 hover:text-foreground">See all claims</Link>
-          </p>
+          <p className="mt-4 text-[12px] text-text-2">Running on its own · {counts.auto_processed} auto-processed · {counts.waiting_customer} waiting on customer · {counts.done} done <Link to="/claims" className="ml-3 underline underline-offset-4">See all claims</Link></p>
         </>
       )}
     </div>
