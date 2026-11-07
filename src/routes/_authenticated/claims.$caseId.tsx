@@ -271,7 +271,7 @@ function CaseDetail() {
           ? ["Automatic reminder (48h, then 96h)", "Customer sends documents → checked again automatically", "No answer after 2 reminders → goes to a reviewer"]
           : ["Normal claims handling (~7% are sampled for QA)"];
 
-  const storedLabel = nav.labels?.[caseId];
+  const storedLabel = nav.labelsById?.[caseId];
   const caseTab: WorkTab = storedLabel && WORK_TABS.includes(storedLabel as WorkTab) ? storedLabel as WorkTab : nearLimit ? "Near limit" : recheck ? "Policy change" : qa ? "QA sample" : "Risk cases";
   const priority = workPriority(caseTab);
   const missingFields = [...new Set([...(decision?.missing_fields ?? []), ...live.checklist.filter((c) => c.stage === "R2" && c.status === "fail").map((c) => c.field)])] as string[];

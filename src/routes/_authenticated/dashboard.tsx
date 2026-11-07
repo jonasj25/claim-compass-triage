@@ -148,12 +148,32 @@ function Dashboard() {
         {visible[0] && <Button onClick={() => { const first = visible[0]; if (first) open(first); }}>Start reviewing <ArrowRight className="size-4" /></Button>}
       </header>
 
-      {total === 0 ? (
-        <div className="card-quiet flex flex-col items-center px-6 py-16 text-center">
-          <CheckCircle2 className="size-8 text-ok" strokeWidth={1.5} />
-          <p className="mt-4 text-[12px] text-text-2">Running on its own · {counts.auto_processed} auto-processed · {counts.waiting_customer} waiting on customer · {counts.done} done <Link to="/claims" className="ml-3 underline underline-offset-4">See all claims</Link></p>
-        </>
-      )}
+      <div className="card-quiet overflow-hidden">
+        <div role="tablist" aria-label="Workstream groups" className="flex flex-wrap gap-1 border-b border-line px-3 pt-2">
+          {(["all", ...WORK_TABS] as const).map((tab) => <Button key={tab} variant="ghost" role="tab" aria-selected={task === tab} onClick={() => setTask(tab)} className={cn("h-10 rounded-none border-b-2 px-3 text-[12px]", task === tab ? "border-link text-link" : "border-transparent text-text-2")}>{tab === "all" ? "All" : tab}<span className="num text-text-3">{tab === "all" ? total : work.ordered.filter((i) => workTab(i) === tab).length}</span></Button>)}
+        </div>
+        <div className="flex flex-wrap items-center gap-2 border-b border-line p-3">
+          <label className="relative min-w-[220px] flex-1"><Search className="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-text-3" /><Input aria-label="Search cases" placeholder="Search case number, customer, plate…" value={search} onChange={(e) => setSearch(e.target.value)} className="h-8 bg-surface pl-8 text-[12px]" /></label>
+          <Select value={channel} onValueChange={setChannel}><SelectTrigger aria-label="Channel" className="h-8 w-[150px]"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">All channels</SelectItem>{channels.map((c) => <SelectItem key={c} value={c}>{channelLabel(c)}</SelectItem>)}</SelectContent></Select>
+          <Select value={sort} onValueChange={(v) => setSort(v as Sort)}><SelectTrigger aria-label="Sort" className="h-8 w-[140px]"><SelectValue /></SelectTrigger><SelectContent>{(Object.keys(SORT_LABEL) as Sort[]).map((v) => <SelectItem key={v} value={v}>{SORT_LABEL[v]}</SelectItem>)}</SelectContent></Select>
+          {filtering && <Button variant="ghost" size="sm" onClick={reset}>Clear filters</Button>}
+        </div>
+        {!visible.length ? <div className="p-12 text-center text-text-2">{total ? "No cases match these filters." : "All caught up"}</div> : <table className="w-full table-fixed text-left text-[13px]">
+          <thead><tr className="border-b border-line">{["Case ID", "Trigger", "Summary", "Amount", "Priority", "Assignee", "Received"].map((h, i) => <th key={h} className={cn("px-3 py-3 text-[11px] font-medium text-text-2", ["w-[90px]", "w-[175px]", "", "w-[90px] text-right", "w-[78px]", "w-[150px]", "w-[100px]"][i])}>{h}{["Trigger", "Priority", "Assignee"].includes(h) && <ListFilter className="ml-1 inline size-3" />}</th>)}</tr></thead>
+          {groups.map((group) => <tbody key={group.key}>
+            {task === "all" && <tr className="border-b border-line bg-surface-2"><td colSpan={7} className="h-8 px-3 text-[11px] font-semibold text-text-2">{group.label} · {group.items.length}</td></tr>}
+            {group.items.map((item) => { const { row } = item; const id = row.claim.case_id; const waited = age(row.claim.received_at, now); const priority = workPriority(workTab(item)); return <tr key={id} className={cn("relative border-b border-line last:border-0 hover:bg-surface-2", selected === id && "bg-surface-2")}>
+              <td className="px-3 py-2 font-mono text-[12px]"><Link to="/claims/$caseId" params={{ caseId: id }} data-work-case={id} ref={(el) => { if (el) links.current.set(id, el); else links.current.delete(id); }} onFocus={() => setSelected(id)} onClick={() => remember(item)} className="after:absolute after:inset-0 focus-visible:after:ring-2 focus-visible:after:ring-ring">{id}</Link></td>
+              <td className="px-3 py-2" title={item.why}><Chip className="max-w-full normal-case tracking-normal font-sans"><span className="truncate">{item.nearLimit ? <><TriangleAlert className="mr-1 inline size-3 text-wait" />Near limit</> : workTab(item) === "Risk cases" ? item.why.split(" · ")[0] : workTab(item)}</span></Chip></td>
+              <td className="truncate px-3 py-2" title={row.claim.claim_summary ?? undefined}>{row.claim.claim_summary ?? <Unknown />}</td>
+              <td className="num px-3 py-2 text-right">{row.claim.quote_eur === null ? <Unknown /> : money(row.claim.quote_eur)}</td>
+              <td className={cn("px-3 py-2 text-[12px]", priority === "High" ? "text-action" : priority === "Medium" ? "text-wait" : "text-text-2")}>{priority}</td>
+              <td className="px-3 py-2"><Avatar name={row.workflow?.assignee} /></td><td className="px-3 py-2 text-[11px] text-text-2">{waited ? `${waited} ago` : <Unknown />}</td>
+            </tr>; })}
+          </tbody>)}
+        </table>}
+      </div>
+      <p className="mt-4 text-[12px] text-text-2">Running on its own · {counts.auto_processed} auto-processed · {counts.waiting_customer} waiting on customer · {counts.done} done <Link to="/claims" className="ml-3 underline underline-offset-4">See all claims</Link></p>
     </div>
   );
 }
