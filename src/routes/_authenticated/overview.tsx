@@ -21,7 +21,10 @@ export const Route = createFileRoute("/_authenticated/overview")({
           "Queues, automation rate, why claims need a person, reviewer load and the effect of policy changes.",
       },
       { property: "og:title", content: "Workload & flow — Clearpath" },
-      { property: "og:description", content: "Live claim queues, reviewer workload and handling time." },
+      {
+        property: "og:description",
+        content: "Live claim queues, reviewer workload and handling time.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -80,15 +83,21 @@ function Overview() {
           sub="no human needed"
         />
         <Kpi
-          label="Overdue"
-          value={s.overdue}
-          tone={s.overdue ? "action" : undefined}
-          sub="past 24h SLA"
-        />
-        <Kpi
           label="Avg handling time"
-          value={handling.isError ? "Unavailable" : handling.data?.avg != null ? fmtSecs(handling.data.avg) : "–"}
-          sub={handling.isError ? "Could not load handling times" : handling.data?.n ? `${handling.data.n} decisions today` : "No decisions yet today"}
+          value={
+            handling.isError
+              ? "Unavailable"
+              : handling.data?.avg != null
+                ? fmtSecs(handling.data.avg)
+                : "–"
+          }
+          sub={
+            handling.isError
+              ? "Could not load handling times"
+              : handling.data?.n
+                ? `${handling.data.n} decisions today`
+                : "No decisions yet today"
+          }
         />
       </div>
 
@@ -265,7 +274,6 @@ function stats(cases: CaseRow[], policy: Policy) {
   const reasons = new Map<string, number>();
   const load = new Map<string, number>();
   const versions = new Map<string, Record<Recommendation, number>>();
-  let overdue = 0;
   let second = 0;
   const now = Date.now();
 
@@ -290,8 +298,6 @@ function stats(cases: CaseRow[], policy: Policy) {
         c.workflow?.assignee ?? "Unassigned",
         (load.get(c.workflow?.assignee ?? "Unassigned") ?? 0) + 1,
       );
-    if (c.workflow?.sla_due_at && needsPerson && new Date(c.workflow.sla_due_at).getTime() < now)
-      overdue++;
     if (
       c.workflow?.qa_sample &&
       c.decision &&
@@ -330,7 +336,6 @@ function stats(cases: CaseRow[], policy: Policy) {
     reasons: [...reasons.entries()].sort((a, b) => b[1] - a[1]),
     load: [...load.entries()].sort((a, b) => b[1] - a[1]),
     versions: [...versions.entries()].sort((a, b) => a[0].localeCompare(b[0])),
-    overdue,
     second,
     inflow: days,
     recheck: open.filter((c) => c.decision?.needs_recheck),
