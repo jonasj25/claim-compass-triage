@@ -472,11 +472,6 @@ function Dashboard() {
               ))}
             </SelectContent>
           </Select>
-          {filtering && (
-            <Button variant="ghost" size="sm" onClick={reset}>
-              Clear filters
-            </Button>
-          )}
         </div>
         {!visible.length ? (
           <div className="p-12 text-center text-text-2">
