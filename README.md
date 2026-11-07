@@ -14,6 +14,8 @@ python engine/triage.py path/to/claims.csv output/results.csv
 
 This writes `case_id, recommendation_v1, recommendation_v2, needs_recheck, rule_v1, rule_v2, explanation`. For closed claims, `recommendation_v2` repeats the v1 decision and `needs_recheck` is `False`. Policies are read from `policies/v1.json` and `policies/v2.json` (override with `--v1` / `--v2`).
 
+**Same thing in the browser, no sign-in:** open the app's **`/batch`** page (linked from the sign-in screen), upload a claims CSV, and click **Download results CSV**. The file has the same columns and values as the Python batch. Processing happens in the browser and nothing is stored. The page reads the same `policies/*.json` files, and `src/lib/parity.test.ts` checks that its recommendations, rules and `needs_recheck` match `engine/triage.py` on every case.
+
 ## Web app (reviewer, policy owner, ops lead)
 
 Built with Lovable (TanStack Start + Supabase).
@@ -51,7 +53,7 @@ python engine/report.py data/dev_cases.csv     # accuracy, wrong-routine rate, u
 
 ## Changing the policy (e.g. v2 at Sat 18:00)
 
-1. Edit `policies/v2.json`.
+1. Edit `policies/v2.json`. This updates the Python batch **and** the website's `/batch` page.
 2. Add the same config as a new version on the app's **Policy** page, so it lands in `policy_versions`.
 3. Add an `expected_v2` column to the labelled CSVs, then run `python engine/report.py ...`.
 4. Run `python engine/export_golden.py`, then `python tests/test_engine.py && npm test`. Both must pass.

@@ -6,6 +6,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { parseClaimsCsv } from "./csv";
 import { decide, POLICY_V1, type Policy } from "./triage";
+import { batchToCsv, runBatch } from "./batch";
 
 const ROOT = path.resolve(__dirname, "../..");
 const read = (...p: string[]) => readFileSync(path.join(ROOT, ...p), "utf-8");
@@ -55,4 +56,45 @@ describe("TypeScript engine matches Python engine", () => {
       expect(diffs).toEqual([]);
     });
   }
+});
+
+describe("website batch run matches Python batch (engine/triage.py)", () => {
+  const csvFiles = readdirSync(path.join(ROOT, "data")).filter((f) => f.endsWith(".csv"));
+  type BatchGolden = {
+    recommendation_v1: string;
+    recommendation_v2: string;
+    needs_recheck: boolean;
+    rule_v1: string;
+    rule_v2: string;
+  };
+
+  for (const file of csvFiles) {
+    it(`${file}: same v1, v2, needs_recheck and rules for every case`, () => {
+      const rows = runBatch(parseClaimsCsv(read("data", file)));
+      const diffs: string[] = [];
+      for (const r of rows) {
+        const py = (golden[file][r.case_id] as unknown as { _batch: BatchGolden })._batch;
+        const ts: BatchGolden = {
+          recommendation_v1: r.recommendation_v1,
+          recommendation_v2: r.recommendation_v2,
+          needs_recheck: r.needs_recheck,
+          rule_v1: r.rule_v1,
+          rule_v2: r.rule_v2,
+        };
+        const bad = (Object.keys(ts) as (keyof BatchGolden)[]).filter((k) => ts[k] !== py[k]);
+        if (bad.length)
+          diffs.push(`${r.case_id}: ${bad.map((k) => `${k} ts=${ts[k]} py=${py[k]}`).join(", ")}`);
+      }
+      expect(diffs).toEqual([]);
+    });
+  }
+
+  it("results CSV has the judging header and True/False booleans", () => {
+    const csv = batchToCsv(runBatch(parseClaimsCsv(read("data", "practice_cases.csv"))));
+    const [header, first] = csv.split("\n");
+    expect(header).toBe(
+      "case_id,recommendation_v1,recommendation_v2,needs_recheck,rule_v1,rule_v2,explanation",
+    );
+    expect(first.split(",")[3]).toMatch(/^(True|False)$/);
+  });
 });

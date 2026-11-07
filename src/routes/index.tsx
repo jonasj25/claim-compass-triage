@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { ensureDemoUsers, DEMO_USERS, DEMO_PASSWORD } from "@/lib/demo-users.functions";
@@ -114,6 +114,21 @@ function SignIn() {
             ))}
           </div>
         </div>
+
+        <Link
+          to="/batch"
+          className="card-quiet mt-6 flex items-center justify-between px-4 py-3 hover:bg-surface-2"
+        >
+          <span>
+            <span className="block text-[14px] font-medium">
+              Judges: batch run without signing in
+            </span>
+            <span className="block text-[12px] text-text-2">
+              Upload a claims CSV, download the results CSV
+            </span>
+          </span>
+          <span className="label-mono">→</span>
+        </Link>
       </div>
     </div>
   );

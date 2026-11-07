@@ -13,9 +13,10 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from triage import ROOT, decide, load_policy, normalise  # noqa: E402
+from triage import ROOT, decide, evaluate, load_policy, normalise  # noqa: E402
 
 GOLDEN = os.path.join(ROOT, "data", "golden", "decisions.json")
+BATCH_KEYS = ["recommendation_v1", "recommendation_v2", "needs_recheck", "rule_v1", "rule_v2"]
 
 
 def build():
@@ -30,10 +31,12 @@ def build():
             c = normalise(r)
             if not c.get("case_id"):
                 continue
-            cases[c["case_id"]] = {
-                name: dict(zip(("recommendation", "rule_id"), decide(c, pol)[:2]))
-                for name, pol in policies.items()
-            }
+            entry = {name: dict(zip(("recommendation", "rule_id"), decide(c, pol)[:2]))
+                     for name, pol in policies.items()}
+            # Full batch row (what the judges score), from policies/v1.json + v2.json
+            res = evaluate(c, policies["v1"], policies["v2"])
+            entry["_batch"] = {k: res[k] for k in BATCH_KEYS}
+            cases[c["case_id"]] = entry
         out[os.path.basename(path)] = cases
     return out
 

@@ -1,7 +1,7 @@
 import { createFileRoute, Link, Outlet, redirect, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
-import { Bell, Download, LogOut, Upload } from "lucide-react";
+import { Bell, Download, LogOut, Play, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { RoleContext, useRole, ROLE_HOME, ROLE_LABELS, ROLE_NAV, initials, type Me, type Role } from "@/lib/role";
@@ -194,6 +194,9 @@ function SideNav() {
         <button onClick={exportCsv} className={linkCls(false)}>
           <Download className="size-4" strokeWidth={1.5} /> Export results CSV
         </button>
+        <Link to="/batch" className={linkCls(false)}>
+          <Play className="size-4" strokeWidth={1.5} /> Batch run (judges)
+        </Link>
       </div>
     </nav>
   );
