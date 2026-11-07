@@ -81,7 +81,7 @@ function BatchPage() {
     <div className="mx-auto max-w-6xl px-6 py-12">
       <div className="mb-10 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <span className="size-5 rounded-[5px] bg-ink" />
+          <span className="logo-mark size-5 rounded-[6px]" />
           <span className="text-[15px] font-semibold tracking-tight">Triage</span>
           <span className="label-mono">Motor claims</span>
         </div>

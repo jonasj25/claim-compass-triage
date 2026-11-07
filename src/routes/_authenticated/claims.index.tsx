@@ -32,7 +32,7 @@ function Claims() {
       <PageHeader eyebrow="Reviewer" title="Claims" sub="Filters, search and grouping arrive in the next step." />
       <Card className="p-0">
         <div className="px-6 py-4">
-          <div role="tablist" className="inline-flex rounded-lg bg-line/60 p-0.5">
+          <div role="tablist" className="inline-flex rounded-[11px] bg-[oklch(0.93_0.015_258/0.7)] p-0.5">
             {TABS.map((t) => {
               const n = inTab(t.key).length;
               return (
@@ -41,7 +41,7 @@ function Claims() {
                   role="tab"
                   aria-selected={tab === t.key}
                   onClick={() => setTab(t.key)}
-                  className={cn("flex items-center gap-2 rounded-md px-3 py-1.5 text-[13px]", tab === t.key ? "bg-surface font-medium shadow-[0_0_0_1px_var(--line)]" : "text-text-2 hover:text-foreground")}
+                  className={cn("flex items-center gap-2 rounded-[9px] px-3 py-1.5 text-[13px]", tab === t.key ? "pill-active font-medium" : "text-text-2 hover:text-foreground")}
                 >
                   {t.label}
                   <span className={cn("font-mono text-[11px]", t.key === "on_you" && n > 0 ? "text-action" : "text-text-3")}>{n}</span>

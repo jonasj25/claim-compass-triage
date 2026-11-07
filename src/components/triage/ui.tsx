@@ -15,7 +15,7 @@ const TEXT: Record<Recommendation, string> = {
   routine_processing: "text-ok",
 };
 
-export function StatusDot({ rec, closed, className }: { rec: Recommendation; closed?: boolean; className?: string }) {
+export function StatusDot({ rec, closed, className, plain }: { rec: Recommendation; closed?: boolean; className?: string; plain?: boolean }) {
   if (closed)
     return (
       <span className={cn("inline-flex items-center gap-1.5 text-text-2", className)}>
@@ -23,9 +23,10 @@ export function StatusDot({ rec, closed, className }: { rec: Recommendation; clo
         {RECOMMENDATION_LABELS[rec]}
       </span>
     );
+  const pill = plain ? "" : rec === "human_review" ? "pill-action" : rec === "request_information" ? "pill-wait" : "";
   return (
-    <span className={cn("inline-flex items-center gap-2", TEXT[rec], className)}>
-      <span className={cn("size-1.5 rounded-full", DOT[rec])} />
+    <span className={cn("inline-flex items-center gap-2", TEXT[rec], pill && "rounded-full px-2.5 py-0.5 text-[12.5px] font-medium", pill, className)}>
+      <span className={cn("size-1.5 shrink-0 rounded-full", DOT[rec], plain && "size-2.5")} />
       {RECOMMENDATION_LABELS[rec]}
     </span>
   );
@@ -41,7 +42,7 @@ export function Mono({ children, className }: { children: ReactNode; className?:
 
 export function Chip({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <span className={cn("inline-flex items-center rounded-[6px] border border-line bg-surface px-1.5 py-0.5 font-mono text-[10.5px] uppercase tracking-[0.06em] text-text-2", className)}>
+    <span className={cn("inline-flex items-center rounded-[6px] border border-line/80 bg-surface/80 px-1.5 py-0.5 font-mono text-[10.5px] uppercase tracking-[0.06em] text-text-2", className)}>
       {children}
     </span>
   );
@@ -51,7 +52,7 @@ export function Avatar({ name }: { name: string | null | undefined }) {
   if (!name) return <span className="text-text-3">Unassigned</span>;
   return (
     <span className="inline-flex items-center gap-2">
-      <span className="inline-flex size-6 items-center justify-center rounded-full bg-surface-2 font-mono text-[10px] text-text-2 ring-1 ring-line">
+      <span className="inline-flex size-6 items-center justify-center rounded-full bg-gradient-to-br from-[oklch(0.95_0.03_245)] to-[oklch(0.88_0.06_258)] font-mono text-[10px] font-medium text-[oklch(0.38_0.1_262)] ring-1 ring-white">
         {initials(name)}
       </span>
       <span className="text-[13px]">{name}</span>
@@ -85,12 +86,12 @@ export function Kpi({ label, value, sub, tone, onClick, active }: { label: strin
         "card-quiet flex flex-col items-start p-5 text-left",
         tone === "action" && "tint-action",
         tone === "wait" && "tint-wait",
-        onClick && "cursor-pointer hover:border-text-3",
+        onClick && "cursor-pointer transition-transform duration-200 hover:-translate-y-0.5",
         active && "ring-2 ring-link",
       )}
     >
       <span className={cn("label-mono", tone && "text-current")}>{label}</span>
-      <span className="num mt-3 text-[30px] font-medium leading-none tracking-tight">{value}</span>
+      <span className="num mt-3 text-[32px] font-semibold leading-none tracking-tight">{value}</span>
       {sub && <span className={cn("mt-2 text-[12px]", tone ? "text-current opacity-90" : "text-text-2")}>{sub}</span>}
     </Comp>
   );

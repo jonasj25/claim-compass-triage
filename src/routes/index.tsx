@@ -67,7 +67,7 @@ function SignIn() {
     <div className="flex min-h-screen items-center justify-center px-6">
       <div className="w-full max-w-[400px]">
         <div className="mb-10 flex items-center gap-2.5">
-          <span className="size-5 rounded-[5px] bg-ink" />
+          <span className="logo-mark size-5 rounded-[6px]" />
           <span className="text-[15px] font-semibold tracking-tight">Triage</span>
           <span className="label-mono">Motor claims</span>
         </div>

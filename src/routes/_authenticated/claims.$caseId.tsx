@@ -50,7 +50,7 @@ function CaseDetail() {
           <div>
             <Mono className={cn(tone && "text-current")}>{caseId} · {data.intake?.customer_name} · {data.intake?.plate}</Mono>
             <div className="mt-3 text-[24px] font-semibold tracking-tight">
-              <StatusDot rec={rec} closed={closed} />
+              <StatusDot rec={rec} closed={closed} plain />
             </div>
             <p className={cn("mt-2 max-w-xl", tone ? "text-current" : "text-text-2")}>{data.decision?.explanation}</p>
             <p className="mt-1 text-[13px] text-text-2">{claim.claim_summary}</p>

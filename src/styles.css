@@ -72,29 +72,38 @@
 
 :root {
   --radius: 8px;
-  /* #F5F5F7 */ --background: oklch(0.97 0.0026 286.35);
-  /* #1D1D1F */ --foreground: oklch(0.2178 0.0027 286.13);
+  /* "Soft glass" — calm blue shimmer behind white, Apple-like cards.
+     Colour still means: a human has to act. */
+  --background: oklch(0.965 0.012 255);
+  --foreground: oklch(0.22 0.02 262);
   --surface: oklch(1 0 0);
-  /* #FAFAFA */ --surface-2: oklch(0.9851 0 0);
-  /* #E5E5EA */ --line: oklch(0.9228 0.0058 286.29);
-  /* #6E6E73 */ --text-2: oklch(0.5321 0.0071 286.25);
-  /* #A1A1A6 */ --text-3: oklch(0.7091 0.0064 286.27);
-  --ink: oklch(0.2178 0.0027 286.13);
-  /* #2A4EEF */ --link: oklch(0.5121 0.2289 266.47);
+  --surface-2: oklch(0.975 0.01 255);
+  --line: oklch(0.915 0.014 258);
+  --text-2: oklch(0.5 0.022 262);
+  --text-3: oklch(0.69 0.018 262);
+  --ink: oklch(0.24 0.03 264);
+  --link: oklch(0.56 0.19 260);
 
-  /* action: text #C4320A tint #FFF3EE border #F7C9B6 dot #E8590C */
-  --action: oklch(0.5466 0.1817 37.08);
-  --action-tint: oklch(0.9737 0.0143 46.4);
-  --action-border: oklch(0.8714 0.0617 43.88);
-  --action-dot: oklch(0.6518 0.1952 42.4);
-  /* waiting: text #A15C00 tint #FFF8EB border #F3D9A6 dot #F0A020 */
-  --wait: oklch(0.5663 0.1214 64.43);
-  --wait-tint: oklch(0.9816 0.0181 83.05);
-  --wait-border: oklch(0.8971 0.0731 83.36);
-  --wait-dot: oklch(0.7703 0.1601 71.77);
-  /* ok: text #1F7A3A dot #34A853 */
-  --ok: oklch(0.5016 0.1229 148.14);
-  --ok-dot: oklch(0.6531 0.1586 147.41);
+  /* glass surfaces */
+  --glass: oklch(1 0 0 / 0.74);
+  --glass-strong: oklch(1 0 0 / 0.86);
+  --glass-border: oklch(1 0 0 / 0.9);
+  --shadow-card: 0 1px 2px oklch(0.35 0.05 262 / 0.05), 0 12px 32px -12px oklch(0.4 0.08 260 / 0.16);
+  --shadow-lift: 0 1px 2px oklch(0.35 0.05 262 / 0.06), 0 6px 16px -6px oklch(0.4 0.08 260 / 0.18);
+
+  /* action (human must act) — softened coral */
+  --action: oklch(0.54 0.165 33);
+  --action-tint: oklch(0.972 0.02 40);
+  --action-border: oklch(0.88 0.06 35);
+  --action-dot: oklch(0.66 0.18 36);
+  /* waiting on customer — soft amber */
+  --wait: oklch(0.55 0.115 66);
+  --wait-tint: oklch(0.978 0.025 85);
+  --wait-border: oklch(0.89 0.07 82);
+  --wait-dot: oklch(0.77 0.15 72);
+  /* ok / automatic */
+  --ok: oklch(0.5 0.12 152);
+  --ok-dot: oklch(0.66 0.15 152);
 
   --card: var(--surface);
   --card-foreground: var(--foreground);
@@ -114,11 +123,12 @@
   --input: var(--line);
   --ring: var(--link);
 
-  --chart-1: oklch(0.2178 0.0027 286.13);
-  --chart-2: oklch(0.45 0.005 286);
-  --chart-3: oklch(0.6 0.005 286);
-  --chart-4: oklch(0.75 0.005 286);
-  --chart-5: oklch(0.87 0.005 286);
+  /* charts: calm blue-slate scale */
+  --chart-1: oklch(0.32 0.06 262);
+  --chart-2: oklch(0.5 0.1 258);
+  --chart-3: oklch(0.64 0.09 252);
+  --chart-4: oklch(0.77 0.06 248);
+  --chart-5: oklch(0.88 0.03 248);
   --sidebar: var(--background);
   --sidebar-foreground: var(--foreground);
   --sidebar-primary: var(--ink);
@@ -128,8 +138,8 @@
   --sidebar-border: var(--line);
   --sidebar-ring: var(--link);
 
-  --shadow-pop: 0 8px 24px oklch(0 0 0 / 0.08);
-  --backdrop: oklch(0.2178 0.0027 286.13 / 0.28);
+  --shadow-pop: 0 18px 48px -12px oklch(0.3 0.06 262 / 0.25);
+  --backdrop: oklch(0.3 0.04 262 / 0.22);
 }
 
 @layer base {
@@ -141,6 +151,14 @@
   }
   body {
     background-color: var(--color-background);
+    background-image:
+      radial-gradient(1100px 720px at 8% -12%, oklch(0.88 0.07 252 / 0.85), transparent 62%),
+      radial-gradient(900px 640px at 100% 0%, oklch(0.91 0.055 290 / 0.7), transparent 60%),
+      radial-gradient(760px 520px at 52% 30%, oklch(0.955 0.035 55 / 0.55), transparent 65%),
+      radial-gradient(1100px 820px at 85% 105%, oklch(0.9 0.06 232 / 0.65), transparent 60%),
+      radial-gradient(900px 700px at 0% 100%, oklch(0.93 0.04 205 / 0.5), transparent 60%);
+    background-attachment: fixed;
+    min-height: 100vh;
     color: var(--color-foreground);
     font-family: var(--font-sans);
     font-size: 14px;
@@ -152,9 +170,10 @@
   a,
   button {
     transition:
-      background-color 150ms ease-out,
-      color 150ms ease-out,
-      border-color 150ms ease-out;
+      background-color 180ms ease-out,
+      color 180ms ease-out,
+      border-color 180ms ease-out,
+      box-shadow 180ms ease-out;
   }
 }
 
@@ -180,18 +199,54 @@
   font-variant-numeric: tabular-nums;
 }
 @utility card-quiet {
+  background: var(--card-bg, var(--glass));
+  border: 1px solid var(--card-border, var(--glass-border));
+  border-radius: 18px;
+  box-shadow: var(--card-shadow, var(--shadow-card));
+  backdrop-filter: saturate(170%) blur(22px);
+  -webkit-backdrop-filter: saturate(170%) blur(22px);
+}
+@utility glass-panel {
+  background: oklch(1 0 0 / 0.5);
+  border: 1px solid oklch(1 0 0 / 0.75);
+  border-radius: 20px;
+  box-shadow: var(--shadow-card);
+  backdrop-filter: saturate(170%) blur(22px);
+  -webkit-backdrop-filter: saturate(170%) blur(22px);
+}
+@utility pill-active {
   background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 14px;
+  box-shadow: var(--shadow-lift);
+  color: var(--foreground);
+}
+@utility logo-mark {
+  background: linear-gradient(140deg, oklch(0.72 0.14 235), oklch(0.52 0.2 262));
+  box-shadow: 0 3px 10px -2px oklch(0.55 0.18 258 / 0.45), inset 0 1px 0 oklch(1 0 0 / 0.35);
 }
 @utility tint-action {
-  background: var(--action-tint);
-  border-color: var(--action-border);
+  --card-bg: linear-gradient(140deg, oklch(0.985 0.014 45 / 0.95), oklch(0.955 0.04 30 / 0.92));
+  --card-border: oklch(0.9 0.055 35 / 0.9);
+  --card-shadow: 0 1px 2px oklch(0.55 0.15 35 / 0.08), 0 14px 34px -14px oklch(0.62 0.17 32 / 0.45);
+  background: var(--card-bg);
+  border-color: var(--card-border);
   color: var(--action);
 }
 @utility tint-wait {
-  background: var(--wait-tint);
-  border-color: var(--wait-border);
+  --card-bg: linear-gradient(140deg, oklch(0.99 0.016 88 / 0.95), oklch(0.965 0.04 78 / 0.92));
+  --card-border: oklch(0.9 0.06 82 / 0.9);
+  --card-shadow: 0 1px 2px oklch(0.6 0.12 72 / 0.08), 0 14px 34px -14px oklch(0.7 0.13 72 / 0.4);
+  background: var(--card-bg);
+  border-color: var(--card-border);
+  color: var(--wait);
+}
+@utility pill-action {
+  background: oklch(0.955 0.035 38);
+  box-shadow: inset 0 0 0 1px oklch(0.9 0.055 35);
+  color: var(--action);
+}
+@utility pill-wait {
+  background: oklch(0.965 0.04 85);
+  box-shadow: inset 0 0 0 1px oklch(0.9 0.065 82);
   color: var(--wait);
 }
 @utility unknown-chip {
@@ -200,6 +255,10 @@
   border-radius: 6px;
 }
 @utility topbar-glass {
-  background: color-mix(in oklab, var(--background) 80%, transparent);
-  backdrop-filter: saturate(180%) blur(16px);
+  background: oklch(1 0 0 / 0.45);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+}
+@utility btn-glow {
+  box-shadow: 0 1px 0 oklch(1 0 0 / 0.12) inset, 0 8px 20px -8px oklch(0.24 0.05 264 / 0.55);
 }

@@ -91,15 +91,15 @@ function TopBar() {
   };
 
   return (
-    <header className="topbar-glass sticky top-0 z-30 border-b border-line">
+    <header className="topbar-glass sticky top-0 z-30 border-b border-white/70">
       <div className="mx-auto grid h-14 max-w-[1360px] grid-cols-[1fr_auto_1fr] items-center px-8">
         <Link to={ROLE_HOME[role]} className="flex items-center gap-2.5">
-          <span className="size-5 rounded-[5px] bg-ink" />
+          <span className="logo-mark size-5 rounded-[6px]" />
           <span className="text-[15px] font-semibold tracking-tight">Triage</span>
           <span className="label-mono hidden sm:inline">Motor claims</span>
         </Link>
 
-        <div role="tablist" aria-label="Role" className="flex rounded-full border border-line bg-surface p-0.5">
+        <div role="tablist" aria-label="Role" className="flex rounded-full border border-white/80 bg-[oklch(0.93_0.015_258/0.6)] p-0.5 backdrop-blur">
           {(Object.keys(ROLE_LABELS) as Role[]).map((r) => (
             <button
               key={r}
@@ -107,8 +107,8 @@ function TopBar() {
               aria-selected={r === role}
               onClick={() => setRole(r)}
               className={cn(
-                "rounded-full px-3.5 py-1 text-[13px] font-medium",
-                r === role ? "bg-ink text-primary-foreground" : "text-text-2 hover:text-foreground",
+                "rounded-full px-3.5 py-1 text-[13px] font-medium transition-shadow",
+                r === role ? "pill-active" : "text-text-2 hover:text-foreground",
               )}
             >
               {ROLE_LABELS[r]}
@@ -117,7 +117,7 @@ function TopBar() {
         </div>
 
         <div className="flex items-center justify-end gap-4">
-          <span className="rounded-[6px] border border-line bg-surface px-2 py-0.5 font-mono text-[11px] uppercase tracking-[0.06em] text-text-2">
+          <span className="rounded-full border border-white/90 bg-surface/70 px-2.5 py-0.5 shadow-[var(--shadow-lift)] font-mono text-[11px] uppercase tracking-[0.06em] text-text-2">
             Policy {policy.data?.version ?? "…"}
           </span>
           <button aria-label={onMe ? "Something needs you" : "Notifications"} className="relative text-text-2 hover:text-foreground">
@@ -125,7 +125,7 @@ function TopBar() {
             {onMe && <span className="absolute -right-0.5 -top-0.5 size-2 rounded-full bg-action-dot ring-2 ring-background" />}
           </button>
           <div className="flex items-center gap-2">
-            <span className="inline-flex size-7 items-center justify-center rounded-full bg-surface font-mono text-[10px] text-text-2 ring-1 ring-line">
+            <span className="inline-flex size-7 items-center justify-center rounded-full bg-gradient-to-br from-[oklch(0.95_0.03_245)] to-[oklch(0.86_0.07_258)] font-mono text-[10px] font-medium text-[oklch(0.38_0.1_262)] ring-2 ring-white">
               {initials(me.name)}
             </span>
             <div className="hidden leading-tight lg:block">
@@ -172,12 +172,12 @@ function SideNav() {
 
   const linkCls = (active: boolean) =>
     cn(
-      "flex h-9 items-center gap-2 rounded-md border px-3 text-[13px]",
-      active ? "border-line bg-surface font-medium text-foreground" : "border-transparent text-text-2 hover:text-foreground",
+      "flex h-9 items-center gap-2 rounded-[10px] px-3 text-[13px]",
+      active ? "pill-active font-medium" : "text-text-2 hover:bg-white/50 hover:text-foreground",
     );
 
   return (
-    <nav aria-label="Main" className="sticky top-22 hidden h-fit w-48 shrink-0 md:block">
+    <nav aria-label="Main" className="glass-panel sticky top-22 hidden h-fit w-52 shrink-0 p-3 md:block">
       <p className="label-mono mb-2 px-3">{ROLE_LABELS[role]}</p>
       <div className="flex flex-col gap-0.5">
         {items.map((it) => (

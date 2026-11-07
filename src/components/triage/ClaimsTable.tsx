@@ -23,7 +23,7 @@ export function ClaimsTable({ rows }: { rows: CaseRow[] }) {
     <div className="overflow-x-auto">
       <table className="w-full text-left text-[13px]">
         <thead>
-          <tr className="border-b border-line">
+          <tr className="border-b border-line/80">
             {["Case", "Summary", "Recommendation", "Rule", "Why", "Amount", "Age", "Assignee"].map((h) => (
               <th key={h} className="label-mono px-3 py-2.5 font-normal">{h}</th>
             ))}
@@ -35,7 +35,7 @@ export function ClaimsTable({ rows }: { rows: CaseRow[] }) {
             const overdue = c.workflow?.sla_due_at && !closed && new Date(c.workflow.sla_due_at) < new Date() && (c.workflow.queue === "on_you" || c.workflow.qa_sample);
             const unknown = (c.decision?.missing_fields ?? []).some((f) => c.claim[f] === null);
             return (
-              <tr key={c.claim.case_id} className="relative h-14 border-b border-line last:border-0 hover:bg-surface-2">
+              <tr key={c.claim.case_id} className="relative h-14 border-b border-line/70 last:border-0 hover:bg-white/80">
                 <td className="whitespace-nowrap px-3 font-mono text-[12px]">
                   <Link to="/claims/$caseId" params={{ caseId: c.claim.case_id }} className="after:absolute after:inset-0 focus-visible:outline-none">
                     {c.claim.case_id}
