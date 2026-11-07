@@ -3,7 +3,7 @@ import { useQuery, useQueryClient, useSuspenseQuery } from "@tanstack/react-quer
 import { toast } from "sonner";
 import { assignCases } from "@/lib/assignment";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowRight, CheckCircle2, ChevronDown, Phone, Search, TriangleAlert } from "lucide-react";
+import { ArrowRight, CheckCircle2, ChevronDown, Flag, Phone, Search, TriangleAlert } from "lucide-react";
 import { activePolicyQuery, casesQuery } from "@/lib/data";
 import { dashboardActivityQuery, outreachRemindersQuery } from "@/lib/dashboard-activity";
 import {
@@ -28,7 +28,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { WORK_TABS, workTab, type WorkTab } from "@/lib/workstream-presentation";
+import {
+  claimPriority,
+  isNewToday,
+  PRIORITY_RANK,
+  WORK_TABS,
+  workTab,
+  type WorkTab,
+} from "@/lib/workstream-presentation";
 import { Chip } from "@/components/triage/ui";
 import { ClaimsProgress } from "@/components/triage/ClaimsProgress";
 import { Unknown } from "@/components/triage/ui";
@@ -64,8 +71,9 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
   component: Dashboard,
 });
 
-type Sort = "oldest" | "newest" | "amount";
+type Sort = "priority" | "oldest" | "newest" | "amount";
 const SORT_LABEL: Record<Sort, string> = {
+  priority: "Highest priority",
   oldest: "Oldest first",
   newest: "Newest first",
   amount: "Highest quote",
@@ -90,7 +98,7 @@ function Dashboard() {
   const [search, setSearch] = useState("");
   const [task, setTask] = useState<"all" | WorkTab>("all");
   const [channel, setChannel] = useState("all");
-  const [sort, setSort] = useState<Sort>("oldest");
+  const [sort, setSort] = useState<Sort>("priority");
   const [scopePick, setScope] = useState<"mine" | "unassigned" | "all" | null>(null);
   const qc = useQueryClient();
   const links = useRef(new Map<string, HTMLAnchorElement>());
@@ -148,7 +156,13 @@ function Dashboard() {
       item.why,
     ].some((v) => v?.toLowerCase().includes(term));
   };
+  const prio = (i: WorkItem) => claimPriority(i.row.claim, workTab(i));
   const sorter = (a: WorkItem, b: WorkItem) => {
+    if (sort === "priority") {
+      const d = PRIORITY_RANK[prio(a).level] - PRIORITY_RANK[prio(b).level];
+      if (d) return d;
+      return (Date.parse(a.row.claim.received_at ?? "") || Infinity) - (Date.parse(b.row.claim.received_at ?? "") || Infinity);
+    }
     if (sort === "amount") return (b.row.claim.quote_eur ?? -1) - (a.row.claim.quote_eur ?? -1);
     const ta = Date.parse(a.row.claim.received_at ?? "") || Infinity,
       tb = Date.parse(b.row.claim.received_at ?? "") || Infinity;
@@ -455,16 +469,17 @@ function Dashboard() {
           <table className="w-full table-fixed text-left text-[13px]">
             <thead>
               <tr className="border-b border-line">
-                {["Case ID", "Trigger", "Summary", "Amount", "Assignee", "Received"].map((h, i) => (
+                {["Case ID", "Trigger", "Summary", "Amount", "Priority", "Assignee", "Received"].map((h, i) => (
                   <th
                     key={h}
                     className={cn(
                       "px-3 py-3 text-[11px] font-medium text-text-2",
                       [
-                        "w-[90px]",
+                        "w-[150px]",
                         "w-[220px]",
                         "",
                         "w-[90px] text-right",
+                        "w-[90px] pl-5",
                         "w-[130px]",
                         "w-[100px]",
                       ][i],
@@ -479,7 +494,7 @@ function Dashboard() {
               <tbody key={group.key}>
                 {task === "all" && (
                   <tr className="border-b border-line bg-surface-2">
-                    <td colSpan={6} className="h-8 px-3 text-[11px] font-semibold text-text-2">
+                    <td colSpan={7} className="h-8 px-3 text-[11px] font-semibold text-text-2">
                       {group.label} · {group.items.length}
                     </td>
                   </tr>
@@ -488,6 +503,9 @@ function Dashboard() {
                   const { row } = item;
                   const id = row.claim.case_id;
                   const waited = age(row.claim.received_at, now);
+                  const p = prio(item);
+                  const policyChanged = workTab(item) === "Policy change";
+                  const isNew = isNewToday(row.claim.received_at, now);
                   return (
                     <tr
                       key={id}
@@ -496,7 +514,18 @@ function Dashboard() {
                         selected === id && "bg-surface-2",
                       )}
                     >
-                      <td className="px-3 py-2 font-mono text-[12px]">
+                      <td
+                        className={cn(
+                          "whitespace-nowrap px-3 py-2 font-mono text-[12px]",
+                          policyChanged && "shadow-[inset_3px_0_0_var(--wait-dot)]",
+                        )}
+                      >
+                        {policyChanged && (
+                          <Flag
+                            aria-label="Changed by the policy update"
+                            className="mr-1.5 inline size-3.5 fill-wait-dot text-wait"
+                          />
+                        )}
                         <Link
                           to="/claims/$caseId"
                           params={{ caseId: id }}
@@ -511,6 +540,11 @@ function Dashboard() {
                         >
                           {id}
                         </Link>
+                        {isNew && (
+                          <span className="ml-2 rounded-md bg-ok/10 px-1.5 py-0.5 font-sans text-[11px] font-medium text-ok">
+                            New
+                          </span>
+                        )}
                       </td>
                       <td className="px-3 py-2" title={item.why}>
                         <Chip className="max-w-full whitespace-normal normal-case tracking-normal font-sans leading-snug">
@@ -520,6 +554,8 @@ function Dashboard() {
                                 <TriangleAlert className="mr-1 inline size-3 text-wait" />
                                 Near limit
                               </>
+                            ) : policyChanged ? (
+                              <span className="text-wait">{item.why.split(" · ")[0]}</span>
                             ) : workTab(item) === "Risk cases" ? (
                               item.why.split(" · ")[0]
                             ) : (
@@ -536,6 +572,21 @@ function Dashboard() {
                       </td>
                       <td className="num px-3 py-2 text-right">
                         {row.claim.quote_eur === null ? <Unknown /> : money(row.claim.quote_eur)}
+                      </td>
+                      <td className="py-2 pl-5 pr-3">
+                        <span
+                          title={p.why}
+                          className={cn(
+                            "inline-block rounded-md px-2 py-0.5 text-[11.5px] font-medium",
+                            p.level === "High"
+                              ? "bg-action-tint text-action"
+                              : p.level === "Medium"
+                                ? "bg-wait-tint text-wait"
+                                : "bg-ok/10 text-ok",
+                          )}
+                        >
+                          {p.level}
+                        </span>
                       </td>
                       <td className="px-3 py-2 text-[12px]">
                         {row.workflow?.assignee ? (

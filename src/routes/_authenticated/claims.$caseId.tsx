@@ -26,6 +26,7 @@ import {
   TriangleAlert,
   CircleCheck,
   CircleX,
+  Flag,
   FileQuestion,
   BellRing,
 } from "lucide-react";
@@ -57,7 +58,7 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/ui/select";
-import { WORK_TABS, workPriority, type WorkTab } from "@/lib/workstream-presentation";
+import { WORK_TABS, claimPriority, type WorkTab } from "@/lib/workstream-presentation";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -461,7 +462,7 @@ function CaseDetail() {
           : qa
             ? "QA sample"
             : "Risk cases";
-  const priority = workPriority(caseTab);
+  const priority = claimPriority(claim, caseTab);
   const missingFields = [
     ...new Set([
       ...(decision?.missing_fields ?? []),
@@ -573,6 +574,26 @@ function CaseDetail() {
         >
           {status}
         </span>
+        {(status === "To review" || status === "Quick double-check") && (
+          <span
+            title={priority.why}
+            className={cn(
+              "rounded-md px-2 py-0.5 text-[11.5px] font-medium",
+              priority.level === "High"
+                ? "bg-action-tint text-action"
+                : priority.level === "Medium"
+                  ? "bg-wait-tint text-wait"
+                  : "bg-ok/10 text-ok",
+            )}
+          >
+            {priority.level} priority
+          </span>
+        )}
+        {recheck && !closed && (
+          <span className="inline-flex items-center gap-1 text-[12px] text-wait">
+            <Flag className="size-3.5 fill-wait-dot" /> Changed by policy update
+          </span>
+        )}
         <span
           className="rounded-full bg-surface-2 px-2 py-0.5 text-[11px] text-text-2 ring-1 ring-line"
           title="What the customer sees on the public status page"
