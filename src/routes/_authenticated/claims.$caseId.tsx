@@ -153,6 +153,8 @@ function CaseDetail() {
   const [taskChecks, setTaskChecks] = useState<Set<string>>(new Set());
   // Which customer message the decision panel opened in the Customer tab (accept / deny / request / reminder)
   const [chatTpl, setChatTpl] = useState<TemplateKey | undefined>(undefined);
+  // Shows that "let Mia call" was pressed; only for as long as this claim is open
+  const [callStarted, setCallStarted] = useState(false);
   const opened = useRef(Date.now());
   const confirmKey = useRef<(() => void) | null>(null);
   const overrideKey = useRef<(() => void) | null>(null);
@@ -164,6 +166,7 @@ function CaseDetail() {
     setSideTab("Tasks");
     setTaskChecks(new Set());
     setChatTpl(undefined);
+    setCallStarted(false);
   }, [caseId]);
 
   // ---------- step through the list the case was opened from (like a task queue) ----------
@@ -1108,18 +1111,28 @@ function CaseDetail() {
               <button
                 type="button"
                 disabled={busy || !portalUrl}
-                onClick={() => void callCustomer()}
+                onClick={() => void callCustomer().then((ok) => ok && setCallStarted(true))}
                 aria-label="Let Mia call the customer"
                 title={portalUrl ? "Call the customer with Mia" : "No plate or email on file to reach the customer's claim page"}
                 className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[oklch(0.62_0.17_150)] text-white shadow-sm transition-transform hover:scale-105 disabled:opacity-40 disabled:hover:scale-100"
               >
-                <Phone className="size-[18px] fill-white" strokeWidth={1.5} />
+                {callStarted ? (
+                  <Check className="size-5" strokeWidth={2.5} />
+                ) : (
+                  <Phone className="size-[18px] fill-white" strokeWidth={1.5} />
+                )}
               </button>
               <div className="min-w-0 flex-1">
                 <p className="section-title leading-tight">
-                  Or let Mia call {data.intake?.customer_name ?? "the customer"}
+                  {callStarted
+                    ? `Mia is calling ${data.intake?.customer_name ?? "the customer"}`
+                    : `Or let Mia call ${data.intake?.customer_name ?? "the customer"}`}
                 </p>
-                <p className="text-[12.5px] text-text-2">Our voice agent calls them and asks for what is missing</p>
+                <p className={cn("text-[12.5px]", callStarted ? "text-ok" : "text-text-2")}>
+                  {callStarted
+                    ? "Call started – their claim page is ringing"
+                    : "Our voice agent calls them and asks for what is missing"}
+                </p>
               </div>
               {portalUrl && (
                 <a href={portalUrl} target="_blank" rel="noreferrer" className="shrink-0 text-[11.5px] text-link hover:underline">
