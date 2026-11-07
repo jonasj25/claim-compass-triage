@@ -1047,35 +1047,6 @@ function CaseDetail() {
               claim={claim}
               policy={policy}
               initialTemplate={chatTpl}
-              callSlot={
-                closed ? null : (
-                  <div className="mt-5 flex items-center gap-3 border-t border-line pt-4">
-                    <button
-                      type="button"
-                      disabled={busy || !portalUrl}
-                      onClick={() => void callCustomer()}
-                      aria-label="Call customer"
-                      title={portalUrl ? "Call the customer with Mia" : "No plate or email to reach the customer's claim page"}
-                      className="flex size-11 shrink-0 items-center justify-center rounded-full bg-[oklch(0.62_0.17_150)] text-white shadow-sm transition-transform hover:scale-105 disabled:opacity-40 disabled:hover:scale-100"
-                    >
-                      <Phone className="size-5 fill-white" strokeWidth={1.5} />
-                    </button>
-                    <div className="min-w-0 text-[12.5px]">
-                      <p className="font-medium">Or call {data.intake?.customer_name ?? "the customer"}</p>
-                      <p className="text-text-2">
-                        {portalUrl
-                          ? `Mia (voice agent) calls them in their claim page${callTopics().length ? ` and asks about: ${callTopics().map((f) => (FIELD_LABELS[f] ?? f.replace(/_/g, " ")).toLowerCase()).join(", ")}` : ""}.`
-                          : "No plate or email on file, so the claim page cannot ring."}
-                      </p>
-                      {portalUrl && (
-                        <a href={portalUrl} target="_blank" rel="noreferrer" className="text-[11.5px] text-link hover:underline">
-                          Open the customer's claim page (demo)
-                        </a>
-                      )}
-                    </div>
-                  </div>
-                )
-              }
               onRequestSent={() => {
                 if (chatTpl) {
                   if (nextId) goTo(nextId);
@@ -1084,6 +1055,29 @@ function CaseDetail() {
               }}
               className="mb-0"
             />
+          )}
+          {mainTab === "Customer" && !closed && (
+            <div className="card-quiet mt-4 flex items-center gap-4 px-7 py-4">
+              <button
+                type="button"
+                disabled={busy || !portalUrl}
+                onClick={() => void callCustomer()}
+                aria-label="Call customer"
+                title={portalUrl ? "Call the customer with Mia" : "No plate or email on file to reach the customer's claim page"}
+                className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[oklch(0.62_0.17_150)] text-white shadow-sm transition-transform hover:scale-105 disabled:opacity-40 disabled:hover:scale-100"
+              >
+                <Phone className="size-[18px] fill-white" strokeWidth={1.5} />
+              </button>
+              <div className="min-w-0 flex-1">
+                <p className="section-title leading-tight">Or call {data.intake?.customer_name ?? "the customer"}</p>
+                <p className="text-[12.5px] text-text-2">via Mia (voice agent)</p>
+              </div>
+              {portalUrl && (
+                <a href={portalUrl} target="_blank" rel="noreferrer" className="shrink-0 text-[11.5px] text-link hover:underline">
+                  Customer's claim page (demo)
+                </a>
+              )}
+            </div>
           )}
         </section>
         <aside className="card-quiet sticky top-[76px] flex h-[calc(100vh-148px)] min-h-[480px] flex-col overflow-hidden">

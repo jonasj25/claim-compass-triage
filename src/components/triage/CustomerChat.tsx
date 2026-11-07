@@ -1,7 +1,6 @@
 // Customer conversation inside a claim. Messages come from fixed templates with placeholders
 // (no AI). Sending can move the claim on: request/reminder keep it with the customer,
 // accept/deny close it for good. Everything is stored append-only in case_events.
-import type { ReactNode } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -117,7 +116,6 @@ export function CustomerChat({
   policy,
   initialTemplate,
   onRequestSent,
-  callSlot,
 }: {
   caseId: string;
   customer: string | null;
@@ -139,8 +137,6 @@ export function CustomerChat({
   policy?: Policy;
   initialTemplate?: TemplateKey;
   onRequestSent?: () => void;
-  /** Shown under the message composer, e.g. calling the customer instead of writing. */
-  callSlot?: ReactNode;
 }) {
   const qc = useQueryClient();
   const recommended: TemplateKey[] =
@@ -505,7 +501,6 @@ export function CustomerChat({
               then closed and never re-evaluated.
             </p>
           )}
-          {callSlot}
         </div>
       </div>
     </div>
