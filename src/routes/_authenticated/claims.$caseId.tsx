@@ -358,7 +358,7 @@ function CaseDetail() {
       {/* 0 · Move through the queue */}
       <nav aria-label="Case navigation" className="mb-5 flex flex-wrap items-center gap-3">
         <Button asChild variant="outline" className="bg-white">
-          <Link to="/claims">
+          <Link to="/dashboard">
             <ArrowLeft /> Back to my queue
           </Link>
         </Button>

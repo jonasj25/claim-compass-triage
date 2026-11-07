@@ -184,7 +184,7 @@ function SideNav() {
       <p className="label-mono mb-2 px-3">{ROLE_LABELS[role]}</p>
       <div className="flex flex-col gap-0.5">
         {items.map((it) => (
-          <Link key={it.to} to={it.to} className={linkCls(path === it.to || (it.to === "/claims" && path.startsWith("/claims/")))}>
+          <Link key={it.to} to={it.to} className={linkCls(path === it.to || (it.to === "/dashboard" && path.startsWith("/claims")))}>
             {it.label}
           </Link>
         ))}

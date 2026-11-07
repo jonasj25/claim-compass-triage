@@ -19,7 +19,6 @@ export interface NavItem { to: string; label: string }
 export const ROLE_NAV: Record<Role, NavItem[]> = {
   reviewer: [
     { to: "/dashboard", label: "Dashboard" },
-    { to: "/claims", label: "Claims" },
     { to: "/phone-intake", label: "Phone intake" },
   ],
   policy_owner: [

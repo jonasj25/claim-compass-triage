@@ -52,7 +52,7 @@ export function ActivatePolicyButton({
         description: plan.changed.length
           ? `${plan.changed.length} open claims changed and are flagged for recheck. Closed claims were not touched.`
           : "No open claim changed its next step.",
-        action: { label: "View claims", onClick: () => navigate({ to: "/claims" }) },
+        action: { label: "View claims", onClick: () => navigate({ to: "/dashboard" }) },
       });
     } catch (e) {
       toast.error(`Activation failed: ${(e as Error).message}`);
