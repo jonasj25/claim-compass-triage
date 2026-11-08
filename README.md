@@ -6,7 +6,18 @@ Clearpath reads a motor claim and recommends one next step: **routine processing
 
 The rules decide; people confirm. AI helps us talk to customers and read documents, but it never makes or changes a decision.
 
-> **Live app:** _add the published Lovable URL before submission_ · **Editor:** [Lovable project](https://lovable.dev/projects/8e82261d-79e5-4656-b04c-79ad82115985)
+## Submission
+
+| | |
+|---|---|
+| **Team name** | _TODO: team name as used in announcements_ |
+| **Case** | Taktile: Trustworthy claims triage |
+| **GitHub repository** | https://github.com/jonasj25/claim-compass-triage (public) |
+| **Pitch slides (PDF)** | [`docs/pitch.pdf`](docs/pitch.pdf) _TODO: upload the final slides as a PDF to this path_ |
+| **Live app** | _TODO: published Lovable URL_ (the judges can test it: see [For the judges](#for-the-judges-three-things-to-try)) |
+| **Demo video (2 min)** | _TODO: link to the demo video_ |
+
+Lovable editor (team access only): [Lovable project](https://lovable.dev/projects/8e82261d-79e5-4656-b04c-79ad82115985)
 
 ---
 
