@@ -19,14 +19,12 @@ import {
   eur0,
   eurCompact,
   pct,
-  policyChangeCost,
   SOURCES,
   triageEconomics,
   type Assumption,
   type Inputs,
 } from "@/lib/business";
-import { Card, PageHeader } from "@/components/triage/ui";
-import { KindBadge, SERIES } from "@/components/triage/charts";
+import { KindBadge } from "@/components/triage/charts";
 
 // Value & ROI: the pitch page. Same model as the Business case page (triageEconomics,
 // policyChangeCost) on the shared claim mix (useClaimMix). Headline = base case, "up to" = optimistic.
@@ -76,10 +74,10 @@ function fmtVal(a: Assumption, v: number) {
   return `${v.toLocaleString("en-US")} ${a.unit}`;
 }
 
-function Big({ value, label }: { value: string; label: string }) {
+function Stat({ value, label, color }: { value: string; label: string; color: string }) {
   return (
-    <div>
-      <p className="num text-[52px] font-semibold leading-none" style={{ color: SERIES.ink }}>
+    <div className="px-2">
+      <p className="num text-[36px] font-bold leading-none" style={{ color }}>
         {value}
       </p>
       <p className="mt-2 text-[15px] text-text-2">{label}</p>
@@ -87,39 +85,22 @@ function Big({ value, label }: { value: string; label: string }) {
   );
 }
 
-function Tile({ value, label }: { value: string; label: string }) {
-  return (
-    <div className="card-quiet p-5">
-      <p className="num text-[32px] font-semibold leading-none" style={{ color: SERIES.ink }}>
-        {value}
-      </p>
-      <p className="mt-2 text-[14.5px] text-text-2">{label}</p>
-    </div>
-  );
-}
-
-function ChartCard({ title, foot, children }: { title: string; foot: ReactNode; children: ReactNode }) {
-  return (
-    <Card className="flex flex-col">
-      <h2 className="text-[16px] font-semibold">{title}</h2>
-      <div className="mt-4 flex-1">{children}</div>
-      <p className="mt-3 text-[14.5px] text-text-2">{foot}</p>
-    </Card>
-  );
-}
-
 function HBar({ label, value, max, color, text }: { label: string; value: number; max: number; color: string; text: string }) {
   return (
     <div>
-      <div className="mb-1.5 flex items-baseline justify-between text-[14.5px]">
+      <div className="mb-1.5 flex items-baseline justify-between text-[15px]">
         <span>{label}</span>
-        <span className="num font-semibold">{text}</span>
+        <span className="num text-[18px] font-semibold">{text}</span>
       </div>
-      <div className="h-4 w-full rounded-sm bg-surface-2">
-        <div className="h-4 rounded-sm" style={{ width: `${max > 0 ? Math.max(2, (value / max) * 100) : 0}%`, background: color }} />
+      <div className="h-4 w-full rounded-full bg-surface-2">
+        <div className="h-4 rounded-full" style={{ width: `${max > 0 ? Math.max(2, (value / max) * 100) : 0}%`, background: color }} />
       </div>
     </div>
   );
+}
+
+function Title({ children }: { children: ReactNode }) {
+  return <h2 className="text-[22px] font-semibold leading-tight">{children}</h2>;
 }
 
 function ValueRoi() {
@@ -138,15 +119,12 @@ function ValueRoi() {
   const { inputs, e } = all.base;
   const up = all.optimistic.e;
   const n = inputs.claimsPerYear;
-  const change = policyChangeCost(inputs, mix);
 
   const hoursSaved = e.todayHours - e.withHours;
   const timeCut = e.todayHours > 0 ? hoursSaved / e.todayHours : 0;
   const gross = e.todayCost - e.withPeopleCost;
-  const valuePerClaim = gross / n;
   const pricePerClaim = inputs.platformPerYear / n;
   const keeps = gross > 0 ? Math.max(0, e.netPerYear) / gross : 0;
-  const threeYear = 3 * e.netPerYear - inputs.implementation;
   const payback = e.paybackMonths === null ? "—" : `${e.paybackMonths.toFixed(1)} mo`;
 
   const curve = useMemo(
@@ -159,148 +137,127 @@ function ValueRoi() {
   );
 
   const shares = [
-    { label: "Processed straight away", value: mix.share.routine_processing, color: SERIES.ink },
-    { label: "Missing facts requested at once", value: mix.share.request_information, color: SERIES.mid },
-    { label: "Sent to a reviewer", value: mix.share.human_review, color: SERIES.light },
+    { label: "Processed at once", value: mix.share.routine_processing, color: "var(--ok)" },
+    { label: "Missing facts requested", value: mix.share.request_information, color: "var(--chart-1)" },
+    { label: "To a reviewer", value: mix.share.human_review, color: "var(--action)" },
   ];
 
   return (
     <div>
-      <PageHeader title="Value & ROI" sub={`Claim Compass for a motor insurer with ${n.toLocaleString("en-US")} claims a year.`} />
-
-      {/* Headline numbers */}
-      <Card>
-        <div className="grid gap-8 md:grid-cols-3">
-          <Big value={eurCompact(e.netPerYear)} label="saved every year, after our licence" />
-          <Big value={payback} label="to pay back the integration" />
-          <Big value={`−${pct(timeCut)}`} label="manual triage time" />
+      {/* Hero: the three numbers */}
+      <section
+        className="rounded-2xl px-8 py-9 text-white"
+        style={{ background: "linear-gradient(135deg, var(--ink) 0%, var(--chart-1) 100%)" }}
+      >
+        <p className="text-[14px] font-semibold uppercase tracking-[0.12em] text-white/70">Value &amp; ROI · Claim Compass</p>
+        <div className="mt-6 grid gap-8 md:grid-cols-3">
+          <div>
+            <p className="num text-[60px] font-bold leading-none">{eurCompact(e.netPerYear)}</p>
+            <p className="mt-2 text-[16px] text-white/85">saved per year</p>
+          </div>
+          <div>
+            <p className="num text-[60px] font-bold leading-none">{payback}</p>
+            <p className="mt-2 text-[16px] text-white/85">payback</p>
+          </div>
+          <div>
+            <p className="num text-[60px] font-bold leading-none">−{pct(timeCut)}</p>
+            <p className="mt-2 text-[16px] text-white/85">manual triage</p>
+          </div>
         </div>
-        <p className="mt-6 text-[15px]">
-          Up to <span className="font-semibold">{eurCompact(up.netPerYear)}</span> a year ·{" "}
-          <span className="font-semibold">{eurCompact(threeYear)}</span> net value over 3 years
+        <p className="mt-7 text-[16px] text-white/85">
+          For an insurer with {n.toLocaleString("en-US")} claims a year · up to{" "}
+          <span className="font-semibold text-white">{eurCompact(up.netPerYear)}</span>
         </p>
-      </Card>
+      </section>
 
-      {/* Three small charts */}
-      <div className="mt-6 grid gap-6 lg:grid-cols-3">
-        <ChartCard
-          title="Payback"
-          foot={
-            <>
-              In profit from month <span className="font-semibold text-foreground">{e.paybackMonths === null ? "—" : Math.ceil(e.paybackMonths)}</span>
-            </>
-          }
-        >
-          <ResponsiveContainer width="100%" height={170}>
-            <LineChart data={curve} margin={{ top: 8, right: 8, bottom: 0, left: -4 }}>
-              <CartesianGrid vertical={false} stroke="var(--line)" />
-              <XAxis
-                dataKey="m"
-                ticks={[0, 12, 24, 36]}
-                tickFormatter={(m) => `${m} mo`}
-                tickLine={false}
-                axisLine={false}
-                tick={{ fontSize: 12, fill: "var(--text-2)" }}
-              />
-              <YAxis
-                tickFormatter={(v) => eurCompact(Number(v))}
-                tickLine={false}
-                axisLine={false}
-                width={56}
-                tick={{ fontSize: 12, fill: "var(--text-2)" }}
-              />
-              <ReferenceLine y={0} stroke="var(--text-3)" />
-              <Tooltip
-                contentStyle={{ borderRadius: 10, border: "1px solid var(--line)", fontSize: 13 }}
-                labelFormatter={(m) => `Month ${m}`}
-                formatter={(v: number) => [eur0(v), "Cumulative net"]}
-              />
-              <Line type="monotone" dataKey="v" stroke={SERIES.ink} strokeWidth={3} dot={false} />
-            </LineChart>
-          </ResponsiveContainer>
-        </ChartCard>
-
-        <ChartCard
-          title="Triage cost per year"
-          foot={
-            <>
-              <span className="font-semibold text-foreground">{eur0(e.netPerYear)}</span> less, licence included
-            </>
-          }
-        >
-          <div className="space-y-5 pt-2">
-            <HBar label="Today" value={e.todayCost} max={e.todayCost} color={SERIES.grey} text={eurCompact(e.todayCost)} />
-            <HBar label="With Claim Compass" value={e.withCost} max={e.todayCost} color={SERIES.ink} text={eurCompact(e.withCost)} />
+      {/* Two visuals, no boxes */}
+      <div className="mt-10 grid gap-12 lg:grid-cols-2">
+        <section>
+          <Title>
+            In profit from month{" "}
+            <span style={{ color: "var(--ok)" }}>{e.paybackMonths === null ? "—" : Math.ceil(e.paybackMonths)}</span>
+          </Title>
+          <div className="mt-4">
+            <ResponsiveContainer width="100%" height={200}>
+              <LineChart data={curve} margin={{ top: 8, right: 8, bottom: 0, left: -4 }}>
+                <CartesianGrid vertical={false} stroke="var(--line)" />
+                <XAxis
+                  dataKey="m"
+                  ticks={[0, 12, 24, 36]}
+                  tickFormatter={(m) => `${m} mo`}
+                  tickLine={false}
+                  axisLine={false}
+                  tick={{ fontSize: 13, fill: "var(--text-2)" }}
+                />
+                <YAxis
+                  tickFormatter={(v) => eurCompact(Number(v))}
+                  tickLine={false}
+                  axisLine={false}
+                  width={60}
+                  tick={{ fontSize: 13, fill: "var(--text-2)" }}
+                />
+                <ReferenceLine y={0} stroke="var(--text-3)" />
+                <Tooltip
+                  contentStyle={{ borderRadius: 10, border: "1px solid var(--line)", fontSize: 13 }}
+                  labelFormatter={(m) => `Month ${m}`}
+                  formatter={(v: number) => [eur0(v), "Cumulative net"]}
+                />
+                <Line type="monotone" dataKey="v" stroke="var(--ok)" strokeWidth={3.5} dot={false} />
+              </LineChart>
+            </ResponsiveContainer>
           </div>
-        </ChartCard>
+        </section>
 
-        <ChartCard
-          title="Where claims go"
-          foot={
-            <>
-              <span className="font-semibold text-foreground">{pct(mix.share.routine_processing + mix.share.request_information)}</span> get their next step without a handler
-            </>
-          }
-        >
-          <div className="flex h-5 w-full overflow-hidden rounded-sm">
+        <section>
+          <Title>
+            <span style={{ color: "var(--chart-1)" }}>{pct(mix.share.routine_processing + mix.share.request_information)}</span> of claims
+            need no handler
+          </Title>
+          <div className="mt-6 flex h-10 w-full overflow-hidden rounded-lg">
             {shares.map((s) => (
-              <div key={s.label} style={{ width: `${s.value * 100}%`, background: s.color }} />
-            ))}
-          </div>
-          <div className="mt-4 space-y-2">
-            {shares.map((s) => (
-              <div key={s.label} className="flex items-center justify-between text-[14.5px]">
-                <span className="inline-flex items-center gap-2">
-                  <span className="inline-block size-3 rounded-sm" style={{ background: s.color }} />
-                  {s.label}
-                </span>
-                <span className="num font-semibold">{pct(s.value)}</span>
+              <div
+                key={s.label}
+                className="num flex items-center justify-center text-[14px] font-semibold text-white"
+                style={{ width: `${s.value * 100}%`, background: s.color }}
+              >
+                {s.value >= 0.12 ? pct(s.value) : ""}
               </div>
             ))}
           </div>
-        </ChartCard>
-      </div>
-
-      {/* Impact tiles */}
-      <div className="mt-6 grid gap-4 md:grid-cols-4">
-        <Tile value={Math.round(hoursSaved).toLocaleString("en-US")} label="handler hours saved a year" />
-        <Tile value={`${(e.fteToday - e.fteWith).toFixed(1)} FTE`} label="freed for complex claims, no hiring" />
-        <Tile value={`€${(e.netPerYear / n).toFixed(2)}`} label="saved on every claim" />
-        <Tile value={`${inputs.changeWeeksToday} wk → 1 day`} label={`per rule change, ${eurCompact(change.today.total - change.withSystem.total)} saved each time`} />
-      </div>
-
-      {/* Unit economics + trust */}
-      <div className="mt-6 grid gap-6 lg:grid-cols-2">
-        <Card>
-          <h2 className="text-[16px] font-semibold">The insurer keeps {pct(keeps)} of the value</h2>
-          <div className="mt-4 space-y-4">
-            <HBar label="Value created per claim" value={valuePerClaim} max={valuePerClaim} color={SERIES.ink} text={`€${valuePerClaim.toFixed(2)}`} />
-            <HBar label="Our price per claim" value={pricePerClaim} max={valuePerClaim} color={SERIES.light} text={`€${pricePerClaim.toFixed(2)}`} />
-          </div>
-          <p className="mt-4 text-[14.5px] text-text-2">
-            {eurCompact(inputs.platformPerYear)} a year + {eurCompact(inputs.implementation)} once per mid-sized insurer
-          </p>
-        </Card>
-        <Card>
-          <h2 className="text-[16px] font-semibold">Built for control</h2>
-          <ul className="mt-4 space-y-3 text-[15px]">
-            {[
-              "Every decision shows its rule, policy version and evidence",
-              "Same claim, same answer: the written policy decides",
-              "Rule changes recheck open claims; closed ones never change",
-              "Every override is logged with reason and reviewer",
-            ].map((t) => (
-              <li key={t} className="flex items-start gap-2.5">
-                <CheckCircle2 className="mt-0.5 size-5 shrink-0" style={{ color: SERIES.ink }} />
-                {t}
-              </li>
+          <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 text-[15px]">
+            {shares.map((s) => (
+              <span key={s.label} className="inline-flex items-center gap-2">
+                <span className="inline-block size-3.5 rounded-sm" style={{ background: s.color }} />
+                {s.label}
+              </span>
             ))}
-          </ul>
-        </Card>
+          </div>
+          <div className="mt-8 space-y-4">
+            <HBar label="Triage cost today" value={e.todayCost} max={e.todayCost} color="var(--action)" text={eurCompact(e.todayCost)} />
+            <HBar label="With Claim Compass" value={e.withCost} max={e.todayCost} color="var(--ok)" text={eurCompact(e.withCost)} />
+          </div>
+        </section>
       </div>
+
+      {/* One strip of numbers */}
+      <div className="mt-12 grid gap-6 border-y border-line py-7 md:grid-cols-4 md:divide-x md:divide-line">
+        <Stat value={`${(e.fteToday - e.fteWith).toFixed(1)} FTE`} label="freed, no hiring" color="var(--chart-1)" />
+        <Stat value={`€${(e.netPerYear / n).toFixed(2)}`} label="saved per claim" color="var(--ok)" />
+        <Stat value={`${inputs.changeWeeksToday} wk → 1 day`} label="per rule change" color="var(--action)" />
+        <Stat value={pct(keeps)} label={`of the value stays with the insurer (we charge €${pricePerClaim.toFixed(2)}/claim)`} color="var(--ink)" />
+      </div>
+
+      <p className="mt-6 flex flex-wrap gap-x-6 gap-y-2 text-[15px]">
+        {["Every decision explained", "Same claim, same answer", "Every override logged"].map((t) => (
+          <span key={t} className="inline-flex items-center gap-2">
+            <CheckCircle2 className="size-5" style={{ color: "var(--ok)" }} />
+            {t}
+          </span>
+        ))}
+      </p>
 
       {/* Backup */}
-      <details className="card-quiet mt-8 p-6">
+      <details className="mt-10">
         <summary className="cursor-pointer text-[15px] font-medium">Backup for Q&amp;A: how these numbers are calculated</summary>
         <p className="mt-4 text-[14px] text-text-2">
           Net saving = (triage hours today − hours with the system) × hourly cost ({eur0(e.hourly)}) − licence.
