@@ -253,10 +253,10 @@ export const DEFAULT_ASSUMPTIONS: Assumption[] = [
   {
     key: "implementation",
     label: "One-off implementation",
-    value: 250000,
+    value: 120000,
     unit: "€",
     kind: "assumption",
-    note: "Integration with the claims system, data mapping, testing, rollout: about 6 months of a small team.",
+    note: "Insurer-side, one-off: connect the claims export or API and map fields (€40k), IT security, GDPR and outsourcing review (€25k), replay on historical claims plus a 4-week parallel run (€35k), training and rollout (€20k). No core-system change; rule changes later need no IT.",
     min: 0,
     max: 1000000,
     step: 10000,
