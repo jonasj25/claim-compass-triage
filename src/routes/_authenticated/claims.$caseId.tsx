@@ -1513,10 +1513,18 @@ function DecisionPanel({
       <>
         {head("Your decision", reason ? `Flagged: ${reason}` : `Rules say: ${RECOMMENDATION_LABELS[rec]}`)}
         <div className="grid grid-cols-2 gap-2">
-          <Button variant="outline" disabled={busy} onClick={onAccept} className="text-ok">
+          <Button
+            disabled={busy}
+            onClick={onAccept}
+            className="h-11 bg-ok text-[14px] font-semibold text-white shadow-none hover:bg-ok/90"
+          >
             <CircleCheck className="size-4" /> Accept claim
           </Button>
-          <Button variant="outline" disabled={busy} onClick={onDeny} className="text-action">
+          <Button
+            disabled={busy}
+            onClick={onDeny}
+            className="h-11 bg-action text-[14px] font-semibold text-white shadow-none hover:bg-action/90"
+          >
             <CircleX className="size-4" /> Deny claim
           </Button>
         </div>
@@ -1547,18 +1555,15 @@ function DecisionPanel({
       <Button variant="outline" disabled={busy} onClick={onRequest} className="mt-2 w-full">
         <FileQuestion className="size-4" /> Ask customer for information
       </Button>
-      <p className="mt-1.5 text-[10.5px] text-text-3">Opens the Customer tab: write an email or call. Nothing is sent before you confirm.</p>
-      <div className="mt-4 border-t border-line pt-3">
-        <p className="mb-1.5 text-[11px] text-text-3">Rule got it wrong?</p>
-        <Button
-          variant="outline"
-          disabled={busy}
-          onClick={onOverride}
-          className="w-full border-dashed border-link/60 text-link hover:bg-link/5 hover:text-link"
-        >
-          <PencilLine className="size-4" /> Change recommendation <Kbd>O</Kbd>
-        </Button>
-      </div>
+      <Button
+        variant="outline"
+        disabled={busy}
+        onClick={onOverride}
+        title="Rule got it wrong? Change the recommendation with a reason"
+        className="mt-2 w-full border-dashed border-link/60 text-link hover:bg-link/5 hover:text-link"
+      >
+        <PencilLine className="size-4" /> Change recommendation <Kbd>O</Kbd>
+      </Button>
     </>
   );
 }
