@@ -110,6 +110,8 @@ function ReportPage() {
   const formPlate = useRef("");
   const formPlateOk = (a: ReportAnswers) => formIsVerified(a) && !!formPlate.current && formPlate.current === plateKey(a.plate);
   const formNext = async () => {
+    // Always the latest typed values (Enter right after typing must not check an older value)
+    const answers = latest.current.answers;
     const q = qs[Math.min(step, qs.length - 1)];
     if (q.key === "email" && !formIsVerified(answers)) {
       setFormCheck({ busy: true, error: null });
