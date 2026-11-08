@@ -18,7 +18,7 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/_authenticated/tests")({
   head: () => ({
     meta: [
-      { title: "Test results — Clearpath" },
+      { title: "Quality — Clearpath" },
       {
         name: "description",
         content:
@@ -26,7 +26,7 @@ export const Route = createFileRoute("/_authenticated/tests")({
       },
     ],
   }),
-  component: TestResults,
+  component: QualityPage,
 });
 
 const V1 = BATCH_POLICY_V1.version.toUpperCase();
@@ -34,7 +34,7 @@ const V2 = BATCH_POLICY_V2.version.toUpperCase();
 const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? "" : "s"}`;
 const pct = (x: number, n: number) => (n ? `${Math.round((x / n) * 1000) / 10}%` : "—");
 
-function TestResults() {
+function QualityPage() {
   const q = useMemo(() => labelledReport(), []);
   const intake = useMemo(() => runIntakeEval(BATCH_POLICY_V2), []);
   const { data: cases = [] } = useQuery(casesQuery);
@@ -72,7 +72,7 @@ function TestResults() {
     <div>
       <PageHeader
         eyebrow="Policy owner"
-        title="Test results"
+        title="Quality"
         sub={`Every policy version is tested on ${q.total} labelled claims before it goes live: claims where the correct next step was written down by hand, once under ${V1} and once under ${V2}. The ${q.sets.join(" and ").toLowerCase()} are the same files the batch report uses.`}
       />
 

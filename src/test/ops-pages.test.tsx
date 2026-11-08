@@ -98,7 +98,7 @@ describe("ops lead pages", () => {
     expect(screen.getByText("Monitoring plan, live")).toBeTruthy();
   });
 
-  it("Test results show before/after by version, changed and blank cases, mistakes and the after-launch plan", async () => {
+  it("Quality shows before/after by version, changed and blank cases, mistakes and the after-launch plan", async () => {
     await renderPage("tests");
     expect(screen.getByText("Before and after the change")).toBeTruthy();
     expect(screen.getByText("V1 rules still running after the change")).toBeTruthy();
