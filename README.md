@@ -41,6 +41,13 @@ Only registered customers can report a claim. Use one of these three:
 - The number plate is never filled in for you. You have to type it or say it, which is how we check that you are who you say you are.
 - You can upload documents (repair quote, police report). Clearpath reads them and fills in the claim details it finds. Name, email and number plate are never taken from a document.
 
+**Sample documents to upload:** two demo documents (synthetic data, in German like real ones) you can use for a claim:
+
+- [Police report: `Polizeibericht_Autounfall.pdf`](docs/sample-claim/Polizeibericht_Autounfall.pdf): accident on 14.10.2026, no injuries, the other driver caused it.
+- [Repair quote: `Kostenvoranschlag_Autowerkstatt.pdf`](docs/sample-claim/Kostenvoranschlag_Autowerkstatt.pdf): itemized garage quote, €2,296.70 including VAT.
+
+Download them, then upload them while reporting the claim. Clearpath reads the date, what happened, injuries, liability and the quote from them. The quote is above the auto-processing limit, so expect the claim to go to a reviewer.
+
 The claim is triaged the moment it's submitted. Afterwards, open **My claims** (`/status`) and enter the number plate to see where the claim stands, what happens next, and to upload anything that's still missing.
 
 ### 2. Run your own CSV: Judges batch run
