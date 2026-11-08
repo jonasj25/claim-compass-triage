@@ -30,6 +30,7 @@ import {
   RefreshCw,
   FileQuestion,
   BellRing,
+  PencilLine,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -1547,14 +1548,17 @@ function DecisionPanel({
         <FileQuestion className="size-4" /> Ask customer for information
       </Button>
       <p className="mt-1.5 text-[10.5px] text-text-3">Opens the Customer tab: write an email or call. Nothing is sent before you confirm.</p>
-      <button
-        type="button"
-        disabled={busy}
-        onClick={onOverride}
-        className="mt-3 w-full text-center text-[11px] text-text-2 underline-offset-4 hover:text-foreground hover:underline"
-      >
-        Rule got it wrong? Change recommendation <Kbd>O</Kbd>
-      </button>
+      <div className="mt-4 border-t border-line pt-3">
+        <p className="mb-1.5 text-[11px] text-text-3">Rule got it wrong?</p>
+        <Button
+          variant="outline"
+          disabled={busy}
+          onClick={onOverride}
+          className="w-full border-dashed border-link/60 text-link hover:bg-link/5 hover:text-link"
+        >
+          <PencilLine className="size-4" /> Change recommendation <Kbd>O</Kbd>
+        </Button>
+      </div>
     </>
   );
 }
