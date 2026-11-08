@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { accessibleRoles, canAccess, highestRole, sectionOf } from "./role";
+import { accessibleRoles, accessWho, canAccess, highestRole, sectionOf } from "./role";
 
 describe("role hierarchy", () => {
   it("ops lead sees everything, policy owner sees policy + reviewer, reviewer only reviewer", () => {
@@ -17,6 +17,12 @@ describe("role hierarchy", () => {
     expect(sectionOf("/business-case/")).toBe("ops_lead");
     expect(sectionOf("/quality")).toBe("ops_lead");
     expect(sectionOf("/import")).toBeNull();
+  });
+
+  it("names who may open a section", () => {
+    expect(accessWho("ops_lead")).toBe("an Ops lead");
+    expect(accessWho("policy_owner")).toBe("a Policy owner or an Ops lead");
+    expect(accessWho("reviewer")).toBe("a Reviewer or a Policy owner or an Ops lead");
   });
 
   it("uses the highest of several role rows", () => {

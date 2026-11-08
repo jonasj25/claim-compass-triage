@@ -49,6 +49,15 @@ export const canAccess = (userRole: Role, section: Role) =>
 /** Roles whose section this user may open, lowest first. */
 export const accessibleRoles = (userRole: Role) => ROLES.filter((r) => canAccess(userRole, r));
 
+/** Roles allowed to open a section, lowest first (e.g. policy owner pages: policy owner, ops lead). */
+export const rolesWithAccess = (section: Role) => ROLES.filter((r) => canAccess(r, section));
+
+/** "a Policy owner or an Ops lead" */
+export const accessWho = (section: Role) =>
+  rolesWithAccess(section)
+    .map((r) => `${/^[aeiou]/i.test(ROLE_LABELS[r]) ? "an" : "a"} ${ROLE_LABELS[r]}`)
+    .join(" or ");
+
 /** The highest role among the user's role rows (a user can hold more than one). */
 export const highestRole = (roles: (string | null | undefined)[]): Role =>
   roles

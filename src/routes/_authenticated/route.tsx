@@ -31,6 +31,7 @@ import {
   PanelLeftOpen,
   Sparkles,
   FlaskConical,
+  Lock,
   TrendingUp,
 } from "lucide-react";
 import type { ReactNode } from "react";
@@ -42,7 +43,7 @@ import {
   ROLE_HOME,
   ROLE_LABELS,
   ROLE_NAV,
-  accessibleRoles,
+  accessWho,
   canAccess,
   highestRole,
   initials,
@@ -101,14 +102,11 @@ function AppShell() {
   const path = useRouterState({ select: (s) => s.location.pathname });
   const section = sectionOf(path);
   const blocked = !!meQuery.data && !!section && !canAccess(meQuery.data.role, section);
-  useEffect(() => {
-    if (!blocked || !meQuery.data) return;
-    toast(`The ${ROLE_LABELS[section!]} pages aren't available for your account`);
-    navigate({ to: ROLE_HOME[meQuery.data.role], replace: true });
-  }, [blocked, section, meQuery.data, navigate]);
+  // Every role tab stays visible. Opening a section the account may not see shows a
+  // "sign in as …" notice instead of the page (only allowed views are remembered).
   const setRole = (r: Role) => {
-    if (!meQuery.data || !canAccess(meQuery.data.role, r)) return;
-    localStorage.setItem(ROLE_KEY, r);
+    if (!meQuery.data) return;
+    if (canAccess(meQuery.data.role, r)) localStorage.setItem(ROLE_KEY, r);
     setRoleState(r);
     navigate({ to: ROLE_HOME[r] });
   };
@@ -159,7 +157,7 @@ function AppShell() {
           <SideNav expanded={expanded} onToggle={toggleNav} />
           <div className="mx-auto max-w-[1440px] p-6">
             <main className="enterprise-content min-w-0">
-              {blocked ? <p className="label-mono">Not available for your account</p> : <Outlet />}
+              {blocked ? <NoAccess section={section!} /> : <Outlet />}
             </main>
           </div>
         </div>
@@ -200,30 +198,34 @@ function TopBar() {
         <span className="truncate text-[13px] text-text-2">{title}</span>
       </div>
       <div className="flex shrink-0 items-center gap-3">
-        {accessibleRoles(me.role).length > 1 && (
         <div
           role="tablist"
           aria-label="Role"
           className="absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 rounded-md border border-line bg-surface-2 p-0.5"
         >
-          {accessibleRoles(me.role).map((r) => (
-            <Button
-              key={r}
-              role="tab"
-              aria-selected={r === role}
-              variant="ghost"
-              size="sm"
-              onClick={() => setRole(r)}
-              className={cn(
-                "h-7 rounded px-2 text-[11px]",
-                r === role ? "bg-surface text-foreground" : "text-text-2",
-              )}
-            >
-              {ROLE_LABELS[r]}
-            </Button>
-          ))}
+          {(Object.keys(ROLE_LABELS) as Role[]).map((r) => {
+            const allowed = canAccess(me.role, r);
+            return (
+              <Button
+                key={r}
+                role="tab"
+                aria-selected={r === role}
+                variant="ghost"
+                size="sm"
+                onClick={() => setRole(r)}
+                title={allowed ? undefined : `Sign in as ${accessWho(r)} to open these pages`}
+                className={cn(
+                  "h-7 gap-1 rounded px-2 text-[11px]",
+                  r === role ? "bg-surface text-foreground" : "text-text-2",
+                  !allowed && r !== role && "text-text-3",
+                )}
+              >
+                {!allowed && <Lock className="size-3" strokeWidth={2} aria-label="No access" />}
+                {ROLE_LABELS[r]}
+              </Button>
+            );
+          })}
         </div>
-        )}
         <span className="rounded-md border border-line px-2 py-1 font-mono text-[11px] text-text-2">
           Policy {policy.data?.version ?? "…"}
         </span>
@@ -240,6 +242,37 @@ function TopBar() {
       </div>
       <AccountDialog title="Profile" open={profileOpen} onOpenChange={setProfileOpen} />
     </header>
+  );
+}
+
+function NoAccess({ section }: { section: Role }) {
+  const { me, setRole } = useRole();
+  const qc = useQueryClient();
+  const navigate = useNavigate();
+  const signIn = async () => {
+    await qc.cancelQueries();
+    qc.clear();
+    localStorage.removeItem(ROLE_KEY);
+    await supabase.auth.signOut();
+    void navigate({ to: "/", replace: true });
+  };
+  return (
+    <div className="mx-auto mt-16 max-w-[520px] rounded-[14px] border border-line bg-surface p-8 text-center">
+      <span className="mx-auto flex size-11 items-center justify-center rounded-full bg-surface-2">
+        <Lock className="size-5 text-text-2" strokeWidth={1.8} />
+      </span>
+      <h1 className="mt-4 text-[20px] font-semibold">{ROLE_LABELS[section]} pages</h1>
+      <p className="mt-2 text-[14px] text-text-2">
+        You need to sign in as {accessWho(section)} to open this page. You're signed in as{" "}
+        {me.name} ({ROLE_LABELS[me.role]}).
+      </p>
+      <div className="mt-6 flex justify-center gap-3">
+        <Button onClick={() => void signIn()}>Sign in as another user</Button>
+        <Button variant="outline" onClick={() => setRole(me.role)}>
+          Back to my pages
+        </Button>
+      </div>
+    </div>
   );
 }
 
