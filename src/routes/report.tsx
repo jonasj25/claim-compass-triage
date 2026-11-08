@@ -228,12 +228,9 @@ function ReportPage() {
     const a = latest.current.answers;
     const basicsOk = activeQuestions(a).every((q) => canContinue(q, a));
     if (!basicsOk) return setMode("review");
-    // Before the claim is created, offer to add the reports and the quote (never required)
-    const have = new Set(latest.current.uploads.map((u) => u.kind));
-    if (!have.has("incident_report") || !have.has("quote")) {
-      setMode("docs");
-      window.scrollTo({ top: 0 });
-    } else void submit();
+    // Never sent automatically: the customer checks the answers and documents and presses Send
+    setMode("docs");
+    window.scrollTo({ top: 0 });
   };
 
   return (
@@ -274,6 +271,7 @@ function ReportPage() {
                 setLines={setLines}
                 setHeardIn={setHeardIn}
                 uploadNote={uploadNote}
+                uploadCount={uploads.length}
                 onStart={() => {
                   channel.current = "phone";
                 }}
@@ -320,6 +318,8 @@ function ReportPage() {
 
         {mode === "docs" && (
           <DocsStep
+            onEdit={() => setMode("review")}
+            summary={activeQuestions(answers).map((q) => ({ label: q.label, value: answerLabel(q, answers) }))}
             uploads={uploadsCard()}
             count={uploads.length}
             busy={busy}
@@ -429,23 +429,50 @@ function Landing({ qs, answers, heardIn, conversation, onForm, uploads }: { qs: 
 
 /** Does what the customer said really differ from the document? ("unsure" never counts as a difference) */
 
-function DocsStep({ uploads, count, busy, error, onSend }: { uploads: ReactNode; count: number; busy: boolean; error: string | null; onSend: () => void }) {
+function DocsStep({
+  uploads,
+  count,
+  busy,
+  error,
+  onSend,
+  onEdit,
+  summary,
+}: {
+  uploads: ReactNode;
+  count: number;
+  busy: boolean;
+  error: string | null;
+  onSend: () => void;
+  onEdit: () => void;
+  summary: { label: string; value: string }[];
+}) {
   return (
-    <div className="mx-auto max-w-[620px] pt-8">
+    <div className="mx-auto max-w-[680px] pt-8">
       <p className="label-mono">Almost done</p>
-      <h1 className="mt-3 text-[30px] font-semibold leading-tight tracking-[-0.02em]">Do you already have any documents?</h1>
+      <h1 className="mt-3 text-[30px] font-semibold leading-tight tracking-[-0.02em]">Check your claim and send it</h1>
       <p className="mt-3 text-[15px] leading-relaxed text-text-2">
-        A police or incident report and the repair quote from your workshop help us decide faster. Not required: if you don't have them yet, send your claim now and we'll ask you for them later.
+        Nothing has been sent yet. Add a police report or repair quote if you have one (not required: we'll ask for it later otherwise), check your answers, then press Send.
       </p>
       <div className="mt-6">{uploads}</div>
+      <div className="card-quiet mt-4 p-5">
+        <div className="flex items-baseline justify-between">
+          <p className="section-title">Your answers</p>
+          <button onClick={onEdit} className="text-[12.5px] text-link hover:underline">
+            Change something
+          </button>
+        </div>
+        <dl className="mt-3 divide-y divide-line">
+          {summary.map((r) => (
+            <div key={r.label} className="flex justify-between gap-4 py-2 text-[13.5px]">
+              <dt className="text-text-2">{r.label}</dt>
+              <dd className={cn("text-right", !r.value && "text-text-3")}>{r.value || "Open, we'll ask later"}</dd>
+            </div>
+          ))}
+        </dl>
+      </div>
       {error && <p className="mt-4 text-[13px] text-action">{error}</p>}
-      <div className="mt-6 flex flex-wrap items-center justify-end gap-3">
-        {count === 0 && (
-          <Button variant="ghost" onClick={onSend} disabled={busy} className="h-11">
-            I don't have them yet, send without
-          </Button>
-        )}
-        <Button onClick={onSend} disabled={busy || count === 0} className="h-11 px-6">
+      <div className="mt-6 flex justify-end">
+        <Button onClick={onSend} disabled={busy} className="h-11 px-6">
           {busy ? "Sending…" : count ? `Send my claim with ${count} document${count > 1 ? "s" : ""}` : "Send my claim"} <ArrowRight />
         </Button>
       </div>
@@ -690,8 +717,10 @@ function Conversation({
   onDone,
   onComplete,
   uploadNote,
+  uploadCount = 0,
 }: {
   uploadNote?: string;
+  uploadCount?: number;
   answers: ReportAnswers;
   setAnswers: (fn: (a: ReportAnswers) => ReportAnswers) => void;
   lines: Line[];
@@ -710,6 +739,8 @@ function Conversation({
   const [interim, setInterim] = useState("");
   const [note, setNote] = useState<string | null>(null);
   const [lang, setLang] = useState<"en" | "de">("en");
+  const latestUploads = useRef(0);
+  latestUploads.current = uploadCount;
   // A document uploaded during the call: tell Mia so she doesn't ask about it
   useEffect(() => {
     if (uploadNote) session.current?.sendContextualUpdate?.(uploadNote);
@@ -1065,7 +1096,12 @@ function Conversation({
               });
             const open = activeQuestions(merged).filter((q) => fieldState(q, merged) === "missing");
             const nq = nextQuestion(merged);
-            if (!nq) return `${greeting}Saved. Nothing is missing. Close the conversation now.`;
+            if (!nq)
+              return `${greeting}Saved. Nothing is missing. ${
+                latestUploads.current
+                  ? "Documents are already uploaded. Tell the customer to check their answers on the screen and press Send, then end the call."
+                  : "No documents uploaded yet. Tell the customer they can still add a police report or repair quote on the screen, then check their answers and press Send. Then end the call."
+              }`;
             return `${greeting}Saved. Still missing: ${open.map((q) => q.label + (q.optional ? " (optional)" : "")).join(", ")}. Ask next: "${nq.ask}"`;
           },
         },
