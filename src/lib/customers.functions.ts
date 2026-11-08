@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { findCustomer, samePlate } from "./customers";
+import { findCustomer, findCustomerByPlate, samePlate } from "./customers";
 
 // Mia and the written form check the customer against the registered customers before anything about the claim.
 // Only yes/no answers come back (plus the registered name and email), never the list and never the registered plate.
@@ -20,7 +20,10 @@ export const verifyCustomer = createServerFn({ method: "POST" })
   }))
   .handler(async ({ data }): Promise<CustomerCheck> => {
     const { REGISTERED_CUSTOMERS } = await import("./customers.server");
-    const c = findCustomer(REGISTERED_CUSTOMERS, data.name, data.email);
+    // Name + email, or (voice) name + number plate: either pair identifies the customer
+    const c =
+      findCustomer(REGISTERED_CUSTOMERS, data.name, data.email) ??
+      (data.plate ? findCustomerByPlate(REGISTERED_CUSTOMERS, data.name, data.plate) : null);
     if (!c) return { registered: false };
     return {
       registered: true,

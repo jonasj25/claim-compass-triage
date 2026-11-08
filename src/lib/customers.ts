@@ -77,6 +77,12 @@ export function plateKey(raw: string): string {
 export const samePlate = (registered: string, said: string) =>
   !!plateKey(said) && plateKey(registered) === plateKey(said);
 
+/** The registered customer with this name AND this number plate, or null. Both must belong to the same customer. */
+export function findCustomerByPlate(list: readonly Customer[], name: string, plate: string): Customer | null {
+  if (!plateKey(plate) || !name.trim()) return null;
+  return list.find((c) => samePlate(c.plate, plate) && sameName(c.name, name)) ?? null;
+}
+
 /** The registered customer with this name AND this email, or null. Both must belong to the same customer. */
 export function findCustomer(
   list: readonly Customer[],
