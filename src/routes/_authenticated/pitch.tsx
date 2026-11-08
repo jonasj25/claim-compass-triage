@@ -1,333 +1,298 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { useMemo } from "react";
-import { CheckCircle2, ExternalLink } from "lucide-react";
+import { ArrowRight, ExternalLink } from "lucide-react";
+import { BATCH_POLICY_V1, BATCH_POLICY_V2 } from "@/lib/batch";
 import {
-  CartesianGrid,
-  Line,
-  LineChart,
-  ReferenceLine,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
-import { useClaimMix } from "@/lib/claim-mix";
-import {
+  breakEvenProbability,
   DEFAULT_ASSUMPTIONS,
   defaultInputs,
   eur0,
   eurCompact,
   pct,
+  policyChangeCost,
   SOURCES,
   triageEconomics,
+  unnecessaryReviewCost,
+  wrongRoutineCost,
   type Assumption,
-  type Inputs,
 } from "@/lib/business";
+import { isClosed } from "@/lib/csv";
+import { labelledReport, VOLUME_CLAIMS, volumeMix } from "@/lib/quality";
+import { secondCheckReason } from "@/lib/second-check";
+import { decide } from "@/lib/triage";
+import { Card, Kpi, PageHeader } from "@/components/triage/ui";
 import { KindBadge } from "@/components/triage/charts";
+import { cn } from "@/lib/utils";
 
-// Value & ROI: the pitch page. Same model as the Business case page (triageEconomics,
-// policyChangeCost) on the shared claim mix (useClaimMix). Headline = base case, "up to" = optimistic.
-// Scenarios and every input with its source are in the collapsed "Backup for Q&A".
+// Value & ROI: the business case in one page, answering the three questions of the brief in order:
+// 1) annual cost of triage today vs with the system, net benefit, payback
+// 2) cost of errors from the measured v1 / v2 error rates, and how that sets the thresholds
+// 3) cost of a policy change today vs with the system (v2 as the example)
+// Fixed, reproducible inputs: the 500-claim demo mix and the labelled test set (not the live claims, which
+// change during a demo). Every number recalculates on the Business case page from the same model.
 
 export const Route = createFileRoute("/_authenticated/pitch")({
   head: () => ({
     meta: [
-      { property: "og:title", content: "Value & ROI — Claim Compass" },
-      { property: "og:description", content: "What Claim Compass is worth to a mid-sized motor insurer." },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
-      { title: "Value & ROI — Claim Compass" },
-      { name: "description", content: "Savings, payback and impact of Claim Compass for a mid-sized motor insurer." },
+      { title: "Value & ROI — Clearpath" },
+      { name: "description", content: "What Clearpath is worth to a mid-sized European motor insurer, from transparent assumptions." },
     ],
   }),
   component: ValueRoi,
 });
 
-type ScenarioKey = "conservative" | "base" | "optimistic";
-type Key = Assumption["key"];
-
-const SCENARIOS: { key: ScenarioKey; title: string; overrides: Partial<Record<Key, number>>; why: string }[] = [
-  {
-    key: "conservative",
-    title: "Conservative",
-    overrides: { triageMinToday: 12, infoMin: 8, platformPerYear: 150000, implementation: 200000 },
-    why: "12 min triage today, information requests by hand, licence +25%, integration +33%",
-  },
-  { key: "base", title: "Base case", overrides: {}, why: "Business case defaults; all headline numbers" },
-  {
-    key: "optimistic",
-    title: "Optimistic",
-    overrides: { triageMinToday: 18, reviewMin: 12, platformPerYear: 100000 },
-    why: "18 min triage today, 12 min reviews, early-customer licence; all 'up to' numbers",
-  },
-];
-
 const srcById = Object.fromEntries(SOURCES.map((s) => [s.id, s]));
+const byKey = Object.fromEntries(DEFAULT_ASSUMPTIONS.map((a) => [a.key, a])) as Record<Assumption["key"], Assumption>;
 
-function fmtVal(a: Assumption, v: number) {
+/** 95% upper bound for an error rate when 0 errors were seen in n cases ("rule of three") */
+const upperBoundZero = (n: number) => (n ? 3 / n : 0);
+
+function ValueRoi() {
+  const m = useMemo(() => {
+    const i = defaultInputs();
+    const mix = volumeMix(BATCH_POLICY_V2, BATCH_POLICY_V1);
+    const open = VOLUME_CLAIMS.filter((c) => !isClosed(c.case_status));
+    const second = open.filter((c) => secondCheckReason(c, BATCH_POLICY_V2, decide(c, BATCH_POLICY_V2).recommendation)).length;
+    const econ = triageEconomics(i, mix, open.length ? second / open.length : 0);
+    const q = labelledReport();
+    const change = policyChangeCost(i, mix);
+    return { i, mix, econ, q, change, wrong: wrongRoutineCost(i), unnecessary: unnecessaryReviewCost(i), be: breakEvenProbability(i) };
+  }, []);
+  const { i, mix, econ, q, change } = m;
+
+  const rows = [
+    { name: "v1 rules, before the change", metric: q.v1, note: "v1 labels, all claims" },
+    { name: "v1 rules kept after the change", metric: q.keepV1, note: "stale rules, judged by v2", bad: true },
+    { name: "v2 rules", metric: q.v2, note: "after the update" },
+  ];
+  const ratio = Math.round(m.wrong / m.unnecessary);
+
+  return (
+    <div>
+      <PageHeader
+        eyebrow="Ops lead"
+        title="Value & ROI"
+        sub={
+          <>
+            A mid-sized European motor insurer with {i.claimsPerYear.toLocaleString("en-US")} small own-damage claims a year (glass, parking,
+            minor bodywork). The three questions of the business case, in order. Every input is listed at the bottom and can be changed on{" "}
+            <Link to="/business-case" className="text-link hover:underline">
+              Business case
+            </Link>
+            .
+          </>
+        }
+      />
+
+      {/* 1 — Annual cost of triage */}
+      <Section n={1} title="Annual cost of triage" lead="People time to decide the next step for every claim, plus what the system costs to run.">
+        <div className="kpi-strip grid grid-cols-2 gap-0 lg:grid-cols-4">
+          <Kpi label="Triage cost today" value={eurCompact(econ.todayCost)} sub={`${i.triageMinToday} min per claim by hand`} />
+          <Kpi label="With Clearpath" value={eurCompact(econ.withCost)} sub={`people ${eurCompact(econ.withPeopleCost)} + platform ${eurCompact(i.platformPerYear)}`} />
+          <Kpi label="Net benefit per year" value={eurCompact(econ.netPerYear)} sub={`${(econ.fteToday - econ.fteWith).toFixed(1)} FTE freed for real reviews`} />
+          <Kpi label="Payback" value={econ.paybackMonths === null ? "—" : `${econ.paybackMonths.toFixed(1)} months`} sub={`on ${eurCompact(i.implementation)} one-off implementation`} />
+        </div>
+        <div className="mt-5 grid gap-5 lg:grid-cols-2">
+          <div>
+            <CompareBar label="Today" value={econ.todayCost} max={econ.todayCost} tone="bg-text-3/50" />
+            <CompareBar label="With Clearpath" value={econ.withCost} max={econ.todayCost} tone="bg-link" />
+          </div>
+          <ul className="space-y-1.5 text-[13px] text-text-2">
+            <li>
+              <span className="text-foreground">{pct(econ.automation)}</span> of claims need no reviewer: {pct(mix.share.routine_processing)} go straight to
+              processing, {pct(mix.share.request_information)} get an automatic request for the missing facts.
+            </li>
+            <li>
+              <span className="text-foreground">{pct(mix.share.human_review)}</span> still go to a person ({i.reviewMin} min each); routine claims close to the
+              limit get a short second check.
+            </li>
+            <li>Not counted: faster payouts, fewer customer calls, and the error savings below.</li>
+          </ul>
+        </div>
+      </Section>
+
+      {/* 2 — Cost of errors */}
+      <Section
+        n={2}
+        title="Cost of errors"
+        lead="Measured on the labelled test set (provided dev cases + hand-labelled edge cases). Priced with the unit costs below."
+      >
+        <div className="overflow-x-auto">
+          <table className="w-full text-[13.5px]">
+            <thead>
+              <tr className="border-b border-line text-left text-[11px] uppercase tracking-[0.06em] text-text-3">
+                <th className="py-2 pr-4 font-medium">Rules</th>
+                <th className="py-2 pr-4 font-medium">Correct</th>
+                <th className="py-2 pr-4 font-medium">Wrong routine</th>
+                <th className="py-2 pr-4 font-medium">Unnecessary review</th>
+                <th className="py-2 text-right font-medium">Error cost per 1,000 claims</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => {
+                const wr = r.metric.n ? r.metric.wrongRoutine / r.metric.n : 0;
+                const ur = r.metric.n ? r.metric.unnecessaryReview / r.metric.n : 0;
+                const cost = 1000 * (wr * m.wrong + ur * m.unnecessary);
+                return (
+                  <tr key={r.name} className="border-b border-line/60">
+                    <td className="py-2.5 pr-4">
+                      {r.name} <span className="text-[12px] text-text-3">· {r.note}</span>
+                    </td>
+                    <td className="num py-2.5 pr-4">
+                      {r.metric.correct} / {r.metric.n}
+                    </td>
+                    <td className={cn("num py-2.5 pr-4", r.bad && r.metric.wrongRoutine > 0 && "font-medium text-action")}>
+                      {r.metric.wrongRoutine} ({pct(wr, 1)})
+                    </td>
+                    <td className="num py-2.5 pr-4">
+                      {r.metric.unnecessaryReview} ({pct(ur, 1)})
+                    </td>
+                    <td className={cn("num py-2.5 text-right", r.bad && cost > 0 && "font-medium text-action")}>{eur0(cost)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        <p className="mt-2 text-[12px] text-text-3">
+          Zero errors on {q.v2.n} claims does not mean zero errors in production: the 95% upper bound is {pct(upperBoundZero(q.v2.n), 1)}. The
+          labelled set is rich in edge cases; on the realistic 500-claim mix, stale v1 rules would wrongly wave through {pct(mix.open ? mix.staleWrongRoutine / mix.open : 0, 1)} of
+          claims.
+        </p>
+
+        <div className="mt-5 grid gap-5 lg:grid-cols-[1fr_1.3fr]">
+          <div className="grid grid-cols-2 gap-3">
+            <UnitCost label="A wrong routine decision" value={eur0(m.wrong)} sub={`${pct(i.overpayShare)} avoidable on a ${eur0(i.avgClaim)} claim`} tone="text-action" />
+            <UnitCost label="An unnecessary review" value={eur0(m.unnecessary)} sub={`${i.reviewMin} min of a reviewer`} />
+          </div>
+          <div className="rounded-[12px] bg-surface-2 p-4 text-[13.5px] ring-1 ring-line">
+            <p className="font-medium">How this sets the thresholds</p>
+            <p className="mt-1.5 leading-relaxed text-text-2">
+              Waving a claim through wrongly costs about <span className="text-foreground">{ratio}×</span> more than a needless review. So escalating
+              pays as soon as there is more than a <span className="text-foreground">{pct(m.be, 1)}</span> chance that a person is needed. That is why every
+              red flag goes to a person, a blank field is asked for instead of guessed, and routine claims within €70 of the quote limit get a second
+              check.
+            </p>
+          </div>
+        </div>
+      </Section>
+
+      {/* 3 — Cost of a policy change */}
+      <Section n={3} title="Cost of a policy change: the v2 example" lead="v2 lowers the quote limit from €1,500 to €1,200 and sends every EV high-voltage battery repair to a person.">
+        <div className="overflow-x-auto">
+          <table className="w-full text-[13.5px]">
+            <thead>
+              <tr className="border-b border-line text-left text-[11px] uppercase tracking-[0.06em] text-text-3">
+                <th className="py-2 pr-4 font-medium" />
+                <th className="py-2 pr-4 font-medium">Today</th>
+                <th className="py-2 font-medium">With Clearpath</th>
+              </tr>
+            </thead>
+            <tbody>
+              <Row label="Time until the new rules are live" today={`${i.changeWeeksToday} weeks (specification, IT change, test, release)`} withSys="Same day (draft, replay on past claims, approve, activate)" />
+              <Row label="Effort" today={`${i.changePersonDays} person-days · ${eur0(change.today.process)}`} withSys={`${i.changeHoursWithSystem} hours · ${eur0(change.withSystem.process)}`} />
+              <Row
+                label="Claims wrongly waved through meanwhile"
+                today={`${pct(change.staleShare, 1)} of claims · ${eur0(change.today.exposure)}`}
+                withSys={`one working day · ${eur0(change.withSystem.exposure)}`}
+              />
+              <Row label="Open claims rechecked, closed ones untouched" today="Manual search" withSys={`Automatic: ${mix.changed} of ${mix.open} open claims flagged`} />
+              <tr>
+                <td className="py-3 pr-4 font-medium">Total cost of the change</td>
+                <td className="num py-3 pr-4 font-semibold">{eur0(change.today.total)}</td>
+                <td className="num py-3 font-semibold text-ok">{eur0(change.withSystem.total)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p className="mt-2 text-[12px] text-text-3">
+          The exposure is the claims that are routine under v1 but need a person under v2 ({mix.staleWrongRoutine} of {mix.open} open demo claims), priced at{" "}
+          {eur0(m.wrong)} each, for every week the old rules stay live.
+        </p>
+      </Section>
+
+      {/* What it rests on */}
+      <Section n={4} title="What these numbers rest on" lead="Each input is sourced, measured in this prototype, or an explicit assumption.">
+        <div className="divide-y divide-line">
+          {(["claimsPerYear", "salary", "triageMinToday", "reviewMin", "avgClaim", "overpayShare", "platformPerYear", "implementation", "changeWeeksToday"] as const).map((k) => {
+            const a = byKey[k];
+            const src = a.source ? srcById[a.source] : null;
+            return (
+              <div key={k} className="grid gap-1 py-2.5 text-[13px] md:grid-cols-[1.3fr_0.7fr_auto_2fr] md:items-center md:gap-4">
+                <span>{a.label}</span>
+                <span className="num font-medium">{fmt(a, i[k])}</span>
+                <KindBadge kind={a.kind} />
+                <span className="text-[12px] text-text-2">
+                  {a.note}
+                  {src && (
+                    <a href={src.url} target="_blank" rel="noreferrer" className="ml-1 inline-flex items-center gap-0.5 text-link hover:underline">
+                      source <ExternalLink className="size-3" />
+                    </a>
+                  )}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+        <Link to="/business-case" className="mt-4 inline-flex items-center gap-1 text-[13px] text-link hover:underline">
+          Change any assumption on Business case <ArrowRight className="size-3.5" />
+        </Link>
+      </Section>
+    </div>
+  );
+}
+
+function fmt(a: Assumption, v: number) {
   if (a.unit === "€/year") return `${eur0(v)} / year`;
-  if (a.unit === "€/day") return `${eur0(v)} / day`;
   if (a.unit === "€") return eur0(v);
-  if (a.unit === "×") return `×${v}`;
-  if (a.unit === "of claim") return `${pct(v)} of the claim`;
+  if (a.unit === "of claim") return pct(v);
   return `${v.toLocaleString("en-US")} ${a.unit}`;
 }
 
-function Stat({ value, label, color }: { value: string; label: string; color: string }) {
+function Section({ n, title, lead, children }: { n: number; title: string; lead: string; children: ReactNode }) {
   return (
-    <div className="px-2">
-      <p className="num text-[36px] font-bold leading-none" style={{ color }}>
-        {value}
-      </p>
-      <p className="mt-2 text-[15px] text-text-2">{label}</p>
+    <Card className="mb-6">
+      <div className="mb-4">
+        <p className="label-mono">Question {n}</p>
+        <h2 className="mt-1 text-[17px] font-semibold">{title}</h2>
+        <p className="mt-1 text-[13px] text-text-2">{lead}</p>
+      </div>
+      {children}
+    </Card>
+  );
+}
+
+function CompareBar({ label, value, max, tone }: { label: string; value: number; max: number; tone: string }) {
+  return (
+    <div className="mb-3">
+      <div className="mb-1 flex justify-between text-[13px]">
+        <span className="text-text-2">{label}</span>
+        <span className="num font-medium">{eur0(value)} / year</span>
+      </div>
+      <div className="h-2.5 rounded-full bg-surface-2 ring-1 ring-line">
+        <div className={cn("h-full rounded-full", tone)} style={{ width: `${Math.max(2, (value / max) * 100)}%` }} />
+      </div>
     </div>
   );
 }
 
-function HBar({ label, value, max, color, text }: { label: string; value: number; max: number; color: string; text: string }) {
+function UnitCost({ label, value, sub, tone }: { label: string; value: string; sub: string; tone?: string }) {
   return (
-    <div>
-      <div className="mb-1.5 flex items-baseline justify-between text-[15px]">
-        <span>{label}</span>
-        <span className="num text-[18px] font-semibold">{text}</span>
-      </div>
-      <div className="h-4 w-full rounded-full bg-surface-2">
-        <div className="h-4 rounded-full" style={{ width: `${max > 0 ? Math.max(2, (value / max) * 100) : 0}%`, background: color }} />
-      </div>
+    <div className="rounded-[12px] p-4 ring-1 ring-line">
+      <p className="text-[12px] text-text-2">{label}</p>
+      <p className={cn("num mt-1 text-[24px] font-semibold leading-none", tone)}>{value}</p>
+      <p className="mt-1.5 text-[11.5px] text-text-3">{sub}</p>
     </div>
   );
 }
 
-function Title({ children }: { children: ReactNode }) {
-  return <h2 className="text-[22px] font-semibold leading-tight">{children}</h2>;
-}
-
-function ValueRoi() {
-  const { mix, policy: active, source } = useClaimMix();
-  const second = mix.secondShare;
-
-  const all = useMemo(() => {
-    const out = {} as Record<ScenarioKey, { inputs: Inputs; e: ReturnType<typeof triageEconomics> }>;
-    for (const s of SCENARIOS) {
-      const inputs = { ...defaultInputs(), ...s.overrides } as Inputs;
-      out[s.key] = { inputs, e: triageEconomics(inputs, mix, second) };
-    }
-    return out;
-  }, [mix, second]);
-
-  const { inputs, e } = all.base;
-  const up = all.optimistic.e;
-  const n = inputs.claimsPerYear;
-
-  const hoursSaved = e.todayHours - e.withHours;
-  const timeCut = e.todayHours > 0 ? hoursSaved / e.todayHours : 0;
-  const gross = e.todayCost - e.withPeopleCost;
-  const pricePerClaim = inputs.platformPerYear / n;
-  const keeps = gross > 0 ? Math.max(0, e.netPerYear) / gross : 0;
-  const payback = e.paybackMonths === null ? "—" : `${e.paybackMonths.toFixed(1)} mo`;
-
-  const curve = useMemo(
-    () =>
-      Array.from({ length: 37 }, (_, m) => ({
-        m,
-        v: Math.round(-inputs.implementation + (e.netPerYear / 12) * m),
-      })),
-    [inputs.implementation, e.netPerYear],
-  );
-
-  const shares = [
-    { label: "Processed at once", value: mix.share.routine_processing, color: "var(--ok)" },
-    { label: "Missing facts requested", value: mix.share.request_information, color: "var(--chart-1)" },
-    { label: "To a reviewer", value: mix.share.human_review, color: "var(--action)" },
-  ];
-
+function Row({ label, today, withSys }: { label: string; today: string; withSys: string }) {
   return (
-    <div>
-      {/* Hero: the three numbers */}
-      <section
-        className="rounded-2xl px-8 py-9 text-white"
-        style={{ background: "linear-gradient(135deg, var(--ink) 0%, var(--chart-1) 100%)" }}
-      >
-        <p className="text-[14px] font-semibold uppercase tracking-[0.12em] text-white/70">Value &amp; ROI · Claim Compass</p>
-        <div className="mt-6 grid gap-8 md:grid-cols-3">
-          <div>
-            <p className="num text-[60px] font-bold leading-none">{eurCompact(e.netPerYear)}</p>
-            <p className="mt-2 text-[16px] text-white/85">saved per year</p>
-          </div>
-          <div>
-            <p className="num text-[60px] font-bold leading-none">{payback}</p>
-            <p className="mt-2 text-[16px] text-white/85">payback</p>
-          </div>
-          <div>
-            <p className="num text-[60px] font-bold leading-none">−{pct(timeCut)}</p>
-            <p className="mt-2 text-[16px] text-white/85">manual triage</p>
-          </div>
-        </div>
-        <p className="mt-7 text-[16px] text-white/85">
-          For an insurer with {n.toLocaleString("en-US")} claims a year · up to{" "}
-          <span className="font-semibold text-white">{eurCompact(up.netPerYear)}</span>
-        </p>
-      </section>
-
-      {/* Two visuals, no boxes */}
-      <div className="mt-10 grid gap-12 lg:grid-cols-2">
-        <section>
-          <Title>
-            In profit from month{" "}
-            <span style={{ color: "var(--ok)" }}>{e.paybackMonths === null ? "—" : Math.ceil(e.paybackMonths)}</span>
-          </Title>
-          <div className="mt-4">
-            <ResponsiveContainer width="100%" height={200}>
-              <LineChart data={curve} margin={{ top: 8, right: 8, bottom: 0, left: -4 }}>
-                <CartesianGrid vertical={false} stroke="var(--line)" />
-                <XAxis
-                  dataKey="m"
-                  ticks={[0, 12, 24, 36]}
-                  tickFormatter={(m) => `${m} mo`}
-                  tickLine={false}
-                  axisLine={false}
-                  tick={{ fontSize: 13, fill: "var(--text-2)" }}
-                />
-                <YAxis
-                  tickFormatter={(v) => eurCompact(Number(v))}
-                  tickLine={false}
-                  axisLine={false}
-                  width={60}
-                  tick={{ fontSize: 13, fill: "var(--text-2)" }}
-                />
-                <ReferenceLine y={0} stroke="var(--text-3)" />
-                <Tooltip
-                  contentStyle={{ borderRadius: 10, border: "1px solid var(--line)", fontSize: 13 }}
-                  labelFormatter={(m) => `Month ${m}`}
-                  formatter={(v: number) => [eur0(v), "Cumulative net"]}
-                />
-                <Line type="monotone" dataKey="v" stroke="var(--ok)" strokeWidth={3.5} dot={false} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </section>
-
-        <section>
-          <Title>
-            <span style={{ color: "var(--chart-1)" }}>{pct(mix.share.routine_processing + mix.share.request_information)}</span> of claims
-            need no handler
-          </Title>
-          <div className="mt-6 flex h-10 w-full overflow-hidden rounded-lg">
-            {shares.map((s) => (
-              <div
-                key={s.label}
-                className="num flex items-center justify-center text-[14px] font-semibold text-white"
-                style={{ width: `${s.value * 100}%`, background: s.color }}
-              >
-                {s.value >= 0.12 ? pct(s.value) : ""}
-              </div>
-            ))}
-          </div>
-          <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 text-[15px]">
-            {shares.map((s) => (
-              <span key={s.label} className="inline-flex items-center gap-2">
-                <span className="inline-block size-3.5 rounded-sm" style={{ background: s.color }} />
-                {s.label}
-              </span>
-            ))}
-          </div>
-          <div className="mt-8 space-y-4">
-            <HBar label="Triage cost today" value={e.todayCost} max={e.todayCost} color="var(--action)" text={eurCompact(e.todayCost)} />
-            <HBar label="With Claim Compass" value={e.withCost} max={e.todayCost} color="var(--ok)" text={eurCompact(e.withCost)} />
-          </div>
-        </section>
-      </div>
-
-      {/* One strip of numbers */}
-      <div className="mt-12 grid gap-6 border-y border-line py-7 md:grid-cols-4 md:divide-x md:divide-line">
-        <Stat value={`${(e.fteToday - e.fteWith).toFixed(1)} FTE`} label="freed, no hiring" color="var(--chart-1)" />
-        <Stat value={`€${(e.netPerYear / n).toFixed(2)}`} label="saved per claim" color="var(--ok)" />
-        <Stat value={`${inputs.changeWeeksToday} wk → 1 day`} label="per rule change" color="var(--action)" />
-        <Stat value={pct(keeps)} label={`of the value stays with the insurer (we charge €${pricePerClaim.toFixed(2)}/claim)`} color="var(--ink)" />
-      </div>
-
-      <p className="mt-6 flex flex-wrap gap-x-6 gap-y-2 text-[15px]">
-        {["Every decision explained", "Same claim, same answer", "Every override logged"].map((t) => (
-          <span key={t} className="inline-flex items-center gap-2">
-            <CheckCircle2 className="size-5" style={{ color: "var(--ok)" }} />
-            {t}
-          </span>
-        ))}
-      </p>
-
-      {/* Backup */}
-      <details className="mt-10">
-        <summary className="cursor-pointer text-[15px] font-medium">Backup for Q&amp;A: how these numbers are calculated</summary>
-        <p className="mt-4 text-[14px] text-text-2">
-          Net saving = (triage hours today − hours with the system) × hourly cost ({eur0(e.hourly)}) − licence.
-          Claim mix from the {mix.open} open claims {source === "live" ? "in the system" : "of the demo set"} under
-          policy {active.version.toUpperCase()}. Fewer leaked claims are not included.
-        </p>
-        <div className="mt-4 overflow-x-auto">
-          <table className="w-full text-[14px]">
-            <thead>
-              <tr className="text-left text-text-3">
-                <th className="py-2 pr-4 font-medium">Scenario</th>
-                <th className="py-2 pr-4 font-medium">Net / year</th>
-                <th className="py-2 pr-4 font-medium">Payback</th>
-                <th className="py-2 font-medium">Assumes</th>
-              </tr>
-            </thead>
-            <tbody>
-              {SCENARIOS.map((s) => {
-                const x = all[s.key].e;
-                return (
-                  <tr key={s.key} className="border-t border-line align-top">
-                    <td className="py-2 pr-4 font-medium">{s.title}</td>
-                    <td className="num py-2 pr-4">{eur0(x.netPerYear)}</td>
-                    <td className="num py-2 pr-4">{x.paybackMonths === null ? "—" : `${x.paybackMonths.toFixed(1)} mo`}</td>
-                    <td className="py-2 text-text-2">{s.why}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-        <div className="mt-6 overflow-x-auto">
-          <table className="w-full text-[14px]">
-            <thead>
-              <tr className="text-left text-text-3">
-                <th className="py-2 pr-4 font-medium">Input</th>
-                <th className="py-2 pr-4 font-medium">Base value</th>
-                <th className="py-2 pr-4 font-medium">Kind</th>
-                <th className="py-2 font-medium">Why</th>
-              </tr>
-            </thead>
-            <tbody>
-              {DEFAULT_ASSUMPTIONS.map((a) => {
-                const src = a.source ? srcById[a.source] : undefined;
-                return (
-                  <tr key={a.key} className="border-t border-line align-top">
-                    <td className="py-2 pr-4">{a.label}</td>
-                    <td className="num py-2 pr-4">{fmtVal(a, inputs[a.key])}</td>
-                    <td className="py-2 pr-4">
-                      <KindBadge kind={a.kind} />
-                    </td>
-                    <td className="py-2 text-text-2">
-                      {a.note}
-                      {src && (
-                        <a href={src.url} target="_blank" rel="noreferrer" className="ml-1.5 inline-flex items-center gap-0.5 text-link hover:underline">
-                          source <ExternalLink className="size-3" />
-                        </a>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-        <p className="mt-4 text-[14px] text-text-2">
-          Change any input on the <Link to="/business-case" className="text-link hover:underline">Business case</Link> page ·
-          decision quality on the <Link to="/quality" className="text-link hover:underline">quality report</Link>.
-        </p>
-      </details>
-    </div>
+    <tr className="border-b border-line/60">
+      <td className="py-2.5 pr-4 text-text-2">{label}</td>
+      <td className="py-2.5 pr-4">{today}</td>
+      <td className="py-2.5">{withSys}</td>
+    </tr>
   );
 }

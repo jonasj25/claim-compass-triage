@@ -33,11 +33,11 @@ describe("business model", () => {
 
   it("derives unit costs from the inputs", () => {
     expect(hourlyCost(i)).toBeCloseTo((55000 * 1.3) / 1600);
-    expect(wrongRoutineCost(i)).toBe(820);
+    expect(wrongRoutineCost(i)).toBe(275); // €1,100 claim × 25% avoidable
     expect(unnecessaryReviewCost(i)).toBeCloseTo(0.25 * hourlyCost(i));
-    const p = breakEvenProbability(i);
-    expect(p).toBeGreaterThan(0.01);
-    expect(p).toBeLessThan(0.02);
+    const p = breakEvenProbability(i); // ≈ 3.9%: escalate as soon as a person is needed more than 1 in 25 times
+    expect(p).toBeGreaterThan(0.03);
+    expect(p).toBeLessThan(0.05);
   });
 
   it("computes today vs with the system, net benefit and payback", () => {
@@ -51,7 +51,7 @@ describe("business model", () => {
 
   it("prices errors from measured rates", () => {
     const e = errorCost(i, { n: 48, correct: 40, wrongRoutine: 7, unnecessaryReview: 0 });
-    expect(e.wrong).toBeCloseTo((7 / 48) * 100000 * 820);
+    expect(e.wrong).toBeCloseTo((7 / 48) * 100000 * 275);
     expect(errorCost(i, { n: 48, correct: 48, wrongRoutine: 0, unnecessaryReview: 0 }).total).toBe(
       0,
     );

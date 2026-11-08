@@ -102,9 +102,18 @@ Rules apply in order; the first match decides.
 
 ## Business case
 
-The **Business case** page models a mid-sized European motor insurer: triage cost today vs with the system, net benefit, payback, reviewer capacity freed, the cost of errors under v1, v2 and stale rules, the break-even threshold, a quote-limit explorer, and the cost of one policy change (v2 as the example). Every input is editable and tagged **sourced** (with link: GDV, gehalt.de, StepStone, McKinsey, …), **measured** (from this system) or **assumption**.
+**Value & ROI** (`/pitch`) answers the three questions of the brief on one page; **Business case** (`/business-case`) has every input editable. Both use the same model (`src/lib/business.ts`), and every input is tagged **sourced** (with link), **measured** (from this system) or **assumption**. Full write-up: [`docs/BUSINESS_CASE.md`](docs/BUSINESS_CASE.md).
 
-Example with default inputs on the 500-claim demo set under v2: about **65% of claims handled without a reviewer**, about **€555k net benefit per year**, **payback around 3 months**. The v2 change costs about **€685k today** (6 weeks of stale rules plus IT effort) vs about **€22k with the system**. Some inputs are assumptions; see the page and [`docs/BUSINESS_CASE.md`](docs/BUSINESS_CASE.md).
+Base case: a mid-sized insurer with 100,000 small own-damage claims a year (glass, parking, minor bodywork).
+
+| | |
+|---|---|
+| Triage cost today → with Clearpath | **€1.12M → €625k per year** |
+| Net benefit · payback | **€492k per year · 3.7 months** (conservative: €156k · 15 months) |
+| Handled without a reviewer | **58%** of claims, 8.6 FTE freed |
+| Wrong routine vs unnecessary review | **€275 vs €11** → escalate above a **3.9%** chance that a person is needed |
+| Error cost per 1,000 claims (measured) | v1 rules kept after the change **€40k** · v2 **€0** |
+| Cost of the v2 change | **€263k today** (6 weeks of stale rules + IT) vs **€8k** with the system |
 
 ---
 
