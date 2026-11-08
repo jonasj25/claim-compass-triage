@@ -13,6 +13,7 @@ The rules decide; people confirm. AI helps us talk to customers and read documen
 | **Team name** | Wallah, We Code |
 | **Case** | Taktile: Trustworthy claims triage |
 | **GitHub repository** | https://github.com/jonasj25/claim-compass-triage (public) |
+| **Pitch slides (PDF)** | [`docs/Clearpath_Pitch.pdf`](docs/Clearpath_Pitch.pdf) |
 
 Lovable editor (team access only): [Lovable project](https://lovable.dev/projects/8e82261d-79e5-4656-b04c-79ad82115985)
 
