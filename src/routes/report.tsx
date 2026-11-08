@@ -75,6 +75,7 @@ function ReportPage() {
   const [files, setFiles] = useState<{ incident_report?: string; quote?: string }>({});
   const [uploads, setUploads] = useState<PendingFile[]>([]);
   const [uploadNote, setUploadNote] = useState("");
+  const [docRead, setDocRead] = useState<{ id: number; text: string } | null>(null);
   const uploadSet = useRef<Partial<Record<UploadKind, Partial<ReportAnswers>>>>({});
   const [result, setResult] = useState<ReportResult | null>(null);
   const [busy, setBusy] = useState(false);
@@ -172,6 +173,7 @@ function ReportPage() {
         return `${q?.label ?? k}: ${val}`;
       });
       setUploads((u) => u.map((x) => (x.kind === f.kind && x.name === f.name ? { ...x, reading: ok ? "done" : "failed", found: shown, summary, details } : x)));
+      if (ok) setDocRead({ id: Date.now(), text: `${label}${summary ? ` (${summary})` : ""}. Recorded from it: ${shown.join("; ") || "nothing new"}.` });
       const said = Object.entries(fresh).map(([k, v]) => `${k}=${v}`).join(", ");
       setUploadNote(`The customer just uploaded: ${label} (${f.name}).${said ? ` Read from it and recorded: ${said}. Do not ask about these.` : ""}`);
     };
@@ -273,6 +275,7 @@ function ReportPage() {
                 setHeardIn={setHeardIn}
                 uploadNote={uploadNote}
                 uploadCount={uploads.length}
+                docRead={docRead}
                 onStart={() => {
                   channel.current = "phone";
                 }}
@@ -282,7 +285,10 @@ function ReportPage() {
                 }}
                 onComplete={() => {
                   channel.current = "phone";
-                  completeAndSubmit();
+                  // Mia said she is creating the claim: send it right away if everything needed is there
+                  const a = latest.current.answers;
+                  if (activeQuestions(a).every((q) => canContinue(q, a))) void submit();
+                  else completeAndSubmit();
                 }}
               />
             }
@@ -429,6 +435,9 @@ function Landing({ qs, answers, heardIn, conversation, onForm, uploads }: { qs: 
 // ------------------------------------------------------------------ layout + checklist
 
 /** Does what the customer said really differ from the document? ("unsure" never counts as a difference) */
+
+/** Marks the note the page sends Mia after reading a document (never shown in the transcript) */
+const DOC_NOTE = "[Document read by the system, not said by the customer]";
 
 function DocsStep({
   uploads,
@@ -719,7 +728,9 @@ function Conversation({
   onComplete,
   uploadNote,
   uploadCount = 0,
+  docRead = null,
 }: {
+  docRead?: { id: number; text: string } | null;
   uploadNote?: string;
   uploadCount?: number;
   answers: ReportAnswers;
@@ -740,6 +751,18 @@ function Conversation({
   const [interim, setInterim] = useState("");
   const [note, setNote] = useState<string | null>(null);
   const [lang, setLang] = useState<"en" | "de">("en");
+  // A document was read during the call: Mia says in one sentence what she took from it and asks the next open question
+  useEffect(() => {
+    const s = session.current;
+    if (!docRead || !s?.sendUserMessage) return;
+    const t = window.setTimeout(() => {
+      const nq = nextQuestion(answersRef.current);
+      s.sendUserMessage(
+        `${DOC_NOTE} ${docRead.text} ${nq ? `Next open question: "${nq.ask}"` : "Nothing is missing any more."}`,
+      );
+    }, 300);
+    return () => window.clearTimeout(t);
+  }, [docRead]); // eslint-disable-line react-hooks/exhaustive-deps
   const latestUploads = useRef(0);
   latestUploads.current = uploadCount;
   // A document uploaded during the call: tell Mia so she doesn't ask about it
@@ -1045,13 +1068,14 @@ function Conversation({
       const nq0 = nextQuestion(answersRef.current);
       const opening = resumed
         ? `Okay, let's continue. ${nq0?.ask ?? ""}`.trim()
-        : "Hi, I'm Mia from Clearpath. I just need a few details for your claim. First, your full name and your car's number plate?";
+        : "Hi, I'm Mia, your Clearpath claims assistant. What's your name and your car's number plate?";
       const sess = await mod.Conversation.startSession({
         agentId: ELEVEN_AGENT_ID,
         connectionType: "websocket",
         dynamicVariables: { opening },
         clientTools: {
           update_claim: async (params: Record<string, unknown>) => {
+            const done = String((params ?? {}).customer_done ?? "") === "yes";
             const all = cleanAgentAnswers(params ?? {});
             let found: Partial<ReportAnswers> = all;
             let merged = { ...answersRef.current, ...found };
@@ -1103,18 +1127,23 @@ function Conversation({
                 for (const k of Object.keys(found) as AnswerKey[]) n[k] = lastCustomer;
                 return n;
               });
-            const open = activeQuestions(merged).filter((q) => fieldState(q, merged) === "missing");
+            let open = activeQuestions(merged).filter((q) => fieldState(q, merged) === "missing");
+            if (done && isVerified(merged) && plateOk(merged)) {
+              // "That's all": whatever is still open stays open ("not sure") and is asked for later
+              const rest = Object.fromEntries(open.filter((q) => q.key !== "email").map((q) => [q.key, "unsure"])) as Partial<ReportAnswers>;
+              merged = { ...merged, ...rest };
+              answersRef.current = merged;
+              setAnswers(() => merged);
+              open = [];
+            }
             const nq = nextQuestion(merged);
-            if (!nq)
-              return `${greeting}Saved. Nothing is missing. ${
-                latestUploads.current
-                  ? "Documents are already uploaded. Tell the customer to check their answers on the screen and press Send, then end the call."
-                  : "No documents uploaded yet. Tell the customer they can still add a police report or repair quote on the screen, then check their answers and press Send. Then end the call."
-              }`;
+            if (!nq || (done && !open.length))
+              return `${greeting}Saved. Nothing is missing. Say exactly: "Perfect, I'm creating your claim now." Then end the call.`;
             return `${greeting}Saved. Still missing: ${open.map((q) => q.label + (q.optional ? " (optional)" : "")).join(", ")}. Ask next: "${nq.ask}"`;
           },
         },
         onMessage: (m: any) => {
+          if (String(m?.message ?? "").startsWith(DOC_NOTE)) return;
           const text = String(m?.message ?? "").replace(/\[[a-z\s-]{2,20}\]\s*/gi, "").trim();
           if (!text) return;
           const speaker: Line["speaker"] = m?.source === "user" || m?.role === "user" ? "customer" : "agent";
