@@ -1,0 +1,375 @@
+{
+  "about": "Realistic customer reports for an end-to-end quality test: what customers say to Mia (one reply per question, in their own words) and the documents they upload. 'expected' is the next step a claims expert gives after reading the same material under the current rules (quote limit EUR 1,200; high-voltage battery repairs need a person). Labels were written before the system was run on these cases, and the reading rules were not tuned to them.",
+  "cases": [
+    {
+      "id": "RC-01", "tags": ["voice"], "policy_number": "POL-482913",
+      "replies": {
+        "what_happened": "I reversed out of a parking space at the supermarket and hit a concrete pillar. The rear bumper is dented.",
+        "injury": "No, nobody was hurt.", "other_party": "No, just me.", "repair_kind": "Just the bumper, so bodywork.",
+        "quote_amount": "The garage quoted 640 euros.", "quote_itemized": "Yes, it lists the parts and the labour.", "incident_report": "Yes, I have the police report."
+      },
+      "expected": "routine_processing", "why": "Single car, no injury, itemized quote of EUR 640, report available."
+    },
+    {
+      "id": "RC-02", "tags": ["voice"], "policy_number": "POL-110293",
+      "replies": {
+        "what_happened": "A hail storm left dents all over the roof and the bonnet.",
+        "injury": "No one was in the car.", "other_party": "No, it was the weather.", "repair_kind": "Bodywork, the roof and the bonnet.",
+        "quote_amount": "About 1,150 euros according to the quote.", "quote_itemized": "It's itemised, yes.", "incident_report": "No, there's no police report for hail."
+      },
+      "expected": "request_information", "why": "The policy requires an incident report; the customer has none."
+    },
+    {
+      "id": "RC-03", "tags": ["voice", "ev"], "policy_number": "POL-773310",
+      "replies": {
+        "what_happened": "I hit a kerb hard and since then the car shows a battery warning.",
+        "injury": "No.", "other_party": "No, nobody else.", "repair_kind": "The garage says the high-voltage battery pack has to be replaced.",
+        "quote_amount": "Around 9,800 euros.", "quote_itemized": "Yes, itemised.", "incident_report": "Yes."
+      },
+      "expected": "human_review", "why": "High-voltage battery repair and a quote far over the limit."
+    },
+    {
+      "id": "RC-04", "tags": ["voice"], "policy_number": "POL-204417",
+      "replies": {
+        "what_happened": "I was rear-ended at a red light, the other driver drove into me.",
+        "injury": "No injuries.", "other_party": "Yes, another car hit me.", "fault": "Yes, he admitted it was his fault.", "repair_kind": "Bumper and the boot lid.",
+        "quote_amount": "1.480 euros.", "quote_itemized": "Yes.", "incident_report": "Yes, the police came."
+      },
+      "expected": "human_review", "why": "Quote of EUR 1,480 is over the EUR 1,200 limit."
+    },
+    {
+      "id": "RC-05", "tags": ["voice", "limit"], "policy_number": "POL-551208",
+      "replies": {
+        "what_happened": "I scraped a wall in an underground garage, the whole left side is scratched.",
+        "injury": "No.", "other_party": "No.", "repair_kind": "Paint and the doors, bodywork.",
+        "quote_amount": "1,190 euros.", "quote_itemized": "Yes, each part is listed.", "incident_report": "Yes."
+      },
+      "expected": "routine_processing", "why": "EUR 1,190 is under the limit; everything else is in order."
+    },
+    {
+      "id": "RC-06", "tags": ["voice", "limit"], "policy_number": "POL-661902",
+      "replies": {
+        "what_happened": "I clipped a parked van's mirror with my mirror and mine broke off. The van was not damaged.",
+        "injury": "No.", "other_party": "No, the van was parked and wasn't damaged.", "repair_kind": "The mirror.",
+        "quote_amount": "Exactly 1200 euros.", "quote_itemized": "Yes.", "incident_report": "Yes."
+      },
+      "expected": "routine_processing", "why": "EUR 1,200 is at the limit, not over it."
+    },
+    {
+      "id": "RC-07", "tags": ["voice", "tricky"], "policy_number": "POL-338120",
+      "replies": {
+        "what_happened": "Another car pulled out in front of me, I braked hard but still hit it.",
+        "injury": "My neck hurts a bit since then, I went to see the doctor.", "other_party": "Yes.", "fault": "Yes, he agrees he pulled out.",
+        "repair_kind": "The front bumper and a headlight.", "quote_amount": "900 euros.", "quote_itemized": "Yes.", "incident_report": "Yes."
+      },
+      "expected": "human_review", "why": "An injury is reported (neck pain, doctor visit)."
+    },
+    {
+      "id": "RC-08", "tags": ["voice"], "policy_number": "POL-902145",
+      "replies": {
+        "what_happened": "We collided at a junction.", "injury": "No.", "other_party": "Yes, a delivery van.",
+        "fault": "No, he says it was my fault, but he ran the red light.", "repair_kind": "Front bumper and the bonnet.",
+        "quote_amount": "1,050 euros.", "quote_itemized": "Yes.", "incident_report": "Yes, the police wrote a report."
+      },
+      "expected": "human_review", "why": "Fault is disputed."
+    },
+    {
+      "id": "RC-09", "tags": ["voice"], "policy_number": "POL-415577",
+      "replies": {
+        "what_happened": "My car was broken into last night and the navigation system was stolen.",
+        "injury": "No.", "other_party": "No.", "repair_kind": "The side window and the dashboard.", "quote_amount": "700 euros.",
+        "quote_itemized": "Yes.", "incident_report": "Yes, I reported it to the police."
+      },
+      "expected": "human_review", "why": "Theft is not an own-damage claim."
+    },
+    {
+      "id": "RC-10", "tags": ["voice"], "policy_number": "",
+      "replies": {
+        "policy_number": "I don't have it here, sorry.",
+        "what_happened": "I reversed into a bollard while parking and dented the bumper.",
+        "injury": "No.", "other_party": "No.", "repair_kind": "Bumper.", "quote_amount": "560 euros.", "quote_itemized": "Yes.", "incident_report": "Yes."
+      },
+      "expected": "request_information", "why": "Without a policy number the policy can't be confirmed as active."
+    },
+    {
+      "id": "RC-11", "tags": ["voice"], "policy_number": "POL-120456",
+      "replies": {
+        "what_happened": "I scratched the door on a pillar in a car park.", "injury": "No.", "other_party": "No.", "repair_kind": "The door, paint.",
+        "quote_amount": "480 euros.", "quote_itemized": "No, it's just one total amount.", "incident_report": "Yes."
+      },
+      "expected": "request_information", "why": "The quote is only a total; an itemized quote is required."
+    },
+    {
+      "id": "RC-12", "tags": ["voice", "documents", "tricky"], "policy_number": "POL-883301",
+      "replies": {
+        "what_happened": "I hit a post while parking and the rear bumper is dented.", "injury": "No.", "other_party": "No.", "repair_kind": "Bumper.",
+        "quote_amount": "Around 900 euros, I think.", "quote_itemized": "I'm not sure, I haven't looked closely.", "incident_report": "Yes."
+      },
+      "docs": [
+        { "kind": "quote", "name": "quote.pdf", "text": "Karosserie Huber GmbH - Repair Quote\nQuote no. 2291\nRear bumper cover 1 340.00\nPaint rear bumper 1 260.00\nLabour 2.0 h x 95.00 2 190.00\nSmall parts 1 80.00\nTotal (incl. VAT) 870.00" }
+      ],
+      "expected": "routine_processing", "why": "The quote (EUR 870, itemized) answers the open points; the customer only estimated 'around 900'."
+    },
+    {
+      "id": "RC-13", "tags": ["voice", "german"], "policy_number": "POL-640022",
+      "replies": {
+        "what_happened": "Ich habe beim Ausparken einen Poller übersehen, die Stoßstange hinten ist eingedrückt.",
+        "claim_kind": "Schaden an meinem eigenen Auto.", "injury": "Nein, niemand wurde verletzt.", "other_party": "Nein, kein anderes Auto.",
+        "repair_kind": "Die Stoßstange, also Karosserie.", "quote_amount": "Laut Kostenvoranschlag 720 Euro.", "quote_itemized": "Ja, aufgeschlüsselt nach Teilen und Arbeitszeit.",
+        "incident_report": "Ja, ich habe einen Polizeibericht."
+      },
+      "expected": "routine_processing", "why": "Own damage, no injury, itemized EUR 720 quote, report available (German)."
+    },
+    {
+      "id": "RC-14", "tags": ["voice", "tricky"], "policy_number": "POL-778812",
+      "replies": {
+        "what_happened": "I misjudged a gap and scraped the side of my car on a wall.", "injury": "No.", "other_party": "No.", "repair_kind": "Bodywork on the side.",
+        "quote_amount": "About twelve hundred, I don't have the exact number.", "quote_itemized": "Yes.", "incident_report": "Yes."
+      },
+      "expected": "request_information", "why": "The exact quote is needed: 'about twelve hundred' is right at the limit."
+    },
+    {
+      "id": "RC-15", "tags": ["voice", "documents"], "policy_number": "POL-305566",
+      "replies": {
+        "what_happened": "I reversed into a pole and the tailgate is dented.", "injury": "No.", "other_party": "No.", "repair_kind": "The tailgate, bodywork.",
+        "quote_amount": "600 euros.", "quote_itemized": "Yes.", "incident_report": "Yes."
+      },
+      "docs": [
+        { "kind": "quote", "name": "quote_tailgate.pdf", "text": "Autohaus Meier - Kostenvoranschlag\nHeckklappe lackiert 1 820,00\nLackierung 1 310,00\nArbeitslohn 3,0 h 3 255,00\nKleinteile 1 65,00\nGesamtbetrag 1.450,00 EUR" }
+      ],
+      "expected": "human_review", "why": "The quote says EUR 1,450, over the limit, and contradicts the customer's EUR 600."
+    },
+    {
+      "id": "RC-16", "tags": ["voice", "system check"], "policy_number": "POL-227781", "duplicate": true,
+      "replies": {
+        "what_happened": "I dented the front bumper on a low wall.", "injury": "No.", "other_party": "No.", "repair_kind": "Bumper.",
+        "quote_amount": "450 euros.", "quote_itemized": "Yes.", "incident_report": "Yes."
+      },
+      "expected": "human_review", "why": "The same plate and incident date were already reported (possible duplicate)."
+    },
+    {
+      "id": "RC-17", "tags": ["voice", "documents", "tricky"], "policy_number": "POL-519930",
+      "replies": {
+        "what_happened": "I reversed into a bollard and the bumper is cracked.", "injury": "No.", "other_party": "No.", "repair_kind": "Bumper.",
+        "quote_amount": "780 euros.", "quote_itemized": "Yes.", "incident_report": "No, I don't think I have one."
+      },
+      "docs": [
+        { "kind": "incident_report", "name": "police_report.pdf", "text": "Polizeiinspektion Augsburg - Incident Report\nReport no. A-2026-55102\nDate of incident 02 Nov 2026\nPersons injured None\nOther parties None - single-vehicle incident\nDescription Driver reversed into a bollard in a car park. Rear bumper cracked." }
+      ],
+      "expected": "routine_processing", "why": "The uploaded police report is there; the customer just wasn't sure they had one."
+    },
+    {
+      "id": "RC-18", "tags": ["voice", "tricky"], "policy_number": "POL-664410",
+      "replies": {
+        "what_happened": "I slid on ice into a fence and dented the front of the car.", "injury": "I wouldn't say injured, just a bit shaken.", "other_party": "No.",
+        "repair_kind": "Front bumper and the grille.", "quote_amount": "830 euros.", "quote_itemized": "Yes.", "incident_report": "Yes."
+      },
+      "expected": "routine_processing", "why": "Shaken but not injured; all other points are in order."
+    },
+    {
+      "id": "RC-19", "tags": ["voice"], "policy_number": "POL-145520",
+      "replies": {
+        "what_happened": "A car hit us from the side at a roundabout and my wife got whiplash.", "other_party": "Yes.", "fault": "Yes, the other driver admitted it.",
+        "repair_kind": "The rear door and the wing.", "quote_amount": "1,100 euros.", "quote_itemized": "Yes.", "incident_report": "Yes."
+      },
+      "expected": "human_review", "why": "A passenger was injured (whiplash)."
+    },
+    {
+      "id": "RC-20", "tags": ["voice"], "policy_number": "POL-302214",
+      "replies": {
+        "what_happened": "Someone hit my parked car and drove off.", "injury": "No, I wasn't in the car.", "other_party": "Yes, but they drove off and I don't know who it was.",
+        "fault": "I don't know, they just left.", "repair_kind": "The rear bumper.", "quote_amount": "690 euros.", "quote_itemized": "Yes.", "incident_report": "Yes, I reported it."
+      },
+      "expected": "request_information", "why": "Whether fault is disputed can't be established yet."
+    },
+    {
+      "id": "RC-21", "tags": ["voice"], "policy_number": "POL-990031",
+      "replies": {
+        "what_happened": "A stone hit my windscreen on the motorway and it cracked.", "injury": "No.", "other_party": "No, just a stone from a truck.",
+        "repair_kind": "The windscreen needs replacing.", "quote_amount": "480 euros.", "quote_itemized": "Yes.", "incident_report": "No, you don't get a police report for a stone chip."
+      },
+      "expected": "request_information", "why": "The policy requires an incident report; the customer has none."
+    },
+    {
+      "id": "RC-22", "tags": ["voice", "german", "ev"], "policy_number": "POL-808812",
+      "replies": {
+        "what_happened": "Ich bin über einen hohen Bordstein gefahren und jetzt ist der Akku von meinem E-Auto beschädigt.",
+        "injury": "Nein.", "other_party": "Nein.", "repair_kind": "Der Hochvolt-Akku muss getauscht werden.",
+        "quote_amount": "11.400 Euro.", "quote_itemized": "Ja.", "incident_report": "Ja."
+      },
+      "expected": "human_review", "why": "High-voltage battery repair (German)."
+    },
+    {
+      "id": "RC-23", "tags": ["voice", "german"], "policy_number": "POL-311145",
+      "replies": {
+        "what_happened": "I bumped into a parked trailer while turning and dented my front wing.", "injury": "No.", "other_party": "No, the trailer wasn't damaged.",
+        "repair_kind": "The front wing, bodywork.", "quote_amount": "1.150,00 €", "quote_itemized": "Yes.", "incident_report": "Yes."
+      },
+      "expected": "routine_processing", "why": "EUR 1,150 (German number format) is under the limit."
+    },
+    {
+      "id": "RC-24", "tags": ["voice"], "policy_number": "POL-457760",
+      "replies": {
+        "what_happened": "I hit a deer on a country road at night.", "injury": "No, I'm fine.", "other_party": "No.", "repair_kind": "Bonnet, bumper and a headlight.",
+        "quote_amount": "1,250 euros.", "quote_itemized": "Yes.", "incident_report": "Yes, the police came out."
+      },
+      "expected": "human_review", "why": "EUR 1,250 is over the limit."
+    },
+    {
+      "id": "RC-25", "tags": ["voice", "documents"], "policy_number": "POL-678823",
+      "replies": {
+        "what_happened": "I hit a concrete planter when parking and the front bumper and a light are broken.", "injury": "No.", "other_party": "No.",
+        "repair_kind": "Bumper and headlight.", "quote_amount": "I think around 1,000, but I'll upload the quote.", "quote_itemized": "Yes.", "incident_report": "Yes."
+      },
+      "docs": [
+        { "kind": "quote", "name": "quote_front.pdf", "text": "City Garage - Repair Quote\nFront bumper 1 410.00\nHeadlight left 1 520.00\nPaint 1 210.00\nLabour 2.0 h 2 180.00\nTotal 1,320.00" }
+      ],
+      "expected": "human_review", "why": "The uploaded quote is EUR 1,320, over the limit."
+    },
+    {
+      "id": "RC-26", "tags": ["documents"], "policy_number": "POL-552190",
+      "replies": {
+        "what_happened": "I reversed into a bollard in a car park, it's all in the police report.",
+        "injury": "It's in the documents.", "other_party": "It's in the report.", "repair_kind": "See the quote.",
+        "quote_amount": "It's on the quote I'm uploading.", "quote_itemized": "See the quote.", "incident_report": "I'm uploading it."
+      },
+      "docs": [
+        { "kind": "incident_report", "name": "incident_report.pdf", "text": "Polizeipräsidium Nordhessen - Incident Report\nReport no. NH-2026-118204\nDate of incident 06 Nov 2026, approx. 17:40\nPersons injured None\nOther parties None - single-vehicle incident\nDescription Driver reversed into a concrete bollard while leaving the\nparking bay. Rear bumper dented, left rear light cracked.\nOfficer PK Schneider, badge 4471" },
+        { "kind": "quote", "name": "repair_quote.pdf", "text": "Autohaus Fulda-Werkstatt GmbH - Repair Quote\nQuote no. Q-55821\nRear bumper cover, primed 1 310.00\nPaint & clear coat, rear bumper 1 220.00\nRear light left 1 145.00\nLabour: remove/refit bumper, 2.5 h x 98.00 2.5 245.00\nSmall parts & clips 1 60.00\nTotal (incl. VAT) 980.00" }
+      ],
+      "expected": "routine_processing", "why": "The two documents answer everything: no injury, single vehicle, itemized EUR 980."
+    },
+    {
+      "id": "RC-27", "tags": ["documents", "tricky"], "policy_number": "POL-771045",
+      "replies": {
+        "what_happened": "I scraped my car along a wall in a narrow street.", "injury": "No.", "other_party": "No.", "repair_kind": "Bodywork on the side.",
+        "quote_amount": "I've photographed the quote and uploaded it.", "quote_itemized": "Yes, it's itemised.", "incident_report": "Yes."
+      },
+      "docs": [{ "kind": "quote", "name": "IMG_2041.jpg", "text": "" }],
+      "expected": "routine_processing", "why": "The photographed quote shows EUR 940, itemized (a person can read it; it has no text layer)."
+    },
+    {
+      "id": "RC-28", "tags": ["voice"], "policy_number": "POL-113390",
+      "replies": {
+        "what_happened": "A cyclist scratched my door while passing in traffic.", "injury": "No, nobody got hurt.", "other_party": "Yes, a cyclist.",
+        "fault": "Yes, we agree, she said sorry and gave me her details.", "repair_kind": "The door paint.", "quote_amount": "390 euros.",
+        "quote_itemized": "Yes.", "incident_report": "Yes."
+      },
+      "expected": "routine_processing", "why": "Other party involved but both agree on fault; everything else is in order."
+    },
+    {
+      "id": "RC-29", "tags": ["voice"], "policy_number": "POL-228871",
+      "replies": {
+        "what_happened": "Another car reversed into me in a car park.", "injury": "No.", "other_party": "Yes.", "fault": "Yes.",
+        "repair_kind": "Front bumper.", "quote_amount": "610 euros.", "quote_itemized": "Yes.", "incident_report": "Yes."
+      },
+      "expected": "routine_processing", "why": "Both sides agree on fault; small itemized quote."
+    },
+    {
+      "id": "RC-30", "tags": ["voice", "tricky"], "policy_number": "POL-664129",
+      "replies": {
+        "what_happened": "I touched the other driver's car while merging, just a scrape.", "injury": "No.",
+        "fault": "We both think it was my fault, I wasn't careful.", "repair_kind": "Paint on the front wing.", "quote_amount": "420 euros.",
+        "quote_itemized": "Yes.", "incident_report": "Yes."
+      },
+      "expected": "routine_processing", "why": "Both sides agree it was the customer's fault, so fault is not disputed."
+    },
+    {
+      "id": "RC-31", "tags": ["voice"], "policy_number": "POL-550017",
+      "replies": {
+        "what_happened": "A tree branch fell on my car during the storm.", "claim_kind": "Damage to my own car from the storm.",
+        "injury": "No, nobody was in the car.", "other_party": "No.", "repair_kind": "The roof and the windscreen.", "quote_amount": "1,080 euros.",
+        "quote_itemized": "Yes, broken down.", "incident_report": "Yes."
+      },
+      "expected": "routine_processing", "why": "Storm damage to own car, under the limit, documents complete."
+    },
+    {
+      "id": "RC-32", "tags": ["voice", "tricky"], "policy_number": "POL-901288",
+      "replies": {
+        "what_happened": "I hit a bollard while parking and broke the rear light.", "injury": "No.", "other_party": "No.", "repair_kind": "Rear light and bumper.",
+        "quote_amount": "530 euros.", "quote_itemized": "Yes.", "incident_report": "I filed it online with the police, I have the reference number."
+      },
+      "expected": "routine_processing", "why": "A police report exists (filed online with a reference number)."
+    },
+    {
+      "id": "RC-33", "tags": ["voice", "tricky"], "policy_number": "POL-308844",
+      "replies": {
+        "what_happened": "I lost control on gravel and went into a ditch.", "injury": "Only the airbag went off, I'm fine.", "other_party": "No.",
+        "repair_kind": "Bumper, bonnet and the airbag.", "quote_amount": "1,140 euros.", "quote_itemized": "Yes.", "incident_report": "Yes."
+      },
+      "expected": "routine_processing", "why": "No injury ('I'm fine'); under the limit; documents complete."
+    },
+    {
+      "id": "RC-34", "tags": ["voice", "system check"], "policy_number": "POL-116672", "duplicate": true,
+      "replies": {
+        "what_happened": "I scratched the rear bumper on a pillar.", "injury": "No.", "other_party": "No.", "repair_kind": "Bumper.",
+        "quote_amount": "350 euros.", "quote_itemized": "Yes.", "incident_report": "Yes."
+      },
+      "expected": "human_review", "why": "Possible duplicate: same plate and date already reported."
+    },
+    {
+      "id": "RC-35", "tags": ["voice", "tricky"], "policy_number": "POL-552301",
+      "replies": {
+        "what_happened": "I braked late and went into the back of a parked car's trailer hitch, my front bumper is broken. My passenger hit her head on the window and we went to A&E to get it checked.",
+        "injury": "No, not really, it was just a bump on her head.", "other_party": "No, the car was parked and not damaged.",
+        "repair_kind": "Front bumper.", "quote_amount": "720 euros.", "quote_itemized": "Yes.", "incident_report": "Yes."
+      },
+      "expected": "human_review", "why": "The passenger hit her head and went to A&E: an injury an expert would want to look at."
+    },
+    {
+      "id": "RC-36", "tags": ["voice"], "policy_number": "POL-334178",
+      "replies": {
+        "what_happened": "I misjudged a pillar in a multi-storey car park and dented the passenger door.", "injury": "No, I was alone and I'm fine. Nobody was hurt.",
+        "other_party": "No.", "repair_kind": "The door, bodywork.", "quote_amount": "990 euros.", "quote_itemized": "Yes, labour and parts are listed.", "incident_report": "Yes."
+      },
+      "expected": "routine_processing", "why": "Clean own-damage claim under the limit."
+    },
+    {
+      "id": "RC-37", "tags": ["voice", "documents"], "policy_number": "POL-209931",
+      "replies": {
+        "what_happened": "I hit a kerb and damaged the front wheel and the bumper.", "injury": "No.", "other_party": "No.", "repair_kind": "Wheel and bumper.",
+        "quote_amount": "860 euros.", "quote_itemized": "Yes.", "incident_report": "Yes."
+      },
+      "docs": [
+        { "kind": "quote", "name": "angebot.pdf", "text": "Reifen & Karosserie Schmid\nAngebot Nr. 4410\nFelge vorne links 1 290,00\nStoßstange vorne 1 330,00\nLackierung 1 140,00\nArbeitslohn 1,0 h 1 100,00\nGesamtsumme 860,00 EUR" }
+      ],
+      "expected": "routine_processing", "why": "The quote confirms EUR 860, itemized."
+    },
+    {
+      "id": "RC-38", "tags": ["voice"], "policy_number": "POL-781265",
+      "replies": {
+        "what_happened": "While parking I touched a lamp post and dented the rear wing.", "injury": "No.", "other_party": "No.",
+        "repair_kind": "Rear wing, bodywork.", "quote_amount": "1,210 euros.", "quote_itemized": "Yes.", "incident_report": "Yes."
+      },
+      "expected": "human_review", "why": "EUR 1,210 is just over the limit."
+    },
+    {
+      "id": "RC-39", "tags": ["voice", "german"], "policy_number": "POL-457721",
+      "replies": {
+        "what_happened": "Ein anderes Auto ist mir beim Spurwechsel in die Seite gefahren. Der andere Fahrer bestreitet, dass er Schuld hat.",
+        "injury": "Nein, keine Verletzten.", "repair_kind": "Die Fahrertür und der Kotflügel.", "quote_amount": "1.050 Euro.",
+        "quote_itemized": "Ja.", "incident_report": "Ja, die Polizei war da."
+      },
+      "expected": "human_review", "why": "The other driver disputes fault (German)."
+    },
+    {
+      "id": "RC-40", "tags": ["voice"], "policy_number": "POL-610045",
+      "replies": {
+        "what_happened": "My car was scratched with a key in front of my house.", "claim_kind": "Damage to my own car.", "injury": "No.",
+        "other_party": "I don't know who did it.", "repair_kind": "Paint on two doors.", "quote_amount": "760 euros.", "quote_itemized": "Yes.", "incident_report": "Yes, I reported it to the police."
+      },
+      "expected": "request_information", "why": "Whether another party is involved, and their position on fault, can't be established."
+    },
+    {
+      "id": "RC-41", "tags": ["voice", "documents"], "policy_number": "POL-129087",
+      "replies": {
+        "what_happened": "I slid into a guard rail on a wet road. The right side is damaged.", "injury": "No.", "other_party": "No.",
+        "repair_kind": "Doors and the wing on the right.", "quote_amount": "The quote says 1.180 euros.", "quote_itemized": "Yes.", "incident_report": "Yes."
+      },
+      "docs": [
+        { "kind": "quote", "name": "kva.pdf", "text": "Karosseriebau Lechner\nKostenvoranschlag\nTür vorne rechts 1 420,00\nTür hinten rechts 1 380,00\nKotflügel rechts 1 160,00\nArbeitszeit 2,0 h 2 220,00\nGesamtbetrag brutto 1.180,00 €" }
+      ],
+      "expected": "routine_processing", "why": "EUR 1,180 itemized quote, under the limit."
+    }
+  ]
+}

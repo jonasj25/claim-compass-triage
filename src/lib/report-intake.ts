@@ -327,6 +327,19 @@ export function interpretReply(q: Question, text: string, today = new Date()): P
   return {};
 }
 
+/** Whether a document says something different from what the customer said (estimates within 1% count as the same). */
+export function answerDiffers(k: AnswerKey, customer: string, document: string) {
+  const c = customer.trim().toLowerCase();
+  const d = document.trim().toLowerCase();
+  if (!c || c === "unsure" || isUnknownText(c)) return false;
+  if (k === "quote_amount") {
+    const a = parseEuro(c);
+    const b = parseEuro(d);
+    return a !== null && b !== null && Math.abs(a - b) > Math.max(1, b * 0.01);
+  }
+  return c !== d;
+}
+
 /** A text answer that is really "not known". */
 export const isUnknownText = (v: string) => !v.trim() || v.trim().toLowerCase() === "unsure";
 

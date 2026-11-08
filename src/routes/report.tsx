@@ -20,6 +20,7 @@ import {
   QUESTIONS,
   CUSTOMER_MISSING,
   cleanAgentAnswers,
+  answerDiffers,
   toCsvRow,
   type AnswerKey,
   type Question,
@@ -199,7 +200,7 @@ function ReportPage() {
       // Which answers came from a document, and where the customer said something different
       const docSources = Object.fromEntries(Object.entries(docFacts.current).map(([k, d]) => [k, d!.doc]));
       const docConflicts = (Object.entries(docFacts.current) as [AnswerKey, { value: string; doc: string }][])
-        .filter(([k, d]) => k !== "what_happened" && said.current[k] && differs(k, said.current[k]!, d.value))
+        .filter(([k, d]) => k !== "what_happened" && said.current[k] && answerDiffers(k, said.current[k]!, d.value))
         .map(([k, d]) => ({ field: k, customer: said.current[k]!, document: d.value, document_name: d.doc }));
       const res = await submitClaimReport({
         data: { channel: channel.current, answers: cur.answers, transcript: cur.lines, heardIn: cur.heardIn, files: cur.files, docSources, docConflicts },
@@ -426,17 +427,6 @@ function Landing({ qs, answers, heardIn, conversation, onForm, uploads }: { qs: 
 // ------------------------------------------------------------------ layout + checklist
 
 /** Does what the customer said really differ from the document? ("unsure" never counts as a difference) */
-function differs(k: AnswerKey, customer: string, document: string) {
-  const c = customer.trim().toLowerCase();
-  const d = document.trim().toLowerCase();
-  if (!c || c === "unsure" || isUnknownText(c)) return false;
-  if (k === "quote_amount") {
-    const a = parseEuro(c);
-    const b = parseEuro(d);
-    return a !== null && b !== null && Math.abs(a - b) > Math.max(1, b * 0.01);
-  }
-  return c !== d;
-}
 
 function DocsStep({ uploads, count, busy, error, onSend }: { uploads: ReactNode; count: number; busy: boolean; error: string | null; onSend: () => void }) {
   return (

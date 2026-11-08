@@ -4,7 +4,9 @@ import { useMemo } from "react";
 import { CircleAlert, CircleCheck, Download } from "lucide-react";
 import { casesQuery, outcomesQuery, overridesQuery } from "@/lib/data";
 import { isClosed, toCsv } from "@/lib/csv";
-import { LABELLED_SETS, labelledReport, rate, RECS, type Metrics } from "@/lib/quality";
+import { LABELLED_SETS, labelledReport, rate, RECS } from "@/lib/quality";
+import { BATCH_POLICY_V2 } from "@/lib/batch";
+import { EVAL_CASES, runIntakeEval } from "@/lib/intake-eval";
 import { RECOMMENDATION_LABELS, type Recommendation } from "@/lib/triage";
 import { Button } from "@/components/ui/button";
 import { Card, Kpi, PageHeader, StatusDot, fmtTime } from "@/components/triage/ui";
@@ -32,28 +34,34 @@ export const Route = createFileRoute("/_authenticated/quality")({
 });
 
 const SET_KEYS = Object.keys(LABELLED_SETS);
-const SET_LABEL: Record<string, string> = {
-  "Provided dev cases": "Reference claims from the case brief",
-  "Hand-labelled edge cases": "Hard cases we built and labelled by hand",
-};
 const pct = (x: number, n: number) => (n ? `${Math.round((x / n) * 100)}%` : "—");
-
-/** Accuracy on a set of labelled claims: open claims scored on their next step, finished claims on staying unchanged. */
-function score(keys: string[]) {
-  const r = labelledReport(keys);
-  return {
-    r,
-    n: r.v2.n + r.closed.n,
-    correct: r.v2.correct + r.closed.kept,
-    wrongRoutine: r.v2.wrongRoutine,
-    unnecessary: r.v2.unnecessaryReview,
-  };
-}
+const TRICKY = new Set(EVAL_CASES.filter((c) => c.tags.includes("tricky")).map((c) => c.id));
 
 function QualityPage() {
-  const all = useMemo(() => score(SET_KEYS), []);
-  const perSet = useMemo(() => SET_KEYS.map((k) => ({ k, ...score([k]) })), []);
-  const r = all.r;
+  // End-to-end: realistic reports (what customers say and upload) -> next step, against an expert
+  const e = useMemo(() => runIntakeEval(BATCH_POLICY_V2), []);
+  // Rules alone, on claims whose facts are already clean
+  const rules = useMemo(() => {
+    const r = labelledReport(SET_KEYS);
+    return { n: r.v2.n + r.closed.n, correct: r.v2.correct + r.closed.kept };
+  }, []);
+  const misses = e.n - e.correct;
+  const safeMisses = misses - e.wrongRoutine;
+  const kinds = [
+    { label: "Clear reports", ids: EVAL_CASES.filter((c) => !TRICKY.has(c.id)).map((c) => c.id) },
+    {
+      label: "Reports with documents",
+      ids: EVAL_CASES.filter((c) => c.tags.includes("documents")).map((c) => c.id),
+    },
+    {
+      label: "Reports in German",
+      ids: EVAL_CASES.filter((c) => c.tags.includes("german")).map((c) => c.id),
+    },
+    { label: "Tricky wording", ids: [...TRICKY] },
+  ].map((k) => {
+    const missed = new Set(e.misses.map((m) => m.id));
+    return { ...k, n: k.ids.length, correct: k.ids.filter((id) => !missed.has(id)).length };
+  });
   const { data: cases = [] } = useQuery(casesQuery);
   const { data: overrides = [] } = useQuery(overridesQuery);
   const { data: outcomes = [] } = useQuery(outcomesQuery);
@@ -181,19 +189,19 @@ function QualityPage() {
 
       <div className="kpi-strip grid grid-cols-4 gap-0">
         <Kpi
-          label="Right next step"
-          value={pct(all.correct, all.n)}
-          sub={`${all.correct} of ${all.n} expert-labelled claims`}
+          label="Right next step, no human needed"
+          value={pct(e.correct, e.n)}
+          sub={`${e.correct} of ${e.n} realistic customer reports`}
         />
         <Kpi
-          label="Auto-processed but needed a person"
-          value={all.wrongRoutine}
-          sub="the costly error"
+          label="Misses on the safe side"
+          value={misses ? `${safeMisses} of ${misses}` : "—"}
+          sub="asked the customer or a person instead of paying out"
         />
         <Kpi
-          label="Sent to a person without need"
-          value={all.unnecessary}
-          sub="wasted reviewer time"
+          label="Auto-processed but needed more"
+          value={pct(e.wrongRoutine, e.n)}
+          sub={`${e.wrongRoutine} of ${e.n} · the costly error · random checks look for these`}
         />
         <Kpi
           label="Reviewers agree"
@@ -215,20 +223,20 @@ function QualityPage() {
         <ol className="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {[
             [
-              "1 · A right answer for every test claim",
-              `${all.n} claims, each with the correct next step written down before the system ever sees them: ${r.sets.map((k) => `${perSet.find((x) => x.k === k)!.n} ${SET_LABEL[k]?.toLowerCase() ?? k}`).join(" and ")}.`,
+              "1 · Realistic reports, right answer first",
+              `${e.n} customer reports as they really arrive: each of Mia's questions answered in the customer's own words, in English and German, some with uploaded quotes or police reports, some with vague or tricky wording. A claims expert wrote down the right next step for each one before the system ran.`,
             ],
             [
-              "2 · Blind comparison",
-              "Clearpath decides every test claim on its own; then each decision is compared with the right answer. The score is the share that match.",
+              "2 · The whole service, end to end",
+              "Each report goes through exactly what a real one does: Mia reads the answers, documents are read, contradictions are flagged, and the rules give the next step. That result is compared with the expert's. The reading rules were not tuned to these reports.",
             ],
             [
               "3 · Errors weighted by cost",
-              "A claim auto-processed that needed a person can mean money paid out wrongly, so it is counted on its own and must stay at zero. A claim sent to a person without need only costs reviewer time.",
+              "Auto-processing a claim that needed more is the costly error: it can mean money paid out wrongly. Asking the customer or a person when it wasn't needed only costs time. We count them apart.",
             ],
             [
-              "4 · Checked again, every day",
-              "Before any rule change goes live, it is replayed on every test claim. In daily work reviewers can correct any decision, about 7% of auto-processed claims get a random check, and late outcomes are compared with the first decision. Every correction becomes a new test claim.",
+              "4 · Where errors come from",
+              `On claims whose facts are already clean, the rules matched the expert on all ${rules.n} test claims. So errors come from reading what customers say and send, and that is what the numbers above measure. In daily work, reviewer corrections, random checks of about 7% of auto-processed claims and final outcomes keep measuring it; each correction becomes a new test report.`,
             ],
           ].map(([t, d]) => (
             <li key={t} className="rounded-[10px] bg-surface-2 p-4">
@@ -241,77 +249,67 @@ function QualityPage() {
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[1.3fr_1fr]">
         <Card>
-          <h2 className="section-title">Tested where it's hardest</h2>
+          <h2 className="section-title">By kind of report</h2>
           <p className="mb-3 mt-1 text-[13px] text-text-2">
-            Share of claims with the right next step, by kind of claim.
+            Share of reports that got the right next step without a human.
           </p>
           <div className="divide-y divide-line">
             <ShareRow
-              label="All test claims"
-              note={`${all.correct} of ${all.n}`}
-              share={rate(all.correct, all.n)}
-              display={pct(all.correct, all.n)}
+              label="All reports"
+              note={`${e.correct} of ${e.n}`}
+              share={rate(e.correct, e.n)}
+              display={pct(e.correct, e.n)}
               color={SERIES.strong}
               emphasis
             />
-            {perSet.map((x) => (
+            {kinds.map((k) => (
               <ShareRow
-                key={x.k}
-                label={SET_LABEL[x.k] ?? x.k}
-                note={`${x.correct} of ${x.n}`}
-                share={rate(x.correct, x.n)}
-                display={pct(x.correct, x.n)}
+                key={k.label}
+                label={k.label}
+                note={`${k.correct} of ${k.n}`}
+                share={rate(k.correct, k.n)}
+                display={pct(k.correct, k.n)}
                 color={SERIES.mid}
               />
             ))}
-            <ShareRow
-              label="Missing or unreadable information"
-              note={`${r.blankV2.correct} of ${r.blankV2.n} · never guessed`}
-              share={rate(r.blankV2.correct, r.blankV2.n)}
-              display={pct(r.blankV2.correct, r.blankV2.n)}
-              color={SERIES.mid}
-            />
-            <ShareRow
-              label="Finished claims left unchanged"
-              note={`${r.closed.kept} of ${r.closed.n} · decisions are never rewritten`}
-              share={rate(r.closed.kept, r.closed.n)}
-              display={pct(r.closed.kept, r.closed.n)}
-              color={SERIES.mid}
-            />
           </div>
           <p className="mt-3 text-[12px] text-text-3">
-            Missing fields lead to a request to the customer unless a known fact already needs a
-            person. The same claim always gets the same answer: the website and the batch engine are
-            checked against each other on every build.
+            Clear reports are almost always right; vague wording is where the service asks a person
+            or the customer, as it should. Photos and scans are read by the AI reader in the live
+            service; this test uses the text rules only.
           </p>
         </Card>
 
         <Card>
           <h2 className="section-title">Right answer vs Clearpath</h2>
           <p className="mb-4 mt-1 text-[13px] text-text-2">
-            Everything on the diagonal is correct. Anything else in the Auto-processed column would
-            be the costly error.
+            The expert's answer vs what Clearpath did, on the {e.n} reports. Everything on the
+            diagonal is correct; anything else in the Auto-processed column is the costly error.
           </p>
           <HeatGrid
             rowTitle="Right answer"
             colTitle="Clearpath"
             rows={RECS.map((k) => ({ key: k, label: RECOMMENDATION_LABELS[k] }))}
             cols={RECS.map((k) => ({ key: k, label: RECOMMENDATION_LABELS[k] }))}
-            cell={(a, b) => r.confusionV2[a as Recommendation][b as Recommendation]}
+            cell={(a, b) => e.confusion[a as Recommendation][b as Recommendation]}
           />
         </Card>
       </div>
 
       <Card className="mt-6">
         <h2 className="section-title">Where it goes wrong</h2>
-        {r.mistakesV2.length === 0 ? (
-          <p className="mt-2 flex items-center gap-2 text-[13.5px]">
-            <CircleCheck className="size-4 text-ok" strokeWidth={1.8} /> No mistakes on the {all.n}{" "}
-            test claims.
-          </p>
-        ) : (
-          <MistakeTable rows={r.mistakesV2} />
-        )}
+        <p className="mb-2 mt-1 text-[13px] text-text-2">
+          Every report the service got wrong, with the expert's reason. These are the next
+          improvements.
+        </p>
+        <MistakeTable
+          rows={e.misses.map((m) => ({
+            case_id: m.id,
+            expected: m.expected,
+            got: m.got,
+            why: `${m.why} Clearpath: ${m.reasons.join("; ")}.`,
+          }))}
+        />
       </Card>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[1.4fr_1fr]">
@@ -460,10 +458,8 @@ function MistakeTable({
 }: {
   rows: {
     case_id: string;
-    set: string;
     expected: Recommendation;
     got: Recommendation;
-    rule: string;
     why: string;
   }[];
 }) {
@@ -472,7 +468,7 @@ function MistakeTable({
       <table className="w-full text-[13px]">
         <thead>
           <tr className="border-b border-line text-left">
-            {["Claim", "Right answer", "Clearpath said", "Why"].map((h) => (
+            {["Report", "Expert", "Clearpath", "Why"].map((h) => (
               <th key={h} className="label-mono py-2 pr-4 font-normal">
                 {h}
               </th>

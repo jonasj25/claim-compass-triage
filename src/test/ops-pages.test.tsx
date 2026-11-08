@@ -91,7 +91,8 @@ describe("ops lead pages", () => {
   it("Quality shows reliability, how it is measured, mistakes and the correction log", async () => {
     await renderPage("quality");
     expect(screen.getByText("How we measure quality")).toBeTruthy();
-    expect(screen.getByText(/No mistakes on the 51 test claims/)).toBeTruthy();
+    expect(screen.getAllByText(/realistic customer reports/).length).toBeGreaterThan(0);
+    expect(screen.getByText("Where it goes wrong")).toBeTruthy();
     expect(screen.queryByText(/V1|V2|policy change/)).toBeNull();
     expect(screen.getByText("Corrected quote", { exact: false })).toBeTruthy();
     expect(screen.getByText("Monitoring plan, live")).toBeTruthy();
