@@ -133,11 +133,10 @@ const EVENT_TEXT: Record<string, string> = {
   retriaged: "Re-triaged",
   escalated: "Escalated to a reviewer",
   confirmed: "Recommendation confirmed",
-  qa_confirmed: "QA sample confirmed",
+  qa_confirmed: "Second check confirmed",
   override: "Recommendation overridden",
   comment: "Comment",
   policy_recheck: "Re-checked under new policy",
-  qa_sampled: "Picked as random QA sample",
   second_check_flagged: "Flagged for a second check (close to the limit)",
   closed: "Claim closed",
   reopened: "Claim reopened",
@@ -504,7 +503,7 @@ function CaseDetail() {
               "Customer sends documents → checked again automatically",
               "No answer after 2 reminders → goes to a reviewer",
             ]
-          : ["Normal claims handling (~7% are sampled for QA)"];
+          : ["Normal claims handling"];
 
   const storedLabel = nav.labelsById?.[caseId];
   const caseTab: WorkTab =
@@ -515,7 +514,7 @@ function CaseDetail() {
         : recheck
           ? "Policy change"
           : qa
-            ? "QA sample"
+            ? "Near limit"
             : "Risk cases";
   const priority = claimPriority(claim, caseTab);
   const missingFields = [
@@ -642,7 +641,7 @@ function CaseDetail() {
         }]
       : []),
     ...(qa && !nearLimit
-      ? [{ key: "qa", label: "Random QA sample", text: "picked at random to check that the rules still work", tone: "info" as const, Icon: ListChecks }]
+      ? [{ key: "qa", label: "Second check", text: "a quick look after the claim was processed automatically", tone: "info" as const, Icon: ListChecks }]
       : []),
   ];
   const ruleLabel = (id: unknown) => {
@@ -1523,7 +1522,7 @@ function DecisionPanel({
       </>
     ) : mode === "check" ? (
       <>
-        {head("Quick double-check", reason ?? "Random QA sample")}
+        {head("Quick double-check", reason ?? "Second check after automatic processing")}
         <Button className="w-full" disabled={busy} onClick={onConfirm}>
           Looks right – confirm & next <Kbd dark>C</Kbd>
         </Button>

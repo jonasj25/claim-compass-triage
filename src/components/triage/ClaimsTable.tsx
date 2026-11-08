@@ -31,7 +31,7 @@ export function contextLine(c: CaseRow, policy?: Policy) {
   const q = c.workflow?.queue;
   if (!c.decision) return "";
   if (q === "auto_processed")
-    return nearLimit(c, policy) ? "Close to the limit – second check" : c.workflow?.qa_sample ? "Random QA sample – please confirm" : "All checks passed";
+    return nearLimit(c, policy) ? "Close to the limit – second check" : c.workflow?.qa_sample ? "Second check – please confirm" : "All checks passed";
   return humanize(c.decision.explanation ?? "");
 }
 
@@ -71,7 +71,7 @@ export function ClaimsTable({ rows, navLabel = "Claims", statuses }: { rows: Cas
                     {c.decision?.needs_recheck && !closed && (
                       <Chip className="pill-action border-transparent">Recheck · {c.decision.policy_version}</Chip>
                     )}
-                    {c.workflow?.qa_sample && <Chip>{nearLimit(c, policy) ? "Second check" : "QA sample"}</Chip>}
+                    {c.workflow?.qa_sample && <Chip>Second check</Chip>}
                     {closed && !statuses && <Chip>Closed</Chip>}
                     {unknown && <Chip className="border-dashed">Unknown fields</Chip>}
                     {c.intake?.channel === "phone" && <Chip>Phone</Chip>}

@@ -77,7 +77,7 @@ function Advisor() {
   const r = result.balanced;
   const relaxes = result.relaxes(r);
   const sameLimit = r.limit === b.limit;
-  const unchanged = sameLimit && r.margin === b.margin && r.qa === b.qa;
+  const unchanged = sameLimit && r.margin === b.margin;
 
   const createDraft = async () => {
     const id = nextVersionId(versions.map((v) => v.id));
@@ -106,7 +106,6 @@ function Advisor() {
   const pack = (s: Score) => ({
     quote_limit_eur: s.limit,
     second_check_margin_eur: s.margin,
-    random_qa_share: s.qa,
     cost_per_year_eur: Math.round(s.total),
     reviewer_hours_per_year: Math.round(s.hours),
     expected_loss_per_year_eur: Math.round(s.risk),
@@ -231,17 +230,11 @@ function Advisor() {
               : "Better or equal on every measure at the same time: cheaper, less reviewer time, no slower for customers, no more risk."}
           </p>
 
-          <dl className="mt-5 grid grid-cols-3 gap-2 text-center">
+          <dl className="mt-5 grid grid-cols-2 gap-2 text-center">
             {(
               [
                 ["Quote limit", eur0(b.limit), eur0(r.limit), r.limit !== b.limit],
                 ["Second check", eur0(b.margin), eur0(r.margin), r.margin !== b.margin],
-                [
-                  "Random QA",
-                  `${Math.round(b.qa * 100)}%`,
-                  `${Math.round(r.qa * 100)}%`,
-                  r.qa !== b.qa,
-                ],
               ] as const
             ).map(([k, before, after, changed]) => (
               <div
@@ -296,7 +289,7 @@ function Advisor() {
             {relaxes
               ? `Raises the limit above ${eur0(b.limit)}: relaxes the written policy and needs compliance approval.`
               : sameLimit
-                ? "Keeps the written policy. Only operational settings change: second-check margin and random QA."
+                ? "Keeps the written policy. Only the second-check margin changes."
                 : "Stricter than today: within the written policy."}
           </p>
           <p className="mt-2 inline-flex items-center gap-1.5 text-[12px] text-text-3">
@@ -413,7 +406,7 @@ function Advisor() {
                 <p>
                   {unchanged
                     ? "Keep today's settings."
-                    : `Set the quote limit to ${eur0(r.limit)}, the second-check margin to ${eur0(r.margin)} and random QA to ${Math.round(r.qa * 100)}%.`}{" "}
+                    : `Set the quote limit to ${eur0(r.limit)} and the second-check margin to ${eur0(r.margin)}.`}{" "}
                   That saves {eurCompact(Math.max(0, b.total - r.total))} a year and{" "}
                   {Math.max(0, Math.round(b.hours - r.hours)).toLocaleString("en-US")} reviewer
                   hours, with customers waiting {r.days < b.days - 1e-9 ? "less" : "no longer"} and

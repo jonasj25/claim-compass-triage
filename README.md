@@ -86,7 +86,7 @@ Rules apply in order; the first match decides.
 ### Policy owner
 - **Policy:** the active rules in plain language, plus **New policy version** (a form, no JSON).
 - **Change impact:** replays every claim under the draft, showing automation, reviewer load, quality against labels, open claims to recheck and closed claims kept. **Activate** re-decides open claims and flags the changed ones; rollback means activating the old version again.
-- **Policy advisor:** tries about 2,000 settings (quote limit, second-check margin, random QA) on the current claims and recommends the one that is **no worse than today on cost, reviewer time, customer wait and expected losses**. Locked rules are never touched; raising the limit is marked as needing approval. An AI memo explains the result.
+- **Policy advisor:** tries every combination of quote limit and second-check margin on the current claims and recommends the one that is **no worse than today on cost, reviewer time, customer wait and expected losses**. Locked rules are never touched; raising the limit is marked as needing approval. An AI memo explains the result.
 - **Versions:** every version with a plain-language diff; drafts can be deleted.
 
 ### Ops lead
@@ -184,4 +184,4 @@ drizzle/, supabase/    database: managed by Lovable, do not edit by hand
 
 ## After launch
 
-Random QA on about 7% of auto-processed claims plus every claim within €70 of the limit; reviewer overrides and late outcomes become new labelled tests. The monitoring plan on the Quality page names the triggers (override rate, wrong routine found later, blank-field share, change in claim mix), who investigates, and who approves a policy change, which is always replayed on past claims before release. Next test before production: four weeks in shadow mode on real claims, comparing recommendations with reviewers' decisions.
+Second checks on every auto-processed claim within €70 of the limit; reviewer overrides and late outcomes become new labelled tests. The monitoring plan on the Quality page names the triggers (override rate, wrong routine found later, blank-field share, change in claim mix), who investigates, and who approves a policy change, which is always replayed on past claims before release. Next test before production: four weeks in shadow mode on real claims, comparing recommendations with reviewers' decisions.

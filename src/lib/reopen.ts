@@ -1,5 +1,5 @@
 // Reopening a closed claim, for example when the customer sends new information, more damage turns up,
-// the customer disputes the outcome or a QA check finds an error.
+// the customer disputes the outcome or a check finds an error.
 // - The claim is open again, so it is checked again under the ACTIVE policy; the recommendation comes only
 //   from decide(). If it differs from the decision before closing, the claim is flagged for recheck.
 // - A person always looks at a reopened claim: it goes to "To review" with a fresh 24 h target.
@@ -17,7 +17,7 @@ export const REOPEN_REASONS = [
   { key: "new_information", label: "Customer sent new information" },
   { key: "additional_damage", label: "More damage found (supplement)" },
   { key: "customer_dispute", label: "Customer disputes the outcome" },
-  { key: "decision_error", label: "Error found in QA or audit" },
+  { key: "decision_error", label: "Error found in a check or audit" },
   { key: "other", label: "Other" },
 ] as const;
 export type ReopenReason = (typeof REOPEN_REASONS)[number]["key"];

@@ -20,7 +20,7 @@ export const advisorMemo = createServerFn({ method: "POST" })
     const system =
       "You are a claims-operations consultant for a European motor insurer. You receive results from a deterministic policy optimizer. " +
       "Write a concise memo (max 150 words) for the policy owner comparing today's settings with the balanced recommendation: what changes " +
-      "(quote limit, second-check margin, random QA), and the effect on cost, reviewer hours, customer wait and expected losses, with the concrete numbers. " +
+      "(quote limit, second-check margin), and the effect on cost, reviewer hours, customer wait and expected losses, with the concrete numbers. " +
       "The recommendation is chosen to be no worse than today on any of these. Never invent numbers. Say that red flags, claim types, the EV rule and document rules stay locked, " +
       "that raising the quote limit relaxes the written policy and needs compliance approval, and that a draft must be checked on Change impact before activation. Plain text, no markdown headings.";
     try {

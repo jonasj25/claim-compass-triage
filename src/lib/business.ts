@@ -85,7 +85,6 @@ export type AssumptionKey =
   | "reviewMin"
   | "infoMin"
   | "checkMin"
-  | "qaShare"
   | "avgClaim"
   | "overpayShare"
   | "platformPerYear"
@@ -184,7 +183,7 @@ export const DEFAULT_ASSUMPTIONS: Assumption[] = [
   },
   {
     key: "checkMin",
-    label: "Time per QA or second check",
+    label: "Time per second check",
     value: 8,
     unit: "min",
     kind: "assumption",
@@ -192,18 +191,6 @@ export const DEFAULT_ASSUMPTIONS: Assumption[] = [
     min: 1,
     max: 30,
     step: 1,
-    group: "Handling time",
-  },
-  {
-    key: "qaShare",
-    label: "Random QA sample of auto-processed claims",
-    value: 0.07,
-    unit: "share",
-    kind: "assumption",
-    note: "Ongoing quality control after launch.",
-    min: 0,
-    max: 0.3,
-    step: 0.01,
     group: "Handling time",
   },
   {
@@ -335,7 +322,7 @@ export function triageEconomics(i: Inputs, mix: Mix, secondShare = 0): Outcome {
   const todayHours = (n * i.triageMinToday) / 60;
   const review = (n * mix.share.human_review * i.reviewMin) / 60;
   const info = (n * mix.share.request_information * i.infoMin) / 60;
-  const checks = (n * (mix.share.routine_processing * i.qaShare + secondShare) * i.checkMin) / 60;
+  const checks = (n * secondShare * i.checkMin) / 60;
   const withHours = review + info + checks;
   const todayCost = todayHours * hourly;
   const withPeopleCost = withHours * hourly;

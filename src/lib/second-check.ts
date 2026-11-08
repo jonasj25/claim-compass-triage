@@ -2,7 +2,7 @@
 //
 // This is operational quality control, NOT a triage rule: the recommendation stays exactly what the
 // written policy says (routine_processing). The claim is only flagged so a person double-checks it
-// after the fact, using the same flow as a random QA sample.
+// after the fact.
 //
 // Threshold: a routine claim whose quote is within MARGIN_EUR below the limit (limit - 70 < quote <= limit).
 // With the v2 limit of EUR 1,200 that is EUR 1,130.01 - 1,200; with v1 (EUR 1,500) EUR 1,430.01 - 1,500.

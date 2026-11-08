@@ -5,7 +5,7 @@ import { isClosed } from "./csv";
 import type { CaseRow } from "./data";
 import { REVIEWERS } from "./lifecycle";
 
-/** Open claims a person has to look at: to review, or a second check / QA sample. */
+/** Open claims a person has to look at: to review, or a second check. */
 export const needsReviewer = (c: CaseRow) =>
   !isClosed(c.claim.case_status) &&
   !!c.workflow &&

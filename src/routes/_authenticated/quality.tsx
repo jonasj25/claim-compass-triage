@@ -131,7 +131,7 @@ function QualityPage() {
       action: "Upstream data problem: fix the intake form or import",
     },
     {
-      name: "Open claims in second check / QA",
+      name: "Open claims in second check",
       now: `${Math.round(secondShare * 100)}%`,
       limit: "≤ 12%",
       ok: secondShare <= 0.12,
@@ -201,7 +201,7 @@ function QualityPage() {
         <Kpi
           label="Auto-processed but needed more"
           value={pct(e.wrongRoutine, e.n)}
-          sub={`${e.wrongRoutine} of ${e.n} · the costly error · random checks look for these`}
+          sub={`${e.wrongRoutine} of ${e.n} · the costly error`}
         />
         <Kpi
           label="Reviewers agree"
@@ -236,7 +236,7 @@ function QualityPage() {
             ],
             [
               "4 · Where errors come from",
-              `On claims whose facts are already clean, the rules matched the expert on all ${rules.n} test claims. So errors come from reading what customers say and send, and that is what the numbers above measure. In daily work, reviewer corrections, random checks of about 7% of auto-processed claims and final outcomes keep measuring it; each correction becomes a new test report.`,
+              `On claims whose facts are already clean, the rules matched the expert on all ${rules.n} test claims. So errors come from reading what customers say and send, and that is what the numbers above measure. In daily work, reviewer corrections, second checks near the limit and final outcomes keep measuring it; each correction becomes a new test report.`,
             ],
           ].map(([t, d]) => (
             <li key={t} className="rounded-[10px] bg-surface-2 p-4">
@@ -445,8 +445,8 @@ function QualityPage() {
           </tbody>
         </table>
         <p className="px-6 py-4 text-[12.5px] text-text-3">
-          Sampling: about 7% of auto-processed claims get a random check, plus every claim within
-          €70 of the quote limit.
+          Second checks: every auto-processed claim within €70 of the quote limit gets a quick look
+          afterwards.
         </p>
       </Card>
     </div>

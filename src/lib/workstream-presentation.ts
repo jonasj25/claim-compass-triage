@@ -7,14 +7,13 @@ export const WORK_TABS = [
   "Risk cases",
   "Policy change",
   "Near limit",
-  "QA sample",
 ] as const;
 export type WorkTab = (typeof WORK_TABS)[number];
 export function workTab(item: WorkItem): WorkTab {
   if (item.group === "no_reply") return "No reply";
   if (item.replied) return "Customer replied";
   if (item.group === "policy_change") return "Policy change";
-  if (item.group === "double_check") return item.nearLimit ? "Near limit" : "QA sample";
+  if (item.group === "double_check") return "Near limit";
   return "Risk cases";
 }
 
@@ -23,7 +22,7 @@ export function workTab(item: WorkItem): WorkTab {
 //   High   – quote of €2,500 or more (top quarter of the review queue),
 //            or a person is injured (liability far beyond the repair),
 //            or possible fraud (duplicate claim, contradicting evidence).
-//   Low    – quick double-checks (near the limit, random QA) and quotes under €1,000.
+//   Low    – quick double-checks near the limit and quotes under €1,000.
 //   Medium – everything else (€1,000–2,499, unknown amount, disputed fault, claim type, EV, …).
 export const PRIORITY_HIGH_EUR = 2500;
 export const PRIORITY_LOW_EUR = 1000;
@@ -36,7 +35,7 @@ export function claimPriority(claim: PriorityClaim, tab: WorkTab): { level: Prio
   if (claim.injury_reported === true) return { level: "High", why: "Injury reported" };
   if (claim.duplicate_flag === true || claim.evidence_conflict === true)
     return { level: "High", why: "Possible fraud (duplicate or contradicting evidence)" };
-  if (tab === "Near limit" || tab === "QA sample") return { level: "Low", why: "Quick double-check" };
+  if (tab === "Near limit") return { level: "Low", why: "Quick double-check" };
   if (q !== null && q !== undefined && q >= PRIORITY_HIGH_EUR)
     return { level: "High", why: `Quote ${eur(q)} is ${eur(PRIORITY_HIGH_EUR)} or more` };
   if (q !== null && q !== undefined && q < PRIORITY_LOW_EUR)

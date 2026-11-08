@@ -66,7 +66,7 @@ describe("reviewer workstream", () => {
       event("a", "message_received", "2026-11-06T10:00:00Z"), event("a", "reminder_sent", "2026-11-07T10:00:00Z")];
     expect(stream([a], history).ordered).toEqual([]);
   });
-  it("keeps the €1,450 near-limit recommendation Auto-processed with the exact €50 gap, never random QA", () => {
+  it("keeps the €1,450 near-limit recommendation Auto-processed with the exact €50 gap", () => {
     const near = row("near", "routine_processing");
     near.claim.quote_eur = 1450;
     if (near.workflow) near.workflow.qa_sample = true;

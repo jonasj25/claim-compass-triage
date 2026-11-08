@@ -208,7 +208,7 @@ function BusinessCase() {
                     color: REC_COLOR.request_information,
                   },
                   {
-                    label: "QA & second checks",
+                    label: "Second checks",
                     value: econ.breakdown.checks * econ.hourly,
                     color: REC_COLOR.routine_processing,
                   },

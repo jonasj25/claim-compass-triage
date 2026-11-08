@@ -103,8 +103,8 @@ function Overview() {
             />
           </div>
           <p className="mt-4 text-[12.5px] text-text-3">
-            Auto-processed plus automatic requests for information. Second checks and the ~7% random
-            QA sample add a short human look afterwards without blocking the claim.
+            Auto-processed plus automatic requests for information. Second checks near the limit add
+            a short human look afterwards without blocking the claim.
           </p>
         </Card>
 

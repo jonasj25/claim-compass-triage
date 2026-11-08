@@ -1,4 +1,4 @@
-// Automatic assignment: every claim that newly needs a person (to review, or a second check / QA sample)
+// Automatic assignment: every claim that newly needs a person (to review, or a second check)
 // goes to the reviewer with the fewest open claims needing a person at that moment.
 // Takes the database client as a parameter so it works in the browser and in server functions.
 // Assignment is workload only; it never changes a recommendation. Each assignment is logged as an event.

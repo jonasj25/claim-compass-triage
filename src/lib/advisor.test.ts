@@ -11,7 +11,7 @@ describe("policy advisor", () => {
     const r = advise(VOLUME_CLAIMS, BATCH_POLICY_V2, i, false);
     for (const g of GOALS) expect(r.best[g.key].limit).toBeLessThanOrEqual(1200);
     expect(r.candidates.every((c) => c.limit <= 1200)).toBe(true);
-    expect(r.baseline).toMatchObject({ limit: 1200, margin: 70, qa: 0.07 });
+    expect(r.baseline).toMatchObject({ limit: 1200, margin: 70 });
   });
 
   it("each goal is at least as good as today on its own measure", () => {
@@ -28,15 +28,15 @@ describe("policy advisor", () => {
 
   it("explore mode can suggest a higher limit and flags it as a relaxation", () => {
     const r = advise(VOLUME_CLAIMS, BATCH_POLICY_V2, i, true);
-    expect(r.evaluated).toBeGreaterThan(1000);
+    expect(r.evaluated).toBeGreaterThan(400);
     const anyRelax = GOALS.some((g) => r.relaxes(r.best[g.key]));
     expect(typeof anyRelax).toBe("boolean");
-    expect(r.relaxes({ limit: 1300, margin: 0, qa: 0 })).toBe(true);
-    expect(r.relaxes({ limit: 1200, margin: 0, qa: 0 })).toBe(false);
+    expect(r.relaxes({ limit: 1300, margin: 0 })).toBe(true);
+    expect(r.relaxes({ limit: 1200, margin: 0 })).toBe(false);
   });
 
   it("a suggestion becomes a draft that only changes the quote limit", () => {
-    const d = draftFrom(BATCH_POLICY_V2, { limit: 1100, margin: 100, qa: 0.05 }, "v3", "financial");
+    const d = draftFrom(BATCH_POLICY_V2, { limit: 1100, margin: 100 }, "v3", "financial");
     expect(d.version).toBe("v3");
     expect(d.human_review.quote_limit_eur).toBe(1100);
     expect(d.human_review.review_repair_types).toEqual(

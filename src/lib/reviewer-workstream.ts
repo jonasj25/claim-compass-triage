@@ -28,7 +28,7 @@ export const WORK_GROUPS = [
   { key: "decision", label: "Needs your decision", instruction: "A rule flagged something only a person can judge. Check the flagged fact and decide." },
   { key: "policy_change", label: "Re-check after policy change", instruction: "The new policy gives a different result. Check and confirm it." },
   { key: "no_reply", label: "Customer didn't reply", instruction: "Reminders sent, still no answer. Call the customer or close the claim." },
-  { key: "double_check", label: "Quick double-check", instruction: "Processed automatically. Close to the limit or picked at random – a quick look is enough." },
+  { key: "double_check", label: "Quick double-check", instruction: "Processed automatically, close to the limit – a quick look is enough." },
 ] as const;
 export type GroupKey = (typeof WORK_GROUPS)[number]["key"];
 
@@ -97,7 +97,7 @@ export function buildWorkstream(cases: CaseRow[], policy: Policy, events: WorkEv
     const overridden = !!row.override;
     const recheck = decision.needs_recheck && !overridden;
     const near = secondCheckReason(claim, policy, rec);
-    // Do not create QA samples here: random selection is persisted by the existing workflow.
+    // Second checks are set when the claim comes in (workflow.qa_sample); nothing is selected here.
     const qa = workflow.queue === "auto_processed" && workflow.qa_sample && !near;
     const needsHuman = rec === "human_review";
     if (rec === "request_information") continue;
@@ -132,7 +132,7 @@ export function buildWorkstream(cases: CaseRow[], policy: Policy, events: WorkEv
     const group: GroupKey = replied ? "decision" : recheck ? "policy_change" :
       flagged.length ? "decision" : near || qa ? "double_check" : "decision";
     const why = group === "policy_change" ? [policyWhy, riskWhy].filter(Boolean).join(" · ") :
-      group === "double_check" ? nearLimit ?? "Picked at random to check the rules still work." :
+      group === "double_check" ? nearLimit ?? "Quick second check of an automatically processed claim." :
       replied ? `Customer replied · ${riskWhy || "New information needs your decision"}` :
       overridden && row.override ? `Changed by ${row.override.reviewer ?? "a reviewer"}: ${RECOMMENDATION_LABELS[(row.override.original_recommendation ?? decision.recommendation) as keyof typeof RECOMMENDATION_LABELS] ?? row.override.original_recommendation} → ${RECOMMENDATION_LABELS[rec]}${row.override.reason_text ? ` · ${row.override.reason_text}` : ""}` :
       riskWhy || humanize(decision.explanation)?.replace(/\bV?\d*\.?R[123]\b/gi, "").trim() || "A person needs to check this claim";

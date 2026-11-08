@@ -19,7 +19,7 @@ describe("review priority", () => {
   });
   it("keeps quick double-checks low and unknown flags never count as a risk", () => {
     expect(claimPriority(c(1200), "Near limit").level).toBe("Low");
-    expect(claimPriority(c(3000), "QA sample").level).toBe("Low");
+    expect(claimPriority(c(3000), "Near limit").level).toBe("Low");
     expect(claimPriority(c(300, { injury_reported: null }), "Risk cases").level).toBe("Low");
   });
   it("marks claims received today as new", () => {
