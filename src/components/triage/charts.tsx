@@ -19,6 +19,8 @@ export const SERIES = {
   light: "var(--chart-3)",
   soft: "var(--chart-4)",
   grey: "var(--chart-5)",
+  /** the one highlight: the app's ink navy */
+  ink: "var(--ink)",
 };
 
 export interface BarItem {
@@ -206,7 +208,7 @@ export function HeatGrid({
                     )}
                     style={{
                       background: v
-                        ? `color-mix(in oklch, var(--chart-1) ${Math.round(12 + a * 58)}%, var(--surface))`
+                        ? `color-mix(in oklab, var(--chart-1) ${Math.round(12 + a * 58)}%, var(--surface))`
                         : "var(--surface-2)",
                       color: a > 0.6 ? "white" : undefined,
                     }}

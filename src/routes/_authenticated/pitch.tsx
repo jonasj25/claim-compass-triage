@@ -20,7 +20,7 @@ import { volumeMix, VOLUME_CLAIMS } from "@/lib/quality";
 import { secondCheckReason } from "@/lib/second-check";
 import { decide, type Claim, type Policy } from "@/lib/triage";
 import { Card, Kpi, PageHeader } from "@/components/triage/ui";
-import { KindBadge, REC_COLOR, SERIES } from "@/components/triage/charts";
+import { KindBadge, SERIES } from "@/components/triage/charts";
 import { cn } from "@/lib/utils";
 
 // Investor view: the business case on one screen for a 4-minute pitch.
@@ -141,7 +141,7 @@ function Pitch() {
     { label: "Information requests", value: e.breakdown.info * e.hourly, color: SERIES.mid },
     { label: "Second checks", value: e.breakdown.checks * e.hourly, color: SERIES.light },
     { label: "Our licence", value: inputs.platformPerYear, color: SERIES.grey },
-    { label: "Saved", value: Math.max(0, e.netPerYear), color: REC_COLOR.routine_processing },
+    { label: "Saved", value: Math.max(0, e.netPerYear), color: SERIES.ink },
   ];
 
   return (

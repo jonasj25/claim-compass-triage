@@ -127,8 +127,8 @@
   /* charts: one app blue (= --link) and its tints, plus neutral greys.
      Green / amber / coral only for the three next steps shown side by side. */
   --chart-1: var(--link);
-  --chart-2: color-mix(in oklch, var(--link) 55%, var(--surface));
-  --chart-3: color-mix(in oklch, var(--link) 28%, var(--surface));
+  --chart-2: oklch(0.74 0.105 260);
+  --chart-3: oklch(0.87 0.05 260);
   --chart-4: oklch(0.88 0.01 255);
   --chart-5: oklch(0.68 0.015 255);
   --sidebar: var(--background);
