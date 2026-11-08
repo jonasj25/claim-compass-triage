@@ -54,6 +54,8 @@ describe("Policy advisor page", () => {
     expect(screen.getByText("Recommended settings")).toBeTruthy();
     expect(screen.queryByText("Financial optimum")).toBeNull();
     expect(screen.getByText("Customer wait (days to decision)")).toBeTruthy();
+    expect(screen.getByText("Quote limit explorer")).toBeTruthy();
+    expect(screen.getByRole("slider")).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: /Ask the AI consultant/ }));
     await waitFor(() => expect(screen.getByText("Memo from the AI consultant.")).toBeTruthy());

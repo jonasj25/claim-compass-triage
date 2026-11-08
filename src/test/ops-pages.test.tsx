@@ -103,6 +103,8 @@ describe("ops lead pages", () => {
     expect(screen.getByText("Net benefit per year")).toBeTruthy();
     expect(screen.getByText("Payback")).toBeTruthy();
     expect(screen.getByText(/Cost of one policy change/)).toBeTruthy();
+    expect(screen.queryByText("Where to set the threshold")).toBeNull();
+    expect(screen.queryByText("Quote limit explorer")).toBeNull();
     expect(screen.getAllByText(/source/i).length).toBeGreaterThan(3);
   });
 });

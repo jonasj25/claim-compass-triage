@@ -2,20 +2,9 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { ExternalLink, RotateCcw } from "lucide-react";
-import {
-  CartesianGrid,
-  Line,
-  LineChart,
-  ReferenceLine,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
 import { BATCH_POLICY_V1, BATCH_POLICY_V2 } from "@/lib/batch";
 import { isClosed } from "@/lib/csv";
 import {
-  breakEvenProbability,
   DEFAULT_ASSUMPTIONS,
   defaultInputs,
   errorCost,
@@ -31,11 +20,10 @@ import {
   type Inputs,
 } from "@/lib/business";
 import { labelledReport, VOLUME_CLAIMS } from "@/lib/quality";
-import { caseMix, claimListMix, useClaimMix, type MixSource } from "@/lib/claim-mix";
+import { useClaimMix, type MixSource } from "@/lib/claim-mix";
 import { secondCheckReason } from "@/lib/second-check";
-import { decide, RECOMMENDATION_LABELS, type Claim, type Policy } from "@/lib/triage";
+import { decide, RECOMMENDATION_LABELS, type Claim } from "@/lib/triage";
 import { Input } from "@/components/ui/input";
-import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
 import { Card, Kpi, PageHeader } from "@/components/triage/ui";
 import { KindBadge, REC_COLOR, SERIES, StackedShare } from "@/components/triage/charts";
@@ -52,7 +40,7 @@ export const Route = createFileRoute("/_authenticated/business-case")({
       {
         name: "description",
         content:
-          "Cost of triage today vs with the system, cost of errors, threshold logic and the cost of a policy change.",
+          "Cost of triage today vs with the system, cost of errors and the cost of a policy change.",
       },
     ],
   }),
@@ -68,10 +56,7 @@ function BusinessCase() {
   const [inputs, setInputs] = useState<Inputs>(defaultInputs);
   // Same claims and counts as Workload & flow and the Investor view (live claims, active policy)
   const [picked, setSource] = useState<MixSource>("live");
-  const { mix, policy: active, source, hasLive, cases, liveCount } = useClaimMix(picked);
-  const currentLimit = active.human_review.quote_limit_eur ?? 1200;
-  const [limitPick, setLimit] = useState<number | null>(null);
-  const limit = limitPick ?? currentLimit;
+  const { mix, policy: active, source, hasLive, liveCount } = useClaimMix(picked);
   const second = mix.secondShare;
   const quality = useMemo(() => labelledReport(), []);
   const econ = triageEconomics(inputs, mix, second);
@@ -80,24 +65,6 @@ function BusinessCase() {
   const errV2 = errorCost(inputs, quality.v2);
   const staleRate = mix.open ? mix.staleWrongRoutine / mix.open : 0;
   const staleCostYear = staleRate * inputs.claimsPerYear * wrongRoutineCost(inputs);
-  const be = breakEvenProbability(inputs);
-
-  const explore = useMemo(() => {
-    // At today's limit this is exactly today's mix; other limits re-decide the claims nobody overrode
-    if (limit === currentLimit) return { mix, econ: triageEconomics(inputs, mix, mix.secondShare) };
-    const pol: Policy = { ...active, human_review: { ...active.human_review, quote_limit_eur: limit } };
-    const m = source === "live" ? caseMix(cases, active, active, pol) : claimListMix(VOLUME_CLAIMS, pol, active);
-    return { mix: m, econ: triageEconomics(inputs, m, m.secondShare) };
-  }, [limit, currentLimit, mix, source, cases, active, inputs]);
-
-  const curve = useMemo(() => {
-    const W = wrongRoutineCost(inputs);
-    const U = unnecessaryReviewCost(inputs);
-    return Array.from({ length: 21 }, (_, k) => {
-      const p = (k / 20) * Math.max(0.04, be * 3);
-      return { p, auto: p * W, escalate: (1 - p) * U };
-    });
-  }, [inputs, be]);
 
   const set = (k: keyof Inputs, v: number) => setInputs((s) => ({ ...s, [k]: v }));
   const changed = DEFAULT_ASSUMPTIONS.some((a) => inputs[a.key] !== a.value);
@@ -278,144 +245,6 @@ function BusinessCase() {
             of open claims that {P2.version.toUpperCase()} sends to a person but{" "}
             {P1.version.toUpperCase()} would still auto-process. Residual production errors come
             from data quality, which the monitoring plan watches.
-          </p>
-        </Card>
-      </div>
-
-      <div className="mt-6 grid gap-6 lg:grid-cols-2">
-        <Card>
-          <h2 className="section-title">Where to set the threshold</h2>
-          <p className="mt-1 text-[13px] text-text-2">
-            Expected cost of one claim if we auto-process it vs send it to a person, by the chance
-            that it really needs a person. Escalate above{" "}
-            <strong className="text-foreground">{pct(be, 1)}</strong>.
-          </p>
-          <div className="mt-4 h-[220px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={curve} margin={{ top: 8, right: 12, bottom: 4, left: -8 }}>
-                <CartesianGrid vertical={false} stroke="var(--line)" />
-                <XAxis
-                  dataKey="p"
-                  type="number"
-                  domain={[0, "dataMax"]}
-                  tickFormatter={(v) => pct(v)}
-                  tickLine={false}
-                  axisLine={false}
-                  tick={{ fontSize: 11, fill: "var(--text-2)" }}
-                />
-                <YAxis
-                  tickFormatter={(v) => `€${v}`}
-                  tickLine={false}
-                  axisLine={false}
-                  tick={{ fontSize: 11, fill: "var(--text-2)" }}
-                />
-                <Tooltip
-                  contentStyle={{ borderRadius: 10, border: "1px solid var(--line)", fontSize: 12 }}
-                  labelFormatter={(v) => `Chance it needs a person: ${pct(Number(v), 1)}`}
-                  formatter={(v: number, name: string) => [
-                    eur0(v),
-                    name === "auto" ? "Auto-process" : "Send to a person",
-                  ]}
-                />
-                <ReferenceLine
-                  x={be}
-                  stroke="var(--text-3)"
-                  strokeDasharray="0"
-                  label={{
-                    value: `break-even ${pct(be, 1)}`,
-                    position: "insideTopRight",
-                    fontSize: 11,
-                    fill: "var(--text-2)",
-                  }}
-                />
-                <Line
-                  type="linear"
-                  dataKey="auto"
-                  stroke={REC_COLOR.routine_processing}
-                  strokeWidth={2}
-                  dot={false}
-                />
-                <Line
-                  type="linear"
-                  dataKey="escalate"
-                  stroke={REC_COLOR.human_review}
-                  strokeWidth={2}
-                  dot={false}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-          <ul className="mt-2 flex gap-5 text-[12.5px]">
-            <li className="flex items-center gap-1.5">
-              <span
-                className="h-0.5 w-4 rounded"
-                style={{ background: REC_COLOR.routine_processing }}
-              />{" "}
-              Auto-process
-            </li>
-            <li className="flex items-center gap-1.5">
-              <span className="h-0.5 w-4 rounded" style={{ background: REC_COLOR.human_review }} />{" "}
-              Send to a person
-            </li>
-          </ul>
-          <p className="mt-3 text-[12.5px] text-text-2">
-            Because a wrong routine is so much more expensive, the system escalates on any known red
-            flag, asks instead of guessing when a fact is blank, and adds a second check within €70
-            of the limit.
-          </p>
-        </Card>
-
-        <Card>
-          <h2 className="section-title">Quote limit explorer</h2>
-          <p className="mt-1 text-[13px] text-text-2">
-            What a different routine limit would mean for workload, on the same claims (the policy
-            itself sets {eur0(currentLimit)}).
-          </p>
-          <div className="mt-6 flex items-center gap-4">
-            <Slider
-              value={[limit]}
-              min={600}
-              max={2000}
-              step={50}
-              onValueChange={([v]) => setLimit(v)}
-              aria-label="Quote limit"
-              className="flex-1"
-            />
-            <span className="num w-20 text-right text-[18px] font-semibold">{eur0(limit)}</span>
-          </div>
-          <dl className="mt-6 grid grid-cols-2 gap-3 text-[13px]">
-            {[
-              [
-                "Auto-processed",
-                pct(explore.mix.share.routine_processing),
-                `${pct(mix.share.routine_processing)} at ${eur0(currentLimit)}`,
-              ],
-              [
-                "Sent to a person",
-                pct(explore.mix.share.human_review),
-                `${pct(mix.share.human_review)} at ${eur0(currentLimit)}`,
-              ],
-              [
-                "People on triage",
-                `${explore.econ.fteWith.toFixed(1)} FTE`,
-                `${econ.fteWith.toFixed(1)} FTE at the policy limit`,
-              ],
-              [
-                "Net benefit / year",
-                eurCompact(explore.econ.netPerYear),
-                `${eurCompact(econ.netPerYear)} at the policy limit`,
-              ],
-            ].map(([k, v, sub]) => (
-              <div key={k} className="rounded-[10px] bg-surface-2 p-3">
-                <dt className="text-text-2">{k}</dt>
-                <dd className="num mt-1 text-[22px] font-semibold">{v}</dd>
-                <dd className="mt-0.5 text-[12px] text-text-3">{sub}</dd>
-              </div>
-            ))}
-          </dl>
-          <p className="mt-3 text-[12px] text-text-3">
-            A higher limit saves reviewer time but lets more large claims through unchecked; the
-            break-even chart says how much risk each saved review may carry.
           </p>
         </Card>
       </div>

@@ -24,6 +24,7 @@ import { useRole } from "@/lib/role";
 import { Button } from "@/components/ui/button";
 import { Card, PageHeader } from "@/components/triage/ui";
 import { SERIES } from "@/components/triage/charts";
+import { LimitExplorer } from "@/components/triage/LimitExplorer";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/advisor")({
@@ -430,6 +431,8 @@ function Advisor() {
           </Card>
         </div>
       </div>
+
+      <LimitExplorer inputs={inputs} className="mt-6" />
     </div>
   );
 }
