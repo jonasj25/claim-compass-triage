@@ -41,7 +41,11 @@ import {
   ROLE_HOME,
   ROLE_LABELS,
   ROLE_NAV,
+  accessibleRoles,
+  canAccess,
+  highestRole,
   initials,
+  sectionOf,
   type Me,
   type Role,
 } from "@/lib/role";
@@ -78,7 +82,7 @@ function AppShell() {
         id: user.id,
         name: p.data?.name || user.email || "User",
         email: p.data?.email || user.email || "",
-        role: (r.data?.[0]?.role as Role) ?? "reviewer",
+        role: highestRole((r.data ?? []).map((x) => x.role)),
       };
     },
   });
@@ -87,11 +91,22 @@ function AppShell() {
   useEffect(() => {
     if (!meQuery.data) return;
     const stored = localStorage.getItem(ROLE_KEY) as Role | null;
-    setRoleState(stored && stored in ROLE_LABELS ? stored : meQuery.data.role);
+    // A stored view is only kept if the account may see it
+    const ok = stored && stored in ROLE_LABELS && canAccess(meQuery.data.role, stored);
+    setRoleState(ok ? stored : meQuery.data.role);
   }, [meQuery.data]);
 
   const navigate = useNavigate();
+  const path = useRouterState({ select: (s) => s.location.pathname });
+  const section = sectionOf(path);
+  const blocked = !!meQuery.data && !!section && !canAccess(meQuery.data.role, section);
+  useEffect(() => {
+    if (!blocked || !meQuery.data) return;
+    toast(`The ${ROLE_LABELS[section!]} pages aren't available for your account`);
+    navigate({ to: ROLE_HOME[meQuery.data.role], replace: true });
+  }, [blocked, section, meQuery.data, navigate]);
   const setRole = (r: Role) => {
+    if (!meQuery.data || !canAccess(meQuery.data.role, r)) return;
     localStorage.setItem(ROLE_KEY, r);
     setRoleState(r);
     navigate({ to: ROLE_HOME[r] });
@@ -143,7 +158,7 @@ function AppShell() {
           <SideNav expanded={expanded} onToggle={toggleNav} />
           <div className="mx-auto max-w-[1440px] p-6">
             <main className="enterprise-content min-w-0">
-              <Outlet />
+              {blocked ? <p className="label-mono">Not available for your account</p> : <Outlet />}
             </main>
           </div>
         </div>
@@ -184,12 +199,13 @@ function TopBar() {
         <span className="truncate text-[13px] text-text-2">{title}</span>
       </div>
       <div className="flex shrink-0 items-center gap-3">
+        {accessibleRoles(me.role).length > 1 && (
         <div
           role="tablist"
           aria-label="Role"
           className="absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 rounded-md border border-line bg-surface-2 p-0.5"
         >
-          {(Object.keys(ROLE_LABELS) as Role[]).map((r) => (
+          {accessibleRoles(me.role).map((r) => (
             <Button
               key={r}
               role="tab"
@@ -206,6 +222,7 @@ function TopBar() {
             </Button>
           ))}
         </div>
+        )}
         <span className="rounded-md border border-line px-2 py-1 font-mono text-[11px] text-text-2">
           Policy {policy.data?.version ?? "…"}
         </span>

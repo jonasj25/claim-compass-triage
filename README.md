@@ -53,7 +53,7 @@ Your file is processed in your browser. Nothing is uploaded or stored. The page 
 | Policy owner | Tobias Brandt · tobias@demo.com |
 | Ops lead | Sofia Lang · sofia@demo.com |
 
-Click the account on the login page to sign in. Click the Clearpath logo at the top left to sign out and switch roles.
+Click the account on the login page to sign in. Access follows the hierarchy: the **ops lead** can open every section, the **policy owner** the policy owner and reviewer sections, a **reviewer** only the reviewer section. The role switcher at the top shows only the sections your account may open. Click the Clearpath logo at the top left to sign out and switch accounts.
 
 ---
 

@@ -14,7 +14,10 @@ export const ROLE_HOME: Record<Role, string> = {
   ops_lead: "/overview",
 };
 
-export interface NavItem { to: string; label: string }
+export interface NavItem {
+  to: string;
+  label: string;
+}
 
 export const ROLE_NAV: Record<Role, NavItem[]> = {
   reviewer: [
@@ -34,7 +37,43 @@ export const ROLE_NAV: Record<Role, NavItem[]> = {
   ],
 };
 
-export interface Me { id: string; name: string; email: string; role: Role }
+// Access follows a hierarchy: the ops lead sees every section, the policy owner sees the
+// policy owner and reviewer sections, a reviewer only the reviewer section.
+export const ROLE_RANK: Record<Role, number> = { reviewer: 0, policy_owner: 1, ops_lead: 2 };
+const ROLES = Object.keys(ROLE_RANK) as Role[];
+
+export const canAccess = (userRole: Role, section: Role) =>
+  ROLE_RANK[userRole] >= ROLE_RANK[section];
+
+/** Roles whose section this user may open, lowest first. */
+export const accessibleRoles = (userRole: Role) => ROLES.filter((r) => canAccess(userRole, r));
+
+/** The highest role among the user's role rows (a user can hold more than one). */
+export const highestRole = (roles: (string | null | undefined)[]): Role =>
+  roles
+    .filter((r): r is Role => !!r && r in ROLE_RANK)
+    .reduce<Role>((best, r) => (ROLE_RANK[r] > ROLE_RANK[best] ? r : best), "reviewer");
+
+// Signed-in pages outside the role menus. Pages not listed anywhere (Import CSV) are open to every role.
+const EXTRA_SECTION: [string, Role][] = [
+  ["/claims/", "reviewer"],
+  ["/quality", "ops_lead"],
+];
+
+/** Which role's section a path belongs to, or null if every signed-in role may open it. */
+export function sectionOf(path: string): Role | null {
+  const p = path.length > 1 ? path.replace(/\/+$/, "") : path;
+  for (const r of ROLES) if (ROLE_NAV[r].some((it) => it.to === p)) return r;
+  const extra = EXTRA_SECTION.find(([prefix]) => p === prefix || p.startsWith(prefix));
+  return extra ? extra[1] : null;
+}
+
+export interface Me {
+  id: string;
+  name: string;
+  email: string;
+  role: Role;
+}
 
 export interface RoleCtx {
   me: Me;

@@ -8,7 +8,7 @@ import {
   DEMO_PASSWORD,
   LOGIN_USERS,
 } from "@/lib/demo-users.functions";
-import { ROLE_HOME, ROLE_LABELS, type Role } from "@/lib/role";
+import { highestRole, ROLE_HOME, ROLE_LABELS, type Role } from "@/lib/role";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -29,7 +29,7 @@ export const Route = createFileRoute("/")({
 
 async function homeFor(userId: string) {
   const { data } = await supabase.from("user_roles").select("role").eq("user_id", userId);
-  const role = (data?.[0]?.role as Role) ?? "reviewer";
+  const role = highestRole((data ?? []).map((x) => x.role));
   localStorage.setItem("triage.demoRole", role);
   return ROLE_HOME[role];
 }
