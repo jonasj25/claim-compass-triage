@@ -156,8 +156,7 @@ export function advise(
 
   const baseline = score(byLimit.get(current)!, open, SECOND_CHECK.MARGIN_EUR, i);
   const all: Score[] = [];
-  for (const l of limits)
-    for (const m of MARGINS) all.push(score(byLimit.get(l)!, open, m, i));
+  for (const l of limits) for (const m of MARGINS) all.push(score(byLimit.get(l)!, open, m, i));
   all.push(baseline); // keeping today's settings is always an option
 
   const budget = baseline.risk * 1.0001; // guardrail: no more expected loss than today
