@@ -1,6 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { isClosed, type ParsedClaim } from "./csv";
-import { decide, type Policy, type Recommendation } from "./triage";
+import { decide, POLICY_V1, type Policy, type Recommendation } from "./triage";
 import { queueFor, type Queue } from "./lifecycle";
 import { secondCheckReason } from "./second-check";
 import { tryAutoAssign } from "./auto-assign";
@@ -58,14 +58,17 @@ export async function importClaims(
   const byQueue: Record<string, number> = {};
 
   const rows = todo.map((c) => {
-    const d = decide(c, policy);
     const closed = isClosed(c.case_status);
+    // A claim that arrives already closed was decided under the original policy (v1), like the batch run:
+    // a later policy version never changes a closed decision.
+    const used = closed ? POLICY_V1 : policy;
+    const d = decide(c, used);
     const queue = queueFor(d.recommendation, closed);
     byQueue[queue] = (byQueue[queue] ?? 0) + 1;
     const extras = Object.fromEntries(Object.entries(c.raw).filter(([k, v]) => v && !(k in c)));
     // Recommendation stays routine; the flag only asks a person to double-check (see second-check.ts).
     const second = closed ? null : secondCheckReason(c, policy, d.recommendation);
-    return { c, d, queue, extras, second };
+    return { c, d, queue, extras, second, used };
   });
 
   for (const part of chunk(rows)) {
@@ -96,9 +99,9 @@ export async function importClaims(
       .in("case_id", caseIds)
       .eq("is_current", true);
     res = await supabase.from("decisions").insert(
-      part.map(({ c, d }) => ({
+      part.map(({ c, d, used }) => ({
         case_id: c.case_id,
-        policy_version: policy.version,
+        policy_version: used.version,
         recommendation: d.recommendation,
         rule_id: d.rule_id,
         explanation: d.reasons.join(". "),
@@ -136,7 +139,7 @@ export async function importClaims(
       );
     if (res.error) throw res.error;
     res = await supabase.from("case_events").insert(
-      part.flatMap(({ c, d, queue, second }) => [
+      part.flatMap(({ c, d, queue, second, used }) => [
         {
           case_id: c.case_id,
           type: "received",
@@ -150,7 +153,7 @@ export async function importClaims(
           payload: {
             recommendation: d.recommendation,
             rule_id: d.rule_id,
-            policy_version: policy.version,
+            policy_version: used.version,
           },
         },
         ...(queue === "waiting_customer"

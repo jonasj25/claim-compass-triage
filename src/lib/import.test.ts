@@ -78,3 +78,22 @@ describe("optional customer columns", () => {
     expect(Number.isNaN(Date.parse(String(intake[1].received_at)))).toBe(false); // bad date falls back to now
   });
 });
+
+describe("closed claims arriving after a policy change", () => {
+  it("keep the original v1 decision, open claims use the active policy", async () => {
+    const { importClaims } = await import("./import");
+    const v2 = {
+      ...POLICY_V1,
+      version: "v2",
+      human_review: { ...POLICY_V1.human_review, quote_limit_eur: 1200, review_repair_types: ["ev_high_voltage_battery"] },
+    };
+    const csv =
+      "case_id,case_status,claim_summary,policy_active_on_incident,claim_type,repair_type,quote_eur,incident_report_present,itemized_quote_present,injury_reported,liability_disputed,duplicate_flag,evidence_conflict\n" +
+      "NEW-1,closed,x,True,motor_own_damage,ev_high_voltage_battery,900,True,True,False,False,False,False\n" +
+      "NEW-2,open,x,True,motor_own_damage,ev_high_voltage_battery,900,True,True,False,False,False,False";
+    const r = await importClaims(parseClaimsCsv(csv), v2 as typeof POLICY_V1, "t");
+    const byId = Object.fromEntries(r.rows.map((x) => [x.case_id, x]));
+    expect(byId["NEW-1"].rule_id).toBe("v1.R3");
+    expect(byId["NEW-2"].rule_id).toBe("v2.R1");
+  });
+});
