@@ -54,6 +54,12 @@
   --color-wait-dot: var(--wait-dot);
   --color-ok: var(--ok);
   --color-ok-dot: var(--ok-dot);
+  --color-accept-tint: var(--accept-tint);
+  --color-accept-border: var(--accept-border);
+  --color-accept-ink: var(--accept-ink);
+  --color-deny-tint: var(--deny-tint);
+  --color-deny-border: var(--deny-border);
+  --color-deny-ink: var(--deny-ink);
 
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
@@ -104,6 +110,13 @@
   /* ok / automatic */
   --ok: oklch(0.5 0.12 152);
   --ok-dot: oklch(0.66 0.15 152);
+  /* decision buttons — tinted like the "needs you" banner */
+  --accept-tint: oklch(0.93 0.06 152);
+  --accept-border: oklch(0.78 0.1 152);
+  --accept-ink: oklch(0.42 0.12 152);
+  --deny-tint: oklch(0.94 0.045 35);
+  --deny-border: oklch(0.8 0.1 33);
+  --deny-ink: oklch(0.5 0.17 30);
 
   --card: var(--surface);
   --card-foreground: var(--foreground);

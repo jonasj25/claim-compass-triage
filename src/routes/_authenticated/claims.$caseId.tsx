@@ -1516,14 +1516,14 @@ function DecisionPanel({
           <Button
             disabled={busy}
             onClick={onAccept}
-            className="h-11 bg-[oklch(0.6_0.115_158)] text-[14px] font-semibold text-white shadow-none hover:bg-[oklch(0.56_0.115_158)]"
+            className="h-11 border border-accept-border bg-accept-tint text-[14px] font-semibold text-accept-ink shadow-none hover:bg-accept-tint hover:brightness-[0.96]"
           >
             <CircleCheck className="size-4" /> Accept claim
           </Button>
           <Button
             disabled={busy}
             onClick={onDeny}
-            className="h-11 bg-[oklch(0.6_0.15_24)] text-[14px] font-semibold text-white shadow-none hover:bg-[oklch(0.56_0.15_24)]"
+            className="h-11 border border-deny-border bg-deny-tint text-[14px] font-semibold text-deny-ink shadow-none hover:bg-deny-tint hover:brightness-[0.96]"
           >
             <CircleX className="size-4" /> Deny claim
           </Button>
