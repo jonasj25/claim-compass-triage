@@ -10,7 +10,7 @@ The rules decide; people confirm. AI helps us talk to customers and read documen
 
 | | |
 |---|---|
-| **Team name** | _TODO: team name as used in announcements_ |
+| **Team name** | Wallah, We Code |
 | **Case** | Taktile: Trustworthy claims triage |
 | **GitHub repository** | https://github.com/jonasj25/claim-compass-triage (public) |
 | **Pitch slides (PDF)** | [`docs/pitch.pdf`](docs/pitch.pdf) _TODO: upload the final slides as a PDF to this path_ |
