@@ -315,10 +315,16 @@ export const addClaimInfo = createServerFn({ method: "POST" })
       const files: Record<string, string | undefined> = { ...((raw.files as Record<string, string | undefined>) ?? {}), ...data.files };
       const newRaw = { ...raw, ...(data.answers.policy_number && !isUnknownText(data.answers.policy_number) ? { policy_number: data.answers.policy_number } : {}), files };
       must(await db.from("claims").update({ ...changes, raw: newRaw } as never).eq("case_id", data.case_id));
-      const docs = buildDocuments(claim).map((doc) => {
+      // Keep documents the customer already uploaded (they carry a storage path and what was read from them)
+      const prev = await db.from("claim_intake").select("documents").eq("case_id", data.case_id).maybeSingle();
+      const stored = (((prev.data as { documents?: unknown } | null)?.documents as { kind?: string; path?: string }[] | null) ?? []).filter((x) => x.path);
+      const built = buildDocuments(claim).map((doc) => {
+        const kept = stored.find((x) => x.kind === doc.kind);
+        if (kept) return { ...kept, status: doc.status, note: doc.note };
         const f = doc.kind === "incident_report" ? files.incident_report : doc.kind === "quote" ? files.quote : undefined;
         return f ? { ...doc, name: f } : doc;
       });
+      const docs = [...built, ...stored.filter((x) => !built.some((b) => (b as { kind?: string }).kind === x.kind))];
       must(await db.from("claim_intake").update({ documents: docs as never }).eq("case_id", data.case_id));
       must(
         await db.from("fact_sources").insert(
