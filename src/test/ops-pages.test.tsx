@@ -88,10 +88,11 @@ describe("ops lead pages", () => {
     expect(screen.queryByText("Avg handling time")).toBeNull();
   });
 
-  it("Quality shows the before/after report, mistakes and the override log", async () => {
+  it("Quality shows reliability, how it is measured, mistakes and the correction log", async () => {
     await renderPage("quality");
-    expect(screen.getByText("Before and after the policy change")).toBeTruthy();
-    expect(screen.getByText(/No mistakes under V2 on 48 labelled open claims/)).toBeTruthy();
+    expect(screen.getByText("How we measure quality")).toBeTruthy();
+    expect(screen.getByText(/No mistakes on the 51 test claims/)).toBeTruthy();
+    expect(screen.queryByText(/V1|V2|policy change/)).toBeNull();
     expect(screen.getByText("Corrected quote", { exact: false })).toBeTruthy();
     expect(screen.getByText("Monitoring plan, live")).toBeTruthy();
   });

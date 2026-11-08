@@ -1,29 +1,30 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { CircleAlert, CircleCheck, Download } from "lucide-react";
 import { casesQuery, outcomesQuery, overridesQuery } from "@/lib/data";
 import { isClosed, toCsv } from "@/lib/csv";
-import { BATCH_POLICY_V1, BATCH_POLICY_V2 } from "@/lib/batch";
 import { LABELLED_SETS, labelledReport, rate, RECS, type Metrics } from "@/lib/quality";
 import { RECOMMENDATION_LABELS, type Recommendation } from "@/lib/triage";
 import { Button } from "@/components/ui/button";
 import { Card, Kpi, PageHeader, StatusDot, fmtTime } from "@/components/triage/ui";
 import { HBars, HeatGrid, REC_COLOR, SERIES, ShareRow } from "@/components/triage/charts";
-import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/quality")({
   head: () => ({
     meta: [
-{ property: "og:title", content: "Quality — Clearpath" },
-{ property: "og:description", content: "Clearpath claims workspace: review evidence, policy decisions and case activity." },
-{ property: "og:type", content: "website" },
-{ name: "twitter:card", content: "summary" },
+      { property: "og:title", content: "Quality — Clearpath" },
+      {
+        property: "og:description",
+        content: "How reliable Clearpath is and how its quality is measured.",
+      },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
       { title: "Quality — Clearpath" },
       {
         name: "description",
         content:
-          "Before/after quality report, mistakes, reviewer overrides, late outcomes and the monitoring plan.",
+          "How reliable Clearpath is: accuracy on expert-labelled claims, reviewer agreement, outcomes and monitoring.",
       },
     ],
   }),
@@ -31,20 +32,36 @@ export const Route = createFileRoute("/_authenticated/quality")({
 });
 
 const SET_KEYS = Object.keys(LABELLED_SETS);
-const v1 = BATCH_POLICY_V1.version.toUpperCase();
-const v2 = BATCH_POLICY_V2.version.toUpperCase();
-const pctOf = (m: Metrics) => `${Math.round(rate(m.correct, m.n) * 100)}%`;
+const SET_LABEL: Record<string, string> = {
+  "Provided dev cases": "Reference claims from the case brief",
+  "Hand-labelled edge cases": "Hard cases we built and labelled by hand",
+};
+const pct = (x: number, n: number) => (n ? `${Math.round((x / n) * 100)}%` : "—");
+
+/** Accuracy on a set of labelled claims: open claims scored on their next step, finished claims on staying unchanged. */
+function score(keys: string[]) {
+  const r = labelledReport(keys);
+  return {
+    r,
+    n: r.v2.n + r.closed.n,
+    correct: r.v2.correct + r.closed.kept,
+    wrongRoutine: r.v2.wrongRoutine,
+    unnecessary: r.v2.unnecessaryReview,
+  };
+}
 
 function QualityPage() {
-  const [sets, setSets] = useState<string[]>(SET_KEYS);
-  const r = useMemo(() => labelledReport(sets), [sets]);
+  const all = useMemo(() => score(SET_KEYS), []);
+  const perSet = useMemo(() => SET_KEYS.map((k) => ({ k, ...score([k]) })), []);
+  const r = all.r;
   const { data: cases = [] } = useQuery(casesQuery);
   const { data: overrides = [] } = useQuery(overridesQuery);
   const { data: outcomes = [] } = useQuery(outcomesQuery);
 
   const decided = cases.filter((c) => c.decision).length;
   const open = cases.filter((c) => !isClosed(c.claim.case_status));
-  const overrideRate = rate(new Set(overrides.map((o) => o.case_id)).size, decided);
+  const overridden = new Set(overrides.map((o) => o.case_id)).size;
+  const overrideRate = rate(overridden, decided);
   const byOriginal = RECS.map((k) => ({
     k,
     n: overrides.filter((o) => o.original_recommendation === k).length,
@@ -71,10 +88,6 @@ function QualityPage() {
     ).length,
     open.length,
   );
-  const evShare = rate(
-    open.filter((c) => c.claim.repair_type === "ev_high_voltage_battery").length,
-    open.length,
-  );
   const secondShare = rate(open.filter((c) => c.workflow?.qa_sample).length, open.length);
 
   const signals: {
@@ -86,7 +99,7 @@ function QualityPage() {
     action: string;
   }[] = [
     {
-      name: "Override rate",
+      name: "Decisions corrected by reviewers",
       now: `${(overrideRate * 100).toFixed(1)}%`,
       limit: "≤ 10%",
       ok: overrideRate <= 0.1,
@@ -94,7 +107,7 @@ function QualityPage() {
       action: "Read the reasons; if one rule dominates, the policy owner drafts a change",
     },
     {
-      name: "Wrong routine found later",
+      name: "Auto-processed claims that needed a person (found later)",
       now: String(lateWrongRoutine),
       limit: "0",
       ok: lateWrongRoutine === 0,
@@ -102,20 +115,12 @@ function QualityPage() {
       action: "Root-cause each case; add it as a labelled test before any fix",
     },
     {
-      name: "Open claims with blank fields",
+      name: "Open claims with missing information",
       now: `${Math.round(blankShare * 100)}%`,
       limit: "≤ 20%",
       ok: blankShare <= 0.2,
       owner: "Ops lead",
       action: "Upstream data problem: fix the intake form or import",
-    },
-    {
-      name: "EV battery share (input mix)",
-      now: `${Math.round(evShare * 100)}%`,
-      limit: "≤ 15%",
-      ok: evShare <= 0.15,
-      owner: "Ops lead",
-      action: "Mix shift raises review load; check staffing and thresholds",
     },
     {
       name: "Open claims in second check / QA",
@@ -161,7 +166,7 @@ function QualityPage() {
       <PageHeader
         eyebrow="Ops lead"
         title="Quality"
-        sub={`Tested on ${r.total} labelled claims that ship with the repo. ${v2} is scored on open claims only; closed claims must keep their ${v1} decision.`}
+        sub="How reliable Clearpath is: tested on claims with a known right answer, and checked every day by your reviewers."
         right={
           <Button
             variant="outline"
@@ -174,129 +179,122 @@ function QualityPage() {
         }
       />
 
-      <div className="mb-5 flex flex-wrap gap-1.5">
-        {[["Both sets", SET_KEYS] as const, ...SET_KEYS.map((k) => [k, [k]] as const)].map(
-          ([label, keys]) => {
-            const active = keys.length === sets.length && keys.every((k) => sets.includes(k));
-            return (
-              <button
-                key={label}
-                type="button"
-                onClick={() => setSets([...keys])}
-                className={cn(
-                  "rounded-full px-3 py-1.5 text-[12.5px] ring-1",
-                  active
-                    ? "bg-surface font-medium shadow-[var(--shadow-lift)] ring-link/40"
-                    : "bg-surface-2 ring-line hover:bg-surface",
-                )}
-              >
-                {label}
-              </button>
-            );
-          },
-        )}
-      </div>
-
       <div className="kpi-strip grid grid-cols-4 gap-0">
         <Kpi
-          label={`Correct under ${v2}`}
-          value={pctOf(r.v2)}
-          sub={`${r.v2.correct} of ${r.v2.n} open claims`}
-        />
-        <Kpi label="Wrong routine" value={r.v2.wrongRoutine} sub="the expensive error" />
-        <Kpi
-          label="Unnecessary reviews"
-          value={r.v2.unnecessaryReview}
-          sub="sent to a person without need"
+          label="Right next step"
+          value={pct(all.correct, all.n)}
+          sub={`${all.correct} of ${all.n} expert-labelled claims`}
         />
         <Kpi
-          label="Closed claims kept"
-          value={`${r.closed.kept}/${r.closed.n}`}
-          sub={`still show their ${v1} decision`}
+          label="Auto-processed but needed a person"
+          value={all.wrongRoutine}
+          sub="the costly error"
+        />
+        <Kpi
+          label="Sent to a person without need"
+          value={all.unnecessary}
+          sub="wasted reviewer time"
+        />
+        <Kpi
+          label="Reviewers agree"
+          value={decided ? pct(decided - overridden, decided) : "—"}
+          sub={
+            decided
+              ? `${overridden} of ${decided} live decisions corrected`
+              : "no live decisions yet"
+          }
         />
       </div>
+
+      <Card className="mt-6">
+        <h2 className="section-title">How we measure quality</h2>
+        <p className="mt-1 text-[13px] text-text-2">
+          Quality means one thing: every claim gets the right next step. Auto-process it, ask the
+          customer for something, or give it to a person.
+        </p>
+        <ol className="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {[
+            [
+              "1 · A right answer for every test claim",
+              `${all.n} claims, each with the correct next step written down before the system ever sees them: ${r.sets.map((k) => `${perSet.find((x) => x.k === k)!.n} ${SET_LABEL[k]?.toLowerCase() ?? k}`).join(" and ")}.`,
+            ],
+            [
+              "2 · Blind comparison",
+              "Clearpath decides every test claim on its own; then each decision is compared with the right answer. The score is the share that match.",
+            ],
+            [
+              "3 · Errors weighted by cost",
+              "A claim auto-processed that needed a person can mean money paid out wrongly, so it is counted on its own and must stay at zero. A claim sent to a person without need only costs reviewer time.",
+            ],
+            [
+              "4 · Checked again, every day",
+              "Before any rule change goes live, it is replayed on every test claim. In daily work reviewers can correct any decision, about 7% of auto-processed claims get a random check, and late outcomes are compared with the first decision. Every correction becomes a new test claim.",
+            ],
+          ].map(([t, d]) => (
+            <li key={t} className="rounded-[10px] bg-surface-2 p-4">
+              <p className="text-[13px] font-medium">{t}</p>
+              <p className="mt-1.5 text-[12.5px] leading-relaxed text-text-2">{d}</p>
+            </li>
+          ))}
+        </ol>
+      </Card>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[1.3fr_1fr]">
         <Card>
-          <h2 className="section-title">Before and after the policy change</h2>
+          <h2 className="section-title">Tested where it's hardest</h2>
           <p className="mb-3 mt-1 text-[13px] text-text-2">
-            Share of correct next steps. The middle row is what happens if nobody updates the rules.
+            Share of claims with the right next step, by kind of claim.
           </p>
           <div className="divide-y divide-line">
             <ShareRow
-              label={`${v1} rules, ${v1} labels`}
-              note={`all ${r.v1.n} claims`}
-              share={rate(r.v1.correct, r.v1.n)}
-              display={pctOf(r.v1)}
-              color={SERIES.mid}
-            />
-            <ShareRow
-              label={`${v1} rules kept after the change`}
-              note={`${r.keepV1.wrongRoutine} wrong routine of ${r.keepV1.n}`}
-              share={rate(r.keepV1.correct, r.keepV1.n)}
-              display={pctOf(r.keepV1)}
-              color={REC_COLOR.human_review}
-            />
-            <ShareRow
-              label={`${v2} rules, ${v2} labels`}
-              note={`${r.v2.n} open claims`}
-              share={rate(r.v2.correct, r.v2.n)}
-              display={pctOf(r.v2)}
+              label="All test claims"
+              note={`${all.correct} of ${all.n}`}
+              share={rate(all.correct, all.n)}
+              display={pct(all.correct, all.n)}
               color={SERIES.strong}
               emphasis
             />
+            {perSet.map((x) => (
+              <ShareRow
+                key={x.k}
+                label={SET_LABEL[x.k] ?? x.k}
+                note={`${x.correct} of ${x.n}`}
+                share={rate(x.correct, x.n)}
+                display={pct(x.correct, x.n)}
+                color={SERIES.mid}
+              />
+            ))}
+            <ShareRow
+              label="Missing or unreadable information"
+              note={`${r.blankV2.correct} of ${r.blankV2.n} · never guessed`}
+              share={rate(r.blankV2.correct, r.blankV2.n)}
+              display={pct(r.blankV2.correct, r.blankV2.n)}
+              color={SERIES.mid}
+            />
+            <ShareRow
+              label="Finished claims left unchanged"
+              note={`${r.closed.kept} of ${r.closed.n} · decisions are never rewritten`}
+              share={rate(r.closed.kept, r.closed.n)}
+              display={pct(r.closed.kept, r.closed.n)}
+              color={SERIES.mid}
+            />
           </div>
-          <table className="mt-5 w-full text-[13px]">
-            <thead>
-              <tr className="border-b border-line text-left">
-                <th className="label-mono py-2 font-normal">Group</th>
-                <th className="label-mono py-2 text-right font-normal">Keep {v1}</th>
-                <th className="label-mono py-2 text-right font-normal">Switch to {v2}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(
-                [
-                  ["All open claims", r.keepV1, r.v2],
-                  ["Only the claims whose label changed", r.changedKeepV1, r.changedV2],
-                ] as const
-              ).map(([label, a, b]) => (
-                <tr key={label} className="border-b border-line last:border-0">
-                  <td className="py-2.5">{label}</td>
-                  <td className="num py-2.5 text-right text-text-2">
-                    {a.correct}/{a.n} · {a.wrongRoutine} wrong routine
-                  </td>
-                  <td className="num py-2.5 text-right font-medium">
-                    {b.correct}/{b.n} · {b.wrongRoutine} wrong routine
-                  </td>
-                </tr>
-              ))}
-              <tr>
-                <td className="py-2.5">Claims with blank fields</td>
-                <td className="num py-2.5 text-right text-text-2">
-                  {r.blankV1.correct}/{r.blankV1.n} under {v1}
-                </td>
-                <td className="num py-2.5 text-right font-medium">
-                  {r.blankV2.correct}/{r.blankV2.n} under {v2}
-                </td>
-              </tr>
-            </tbody>
-          </table>
           <p className="mt-3 text-[12px] text-text-3">
-            Blank fields are never guessed: they lead to a request for information unless a known
-            fact already requires a person.
+            Missing fields lead to a request to the customer unless a known fact already needs a
+            person. The same claim always gets the same answer: the website and the batch engine are
+            checked against each other on every build.
           </p>
         </Card>
 
         <Card>
-          <h2 className="section-title">Labelled vs recommended · {v2}</h2>
+          <h2 className="section-title">Right answer vs Clearpath</h2>
           <p className="mb-4 mt-1 text-[13px] text-text-2">
-            Everything on the diagonal is correct. Off-diagonal counts in the Auto-processed column
-            would be the costly errors.
+            Everything on the diagonal is correct. Anything else in the Auto-processed column would
+            be the costly error.
           </p>
           <HeatGrid
-            rowTitle="Label"
-            colTitle="System"
+            rowTitle="Right answer"
+            colTitle="Clearpath"
             rows={RECS.map((k) => ({ key: k, label: RECOMMENDATION_LABELS[k] }))}
             cols={RECS.map((k) => ({ key: k, label: RECOMMENDATION_LABELS[k] }))}
             cell={(a, b) => r.confusionV2[a as Recommendation][b as Recommendation]}
@@ -308,17 +306,12 @@ function QualityPage() {
         <h2 className="section-title">Where it goes wrong</h2>
         {r.mistakesV2.length === 0 ? (
           <p className="mt-2 flex items-center gap-2 text-[13.5px]">
-            <CircleCheck className="size-4 text-ok" strokeWidth={1.8} /> No mistakes under {v2} on{" "}
-            {r.v2.n} labelled open claims.
+            <CircleCheck className="size-4 text-ok" strokeWidth={1.8} /> No mistakes on the {all.n}{" "}
+            test claims.
           </p>
         ) : (
           <MistakeTable rows={r.mistakesV2} />
         )}
-        <p className="mb-2 mt-5 text-[13px] text-text-2">
-          If the rules had not been updated, these {r.mistakesKeepV1.length} claims would get the
-          wrong next step. They are exactly the ones the change flags for a recheck:
-        </p>
-        <MistakeTable rows={r.mistakesKeepV1} />
       </Card>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[1.4fr_1fr]">
@@ -326,11 +319,11 @@ function QualityPage() {
           <div className="flex items-baseline justify-between px-6 pt-5">
             <h2 className="section-title">Reviewer corrections</h2>
             <span className="text-[13px] text-text-2">
-              {overrides.length} overrides · {(overrideRate * 100).toFixed(1)}% of decided claims
+              {overrides.length} corrections · {(overrideRate * 100).toFixed(1)}% of decided claims
             </span>
           </div>
           <p className="px-6 pb-3 pt-1 text-[13px] text-text-2">
-            Each override records who, what, why and under which policy version. Nothing is
+            Reviewers have the last word. Each correction records who, what and why; nothing is
             overwritten.
           </p>
           {overrides.length ? (
@@ -357,7 +350,7 @@ function QualityPage() {
                       {[o.reason_code, o.reason_text].filter(Boolean).join(": ")}
                     </td>
                     <td className="px-6 py-2.5 text-right text-[12px] whitespace-nowrap text-text-2">
-                      {o.reviewer} · {String(o.policy_version ?? "").toUpperCase()}
+                      {o.reviewer}
                       <br />
                       {fmtTime(o.created_at)}
                     </td>
@@ -367,14 +360,14 @@ function QualityPage() {
             </table>
           ) : (
             <p className="border-t border-line px-6 py-5 text-[13px] text-text-2">
-              No overrides yet. Override any claim on its case page; it appears here immediately.
+              No corrections yet. Override any claim on its case page; it appears here immediately.
             </p>
           )}
         </Card>
 
         <div className="space-y-6">
           <Card>
-            <h2 className="section-title">Overrides by original recommendation</h2>
+            <h2 className="section-title">Corrections by original decision</h2>
             <div className="mt-4">
               <HBars
                 items={byOriginal
@@ -385,15 +378,15 @@ function QualityPage() {
                     value: x.n,
                     color: REC_COLOR[x.k],
                   }))}
-                empty="No overrides yet."
+                empty="No corrections yet."
               />
             </div>
           </Card>
           <Card>
             <h2 className="section-title">Outcomes that arrive later</h2>
             <p className="mt-1 text-[13px] text-text-2">
-              Final outcomes are stored next to the decision they belong to, never on top of it.
-              Accuracy is counted only once the outcome is known.
+              When a claim is settled, its final outcome is stored next to the first decision and
+              compared with it. Accuracy is counted once the outcome is known.
             </p>
             <dl className="mt-4 grid grid-cols-2 gap-3 text-[13px]">
               <div className="rounded-[10px] bg-surface-2 p-3">
@@ -417,9 +410,7 @@ function QualityPage() {
         <div className="px-6 pt-5 pb-3">
           <h2 className="section-title">Monitoring plan, live</h2>
           <p className="mt-1 text-[13px] text-text-2">
-            What triggers an investigation, who acts, and what happens next. Every policy change is
-            replayed on all past claims on Change impact and approved by the policy owner before it
-            goes live.
+            What triggers an investigation, who acts and what happens next.
           </p>
         </div>
         <table className="w-full text-[13px]">
@@ -456,9 +447,8 @@ function QualityPage() {
           </tbody>
         </table>
         <p className="px-6 py-4 text-[12.5px] text-text-3">
-          Sampling: about 7% of auto-processed claims get a random QA check, plus every claim within
-          €70 of the quote limit. Reviewer overrides and late outcomes become new labelled tests, so
-          the next policy change is checked against them.
+          Sampling: about 7% of auto-processed claims get a random check, plus every claim within
+          €70 of the quote limit.
         </p>
       </Card>
     </div>
@@ -482,7 +472,7 @@ function MistakeTable({
       <table className="w-full text-[13px]">
         <thead>
           <tr className="border-b border-line text-left">
-            {["Claim", "Correct", "System said", "Rule", "Why"].map((h) => (
+            {["Claim", "Right answer", "Clearpath said", "Why"].map((h) => (
               <th key={h} className="label-mono py-2 pr-4 font-normal">
                 {h}
               </th>
@@ -499,7 +489,6 @@ function MistakeTable({
               <td className="py-2.5 pr-4 whitespace-nowrap">
                 <StatusDot rec={m.got} plain />
               </td>
-              <td className="py-2.5 pr-4 font-mono text-[11px] uppercase text-text-2">{m.rule}</td>
               <td className="py-2.5 text-text-2">{m.why}</td>
             </tr>
           ))}
