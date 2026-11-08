@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { downloadFile } from "@/lib/download";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { CircleAlert, CircleCheck, Download } from "lucide-react";
@@ -161,12 +162,7 @@ function QualityPage() {
       };
     });
     const csv = toCsv(rows, Object.keys(rows[0] ?? { case_id: "" }));
-    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `audit-log-${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadFile(`audit-log-${new Date().toISOString().slice(0, 10)}.csv`, csv, { bom: true });
   };
 
   return (

@@ -6,6 +6,7 @@ import {
   useNavigate,
   useRouterState,
 } from "@tanstack/react-router";
+import { downloadFile, inFrame } from "@/lib/download";
 import { effectiveRec } from "@/lib/effective";
 import { Logo } from "@/components/triage/Logo";
 import { NotificationsBell } from "@/components/triage/NotificationsBell";
@@ -257,6 +258,8 @@ function SideNav({ expanded, onToggle }: { expanded: boolean; onToggle: () => vo
       "case_id",
       "case_status",
       "recommendation",
+      "system_recommendation",
+      "overridden_by",
       "rule_id",
       "policy_version",
       "missing_fields",
@@ -264,13 +267,16 @@ function SideNav({ expanded, onToggle }: { expanded: boolean; onToggle: () => vo
       "queue",
       "assignee",
     ]);
-    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `triage-results-${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-    toast(`Exported ${rows.length} cases`);
+    if (!rows.length) {
+      toast(cases.isLoading ? "Claims are still loading – try again in a moment" : "No claims to export yet");
+      return;
+    }
+    downloadFile(`triage-results-${new Date().toISOString().slice(0, 10)}.csv`, csv, { bom: true });
+    toast(
+      inFrame()
+        ? `Exported ${rows.length} claims. No file? The editor preview can block downloads – open the app in its own tab.`
+        : `Exported ${rows.length} claims`,
+    );
   };
 
   const icons: Record<string, typeof ListTodo> = {

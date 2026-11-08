@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { downloadFile } from "@/lib/download";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { ArrowLeft, ArrowRight, Check, FileText, Keyboard, Lock, Mic, Paperclip, Search, Send, Volume2, VolumeX } from "lucide-react";
 import { Logo } from "@/components/triage/Logo";
@@ -1369,12 +1370,7 @@ function Done({ result, setResult, name, email, plate = "" }: { result: ReportRe
   const csv = toCsvRow(result.row);
 
   const download = () => {
-    const url = URL.createObjectURL(new Blob([csv + "\n"], { type: "text/csv" }));
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${result.case_id}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadFile(`${result.case_id}.csv`, csv + "\n");
   };
 
   return (

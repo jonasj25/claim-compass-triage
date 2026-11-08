@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { downloadFile } from "@/lib/download";
 import { Logo } from "@/components/triage/Logo";
 import { useMemo, useState } from "react";
 import { Download, Lock } from "lucide-react";
@@ -75,12 +76,7 @@ function BatchPage() {
   };
 
   const download = () => {
-    const url = URL.createObjectURL(new Blob([batchToCsv(rows)], { type: "text/csv" }));
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `results_${fileName.replace(/\.csv$/i, "") || "claims"}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadFile(`results_${fileName.replace(/\.csv$/i, "") || "claims"}.csv`, batchToCsv(rows));
   };
 
   const visible = showAll ? rows : rows.slice(0, 50);
