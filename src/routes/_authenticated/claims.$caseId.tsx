@@ -1516,14 +1516,14 @@ function DecisionPanel({
           <Button
             disabled={busy}
             onClick={onAccept}
-            className="h-11 bg-ok text-[14px] font-semibold text-white shadow-none hover:bg-ok/90"
+            className="h-11 bg-[oklch(0.6_0.115_158)] text-[14px] font-semibold text-white shadow-none hover:bg-[oklch(0.56_0.115_158)]"
           >
             <CircleCheck className="size-4" /> Accept claim
           </Button>
           <Button
             disabled={busy}
             onClick={onDeny}
-            className="h-11 bg-action text-[14px] font-semibold text-white shadow-none hover:bg-action/90"
+            className="h-11 bg-[oklch(0.6_0.15_24)] text-[14px] font-semibold text-white shadow-none hover:bg-[oklch(0.56_0.15_24)]"
           >
             <CircleX className="size-4" /> Deny claim
           </Button>
@@ -1552,7 +1552,7 @@ function DecisionPanel({
   return (
     <>
       {body}
-      <Button variant="outline" disabled={busy} onClick={onRequest} className="mt-2 w-full">
+      <Button variant="outline" disabled={busy} onClick={onRequest} className="mt-2 w-full border border-line bg-surface hover:bg-surface-2">
         <FileQuestion className="size-4" /> Ask customer for information
       </Button>
       <Button
