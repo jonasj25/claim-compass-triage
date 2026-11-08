@@ -38,7 +38,7 @@ const CHALLENGES: { key: string; label: string; o: Partial<Inputs> }[] = [
   { key: "review", label: "Reviews 20 min", o: { reviewMin: 20 } },
   { key: "info", label: "Manual info requests", o: { infoMin: 8 } },
   { key: "licence", label: "Licence +50%", o: { platformPerYear: 180000 } },
-  { key: "integration", label: "Integration ×2", o: { implementation: 300000 } },
+  { key: "integration", label: "Integration ×2", o: { implementation: 500000 } },
 ];
 
 function Seg<T extends string | number>({

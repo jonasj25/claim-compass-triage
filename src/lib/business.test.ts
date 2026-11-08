@@ -45,7 +45,7 @@ describe("business model", () => {
     expect(o.todayHours).toBeCloseTo(25000);
     expect(o.withHours).toBeLessThan(o.todayHours);
     expect(o.netPerYear).toBeCloseTo(o.todayCost - o.withCost);
-    expect(o.paybackMonths).toBeCloseTo((150000 / o.netPerYear) * 12);
+    expect(o.paybackMonths).toBeCloseTo((i.implementation / o.netPerYear) * 12);
     expect(o.automation).toBeCloseTo(mix.share.routine_processing + mix.share.request_information);
   });
 

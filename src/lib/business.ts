@@ -253,10 +253,10 @@ export const DEFAULT_ASSUMPTIONS: Assumption[] = [
   {
     key: "implementation",
     label: "One-off implementation",
-    value: 150000,
+    value: 250000,
     unit: "€",
     kind: "assumption",
-    note: "Integration, data mapping, testing, rollout.",
+    note: "Integration with the claims system, data mapping, testing, rollout: about 6 months of a small team.",
     min: 0,
     max: 1000000,
     step: 10000,
