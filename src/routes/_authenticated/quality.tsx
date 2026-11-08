@@ -162,7 +162,7 @@ function QualityPage() {
       };
     });
     const csv = toCsv(rows, Object.keys(rows[0] ?? { case_id: "" }));
-    downloadFile(`audit-log-${new Date().toISOString().slice(0, 10)}.csv`, csv, { bom: true });
+    void downloadFile(`audit-log-${new Date().toISOString().slice(0, 10)}.csv`, csv, { bom: true, rows: rows.length });
   };
 
   return (

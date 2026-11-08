@@ -1370,7 +1370,7 @@ function Done({ result, setResult, name, email, plate = "" }: { result: ReportRe
   const csv = toCsvRow(result.row);
 
   const download = () => {
-    downloadFile(`${result.case_id}.csv`, csv + "\n");
+    void downloadFile(`${result.case_id}.csv`, csv + "\n", { rows: 1 });
   };
 
   return (

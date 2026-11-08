@@ -76,7 +76,7 @@ function BatchPage() {
   };
 
   const download = () => {
-    downloadFile(`results_${fileName.replace(/\.csv$/i, "") || "claims"}.csv`, batchToCsv(rows));
+    void downloadFile(`results_${fileName.replace(/\.csv$/i, "") || "claims"}.csv`, batchToCsv(rows), { rows: rows.length });
   };
 
   const visible = showAll ? rows : rows.slice(0, 50);
