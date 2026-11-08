@@ -35,10 +35,6 @@ export const Route = createFileRoute("/_authenticated/pitch")({
 const SIZES = [50000, 100000, 250000];
 
 const CHALLENGES: { key: string; label: string; o: Partial<Inputs> }[] = [
-  { key: "review", label: "Reviews 20 min", o: { reviewMin: 20 } },
-  { key: "info", label: "Manual info requests", o: { infoMin: 8 } },
-  { key: "licence", label: "Licence +50%", o: { platformPerYear: 180000 } },
-  { key: "integration", label: "Integration ×2", o: { implementation: 240000 } },
   // €20/h all-in, German-speaking offshore claims desk: salary that gives 20 × 1600 / 1.3
   { key: "offshore", label: "Offshore team €20/h", o: { salary: 24615 } },
 ];
@@ -124,7 +120,7 @@ function ValueRoi() {
           <span className="num w-14 text-right text-[14px] font-semibold">{triageMin} min</span>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-[13px] text-text-2">Challenge</span>
+          <span className="text-[13px] text-text-2">Stress test</span>
           {CHALLENGES.map((c) => (
             <button
               key={c.key}
