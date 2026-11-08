@@ -8,6 +8,9 @@ import { Card } from "@/components/triage/ui";
 
 /** What a different routine quote limit would mean for workload, on the same claims and
  *  numbers as Workload & flow and the Business case. Nothing is saved: it only explores. */
+const MIN = 600;
+const MAX = 2000;
+
 export function LimitExplorer({ inputs, className }: { inputs: Inputs; className?: string }) {
   const { mix, policy: active, source, cases } = useClaimMix("live");
   const currentLimit = active.human_review.quote_limit_eur ?? 1200;
@@ -38,16 +41,26 @@ export function LimitExplorer({ inputs, className }: { inputs: Inputs; className
         use a draft to change the policy.
       </p>
       <div className="mt-6 flex items-center gap-4">
+        <span className="num text-[12px] text-text-3">{eur0(MIN)}</span>
         <Slider
           value={[limit]}
-          min={600}
-          max={2000}
+          min={MIN}
+          max={MAX}
           step={50}
           onValueChange={([v]) => setLimit(v)}
           aria-label="Quote limit"
-          className="flex-1"
+          className="flex-1 py-2"
         />
-        <span className="num w-20 text-right text-[18px] font-semibold">{eur0(limit)}</span>
+        <span className="num text-[12px] text-text-3">{eur0(MAX)}</span>
+        <span className="num w-24 text-right text-[20px] font-semibold">{eur0(limit)}</span>
+        <button
+          type="button"
+          onClick={() => setLimit(null)}
+          disabled={limit === currentLimit}
+          className="text-[12px] text-link hover:underline disabled:invisible"
+        >
+          Reset
+        </button>
       </div>
       <dl className="mt-6 grid grid-cols-2 gap-3 text-[13px] lg:grid-cols-4">
         {[

@@ -219,6 +219,8 @@ function Advisor() {
         }
       />
 
+      <LimitExplorer inputs={inputs} className="mb-6" />
+
       <div className="grid gap-6 lg:grid-cols-[1.25fr_1fr]">
         <Card>
           <div className="flex items-center gap-2">
@@ -431,8 +433,6 @@ function Advisor() {
           </Card>
         </div>
       </div>
-
-      <LimitExplorer inputs={inputs} className="mt-6" />
     </div>
   );
 }
