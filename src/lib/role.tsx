@@ -29,9 +29,8 @@ export const ROLE_NAV: Record<Role, NavItem[]> = {
   ],
   ops_lead: [
     { to: "/overview", label: "Workload & flow" },
-    { to: "/quality", label: "Quality" },
-    { to: "/business-case", label: "Business case" },
     { to: "/pitch", label: "Investor view" },
+    { to: "/business-case", label: "Business case" },
   ],
 };
 
