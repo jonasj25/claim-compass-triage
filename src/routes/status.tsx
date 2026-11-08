@@ -9,6 +9,11 @@ import { Label } from "@/components/ui/label";
 import { findMyClaims, getMyClaim, type MyClaimDetail, type MyClaimSummary, type PortalEvent } from "@/lib/claim-status.functions";
 import { CUSTOMER_STATUS_LABEL, type CustomerStatus } from "@/lib/customer-status";
 import { cn } from "@/lib/utils";
+import { DocumentUploads, UPLOAD_SLOTS, type PendingFile } from "@/components/triage/DocumentUploads";
+import { scanDocument } from "@/lib/document-scan.functions";
+import { uploadClaimFile } from "@/lib/files.functions";
+import { addClaimInfo } from "@/lib/report.functions";
+import { QUESTIONS, type ReportAnswers } from "@/lib/report-intake";
 
 // Public customer portal: enter the number plate, see all your claims, open one for its phase,
 // what happens next, what you told us and a customer-safe history. Demo: no further identity check.
@@ -332,6 +337,17 @@ function ClaimDetail({ plate, caseId, onBack }: { plate: string; caseId: string;
         </section>
       )}
 
+      {d.status !== "accepted" && d.status !== "rejected" && (
+        <PortalUploads
+          caseId={d.case_id}
+          plate={plate}
+          onDone={(msg) => {
+            setNotice(msg);
+            void load();
+          }}
+        />
+      )}
+
       <div className="mt-6 grid gap-6 md:grid-cols-2">
         <section className="card-quiet p-6">
           <p className="label-mono">What you told us</p>
@@ -374,5 +390,72 @@ function ClaimDetail({ plate, caseId, onBack }: { plate: string; caseId: string;
         </Button>
       </div>
     </>
+  );
+}
+
+/** Add missing documents later: each one is read, stored with the claim, and the claim is checked again. */
+function PortalUploads({ caseId, plate, onDone }: { caseId: string; plate: string; onDone: (msg: string | null) => void }) {
+  const [files, setFiles] = useState<PendingFile[]>([]);
+  const update = (f: PendingFile, patch: Partial<PendingFile>) =>
+    setFiles((list) => list.map((x) => (x.kind === f.kind && x.name === f.name ? { ...x, ...patch } : x)));
+
+  const add = async (f: PendingFile, slotAnswers: Partial<ReportAnswers>) => {
+    setFiles((list) => [...list.filter((x) => x.kind !== f.kind), { ...f, reading: "reading" }]);
+    let found: Partial<ReportAnswers> = f.kind === "incident_report" ? { incident_report: "yes" } : {};
+    let summary: string | null = null;
+    let details: { label: string; value: string }[] = [];
+    try {
+      const r = await scanDocument({ data: { name: f.name, type: f.type, b64: f.b64, kind: f.kind } });
+      if (r.method !== "none") {
+        found = { ...r.answers, ...found };
+        summary = r.summary ?? null;
+        details = r.details ?? [];
+      } else if (f.demo) found = { ...slotAnswers, ...found };
+    } catch {
+      if (f.demo) found = { ...slotAnswers, ...found };
+    }
+    const shown = Object.entries(found)
+      .filter(([, v]) => v)
+      .map(([k, v]) => {
+        const q = QUESTIONS.find((x) => x.key === k);
+        const val = q?.choices?.find((c) => c.value === v)?.label ?? (k === "quote_amount" ? `€${v}` : String(v));
+        return `${q?.label ?? k}: ${val}`;
+      });
+    update(f, { reading: "done", found: shown, summary, details });
+    try {
+      await uploadClaimFile({
+        data: {
+          case_id: caseId,
+          plate,
+          kind: f.kind,
+          name: f.name,
+          type: f.type,
+          b64: f.b64,
+          extracted: [...shown.map((x) => ({ label: x.split(": ")[0], value: x.split(": ").slice(1).join(": ") })), ...details],
+          summary,
+        },
+      });
+      const r = await addClaimInfo({
+        data: { case_id: caseId, plate, answers: found, files: f.kind === "photos" ? {} : { [f.kind]: f.name }, via: "portal" },
+      });
+      const label = UPLOAD_SLOTS.find((x) => x.kind === f.kind)?.label ?? "Document";
+      onDone(
+        r.recommendation === "routine_processing"
+          ? `Thanks! ${label} received. Your claim is now complete and goes into processing.`
+          : r.recommendation === "human_review"
+            ? `Thanks! ${label} received. A claims specialist is looking at your claim.`
+            : `Thanks! ${label} received. A few points are still open.`,
+      );
+    } catch (e) {
+      update(f, { reading: "failed" });
+      onDone((e as Error).message);
+    }
+  };
+
+  return (
+    <section className="mt-6">
+      <DocumentUploads files={files} onAdd={(f, a) => void add(f, a)} onRemove={(k) => setFiles((l) => l.filter((x) => x.kind !== k))} />
+      <p className="mt-2 px-1 text-[12px] text-text-3">Uploaded documents are stored with your claim, and your claim is checked again right away.</p>
+    </section>
   );
 }
