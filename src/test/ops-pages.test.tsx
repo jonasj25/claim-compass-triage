@@ -98,6 +98,17 @@ describe("ops lead pages", () => {
     expect(screen.getByText("Monitoring plan, live")).toBeTruthy();
   });
 
+  it("Test results show before/after by version, changed and blank cases, mistakes and the after-launch plan", async () => {
+    await renderPage("tests");
+    expect(screen.getByText("Before and after the change")).toBeTruthy();
+    expect(screen.getByText("V1 rules still running after the change")).toBeTruthy();
+    expect(screen.getByText("Only the claims whose correct next step changed")).toBeTruthy();
+    expect(screen.getByText("Claims with a blank or unreadable field")).toBeTruthy();
+    expect(screen.getByText("DEV-010")).toBeTruthy(); // v1 kept after the change auto-processes it
+    expect(screen.getByText("How we keep measuring after launch")).toBeTruthy();
+    expect(screen.getByText("1 correction recorded")).toBeTruthy();
+  });
+
   it("Business case shows net benefit, payback and sources", async () => {
     await renderPage("business-case");
     expect(screen.getByText("Net benefit per year")).toBeTruthy();

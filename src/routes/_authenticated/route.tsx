@@ -30,6 +30,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Sparkles,
+  FlaskConical,
   TrendingUp,
 } from "lucide-react";
 import type { ReactNode } from "react";
@@ -300,6 +301,7 @@ function SideNav({ expanded, onToggle }: { expanded: boolean; onToggle: () => vo
     "/policy": SlidersHorizontal,
     "/impact": GitCompareArrows,
     "/advisor": Sparkles,
+    "/tests": FlaskConical,
     "/versions": History,
     "/overview": ChartNoAxesCombined,
     "/quality": ShieldCheck,

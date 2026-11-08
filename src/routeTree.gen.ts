@@ -24,6 +24,7 @@ import { Route as AuthenticatedPhoneIntakeRouteImport } from './routes/_authenti
 import { Route as AuthenticatedPitchRouteImport } from './routes/_authenticated/pitch'
 import { Route as AuthenticatedPolicyRouteImport } from './routes/_authenticated/policy'
 import { Route as AuthenticatedQualityRouteImport } from './routes/_authenticated/quality'
+import { Route as AuthenticatedTestsRouteImport } from './routes/_authenticated/tests'
 import { Route as AuthenticatedVersionsRouteImport } from './routes/_authenticated/versions'
 import { Route as ClaimCaseIdRouteImport } from './routes/claim.$caseId'
 import { Route as AuthenticatedClaimsIndexRouteImport } from './routes/_authenticated/claims.index'
@@ -105,6 +106,11 @@ const AuthenticatedQualityRoute = AuthenticatedQualityRouteImport.update({
   path: '/quality',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedTestsRoute = AuthenticatedTestsRouteImport.update({
+  id: '/tests',
+  path: '/tests',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedVersionsRoute = AuthenticatedVersionsRouteImport.update({
   id: '/versions',
   path: '/versions',
@@ -143,6 +149,7 @@ export interface FileRoutesByFullPath {
   '/pitch': typeof AuthenticatedPitchRoute
   '/policy': typeof AuthenticatedPolicyRoute
   '/quality': typeof AuthenticatedQualityRoute
+  '/tests': typeof AuthenticatedTestsRoute
   '/versions': typeof AuthenticatedVersionsRoute
   '/claim/$caseId': typeof ClaimCaseIdRoute
   '/claims/$caseId': typeof AuthenticatedClaimsCaseIdRoute
@@ -163,6 +170,7 @@ export interface FileRoutesByTo {
   '/pitch': typeof AuthenticatedPitchRoute
   '/policy': typeof AuthenticatedPolicyRoute
   '/quality': typeof AuthenticatedQualityRoute
+  '/tests': typeof AuthenticatedTestsRoute
   '/versions': typeof AuthenticatedVersionsRoute
   '/claim/$caseId': typeof ClaimCaseIdRoute
   '/claims/$caseId': typeof AuthenticatedClaimsCaseIdRoute
@@ -185,6 +193,7 @@ export interface FileRoutesById {
   '/_authenticated/pitch': typeof AuthenticatedPitchRoute
   '/_authenticated/policy': typeof AuthenticatedPolicyRoute
   '/_authenticated/quality': typeof AuthenticatedQualityRoute
+  '/_authenticated/tests': typeof AuthenticatedTestsRoute
   '/_authenticated/versions': typeof AuthenticatedVersionsRoute
   '/claim/$caseId': typeof ClaimCaseIdRoute
   '/_authenticated/claims/$caseId': typeof AuthenticatedClaimsCaseIdRoute
@@ -207,6 +216,7 @@ export interface FileRouteTypes {
     | '/pitch'
     | '/policy'
     | '/quality'
+    | '/tests'
     | '/versions'
     | '/claim/$caseId'
     | '/claims/$caseId'
@@ -227,6 +237,7 @@ export interface FileRouteTypes {
     | '/pitch'
     | '/policy'
     | '/quality'
+    | '/tests'
     | '/versions'
     | '/claim/$caseId'
     | '/claims/$caseId'
@@ -248,6 +259,7 @@ export interface FileRouteTypes {
     | '/_authenticated/pitch'
     | '/_authenticated/policy'
     | '/_authenticated/quality'
+    | '/_authenticated/tests'
     | '/_authenticated/versions'
     | '/claim/$caseId'
     | '/_authenticated/claims/$caseId'
@@ -370,6 +382,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedQualityRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/tests': {
+      id: '/_authenticated/tests'
+      path: '/tests'
+      fullPath: '/tests'
+      preLoaderRoute: typeof AuthenticatedTestsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/versions': {
       id: '/_authenticated/versions'
       path: '/versions'
@@ -412,6 +431,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedPitchRoute: typeof AuthenticatedPitchRoute
   AuthenticatedPolicyRoute: typeof AuthenticatedPolicyRoute
   AuthenticatedQualityRoute: typeof AuthenticatedQualityRoute
+  AuthenticatedTestsRoute: typeof AuthenticatedTestsRoute
   AuthenticatedVersionsRoute: typeof AuthenticatedVersionsRoute
   AuthenticatedClaimsCaseIdRoute: typeof AuthenticatedClaimsCaseIdRoute
   AuthenticatedClaimsIndexRoute: typeof AuthenticatedClaimsIndexRoute
@@ -428,6 +448,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedPitchRoute: AuthenticatedPitchRoute,
   AuthenticatedPolicyRoute: AuthenticatedPolicyRoute,
   AuthenticatedQualityRoute: AuthenticatedQualityRoute,
+  AuthenticatedTestsRoute: AuthenticatedTestsRoute,
   AuthenticatedVersionsRoute: AuthenticatedVersionsRoute,
   AuthenticatedClaimsCaseIdRoute: AuthenticatedClaimsCaseIdRoute,
   AuthenticatedClaimsIndexRoute: AuthenticatedClaimsIndexRoute,

@@ -84,6 +84,7 @@ Click the account on the login page to sign in. Access follows the hierarchy: th
 ### Policy owner
 - **Policy**: the active rules in plain language ("How a claim is decided"), and **New policy version**, a simple form to change a rule (no code, no JSON). It is saved as a draft and changes nothing yet.
 - **Change impact**: replays every claim under the draft and shows what would change: how many claims are auto-processed, the load on reviewers, open claims whose next step changes (flagged for recheck), and closed claims that are kept. **Activate** makes the draft live.
+- **Test results**: the before-and-after quality report on the labelled test claims. Per policy version it shows the share of correct next steps, wrong auto-processing and unnecessary escalations, with the claims the change affects and the claims with blank fields shown separately. It lists every claim the rules get wrong (wrong auto-processing marked), how often reading real customer reports leads to a wrong step, and how quality keeps being measured after launch: second checks, reviewer corrections, outcomes that arrive later, and replaying every policy change before release.
 - **Policy advisor**:
   - The **Quote limit explorer** shows what a different auto-processing limit would mean for automation, reviewer workload and net benefit.
   - The advisor tries every combination of quote limit and second-check margin, and recommends one that is **no worse than today on cost, reviewer time, customer wait and expected losses**.
