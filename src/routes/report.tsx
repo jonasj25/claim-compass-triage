@@ -15,6 +15,7 @@ import {
   fieldState,
   interpretReply,
   parseEuro,
+  isUnknownText,
   FIELD_QUESTIONS,
   QUESTIONS,
   CUSTOMER_MISSING,
@@ -79,9 +80,24 @@ function ReportPage() {
   const channel = useRef<"online_form" | "phone">("online_form");
 
   const qs = useMemo(() => activeQuestions(answers), [answers]);
+  // An uploaded document is the reference: what it states stays in the claim. If the customer says something
+  // different, we don't correct them: their statement is kept and sent along as a flagged difference.
+  const docFacts = useRef<Partial<Record<AnswerKey, { value: string; doc: string }>>>({});
+  const said = useRef<Partial<Record<AnswerKey, string>>>({});
+  const setAnswersFromCustomer = (fn: (a: ReportAnswers) => ReportAnswers) =>
+    setAnswers((prev) => {
+      const next = { ...fn(prev) };
+      for (const k of Object.keys(next) as AnswerKey[]) {
+        if (!next[k] || next[k] === prev[k]) continue;
+        said.current[k] = String(next[k]);
+        const d = docFacts.current[k];
+        if (d && k !== "what_happened") (next as Record<string, string>)[k] = d.value;
+      }
+      return next;
+    });
   const set = (k: AnswerKey, v: string) => {
     if (k === "name" || k === "email" || k === "plate") setFormCheck({ busy: false, error: null });
-    setAnswers((a) => ({ ...a, [k]: v }));
+    setAnswersFromCustomer((a) => ({ ...a, [k]: v }));
   };
 
   // Written form: name and email must match a registered customer, and the plate their registered car
@@ -136,9 +152,13 @@ function ReportPage() {
     setFiles((fs) => (f.kind === "photos" ? fs : { ...fs, [f.kind]: f.name }));
     // An incident report slot always means "yes, there is a report"
     const base: Partial<ReportAnswers> = f.kind === "incident_report" ? { incident_report: "yes" } : {};
-    const apply = (found: Partial<ReportAnswers>, summary: string | null, ok: boolean) => {
+    const apply = (found: Partial<ReportAnswers>, summary: string | null, ok: boolean, details: { label: string; value: string }[] = []) => {
       const cur = latest.current.answers as unknown as Record<string, string>;
-      const fresh = Object.fromEntries(Object.entries({ ...found, ...base }).filter(([k, v]) => v && (!cur[k] || cur[k] === "unsure"))) as Partial<ReportAnswers>;
+      // The document counts over what was said (the customer's own story is kept as told)
+      const fresh = Object.fromEntries(
+        Object.entries({ ...found, ...base }).filter(([k, v]) => v && (k !== "what_happened" || !cur[k] || cur[k] === "unsure")),
+      ) as Partial<ReportAnswers>;
+      for (const [k, v] of Object.entries(fresh)) docFacts.current[k as AnswerKey] = { value: String(v), doc: f.name };
       uploadSet.current[f.kind] = fresh;
       if (Object.keys(fresh).length) setAnswers((a) => ({ ...a, ...fresh }));
       const shown = Object.entries(fresh).map(([k, v]) => {
@@ -146,12 +166,12 @@ function ReportPage() {
         const val = q?.choices?.find((c) => c.value === v)?.label ?? (k === "quote_amount" ? `€${v}` : String(v));
         return `${q?.label ?? k}: ${val}`;
       });
-      setUploads((u) => u.map((x) => (x.kind === f.kind && x.name === f.name ? { ...x, reading: ok ? "done" : "failed", found: shown, summary } : x)));
+      setUploads((u) => u.map((x) => (x.kind === f.kind && x.name === f.name ? { ...x, reading: ok ? "done" : "failed", found: shown, summary, details } : x)));
       const said = Object.entries(fresh).map(([k, v]) => `${k}=${v}`).join(", ");
       setUploadNote(`The customer just uploaded: ${label} (${f.name}).${said ? ` Read from it and recorded: ${said}. Do not ask about these.` : ""}`);
     };
     void scanDocument({ data: { name: f.name, type: f.type, b64: f.b64, kind: f.kind } })
-      .then((r) => (r.method !== "none" ? apply(r.answers, null, true) : apply(f.demo ? slotAnswers : {}, null, f.demo)))
+      .then((r) => (r.method !== "none" ? apply(r.answers, r.summary ?? null, true, r.details ?? []) : apply(f.demo ? slotAnswers : {}, null, f.demo)))
       .catch(() => apply(f.demo ? slotAnswers : {}, null, f.demo));
   };
   const removeUpload = (kind: UploadKind) => {
@@ -159,7 +179,10 @@ function ReportPage() {
     setFiles((fs) => ({ ...fs, [kind]: undefined }));
     const ans = uploadSet.current[kind] ?? {};
     delete uploadSet.current[kind];
-    if (Object.keys(ans).length) setAnswers((a) => ({ ...a, ...Object.fromEntries(Object.keys(ans).map((k) => [k, ""])) }));
+    // Back to what the customer said themselves (or open again)
+    for (const k of Object.keys(ans) as AnswerKey[]) delete docFacts.current[k];
+    if (Object.keys(ans).length)
+      setAnswers((a) => ({ ...a, ...Object.fromEntries(Object.keys(ans).map((k) => [k, said.current[k as AnswerKey] ?? ""])) }));
   };
   const uploadsCard = (compact?: boolean) => <DocumentUploads files={uploads} onAdd={addUpload} onRemove={removeUpload} compact={compact} />;
   const submitting = useRef(false);
@@ -171,10 +194,19 @@ function ReportPage() {
     setError(null);
     try {
       const cur = latest.current;
-      const res = await submitClaimReport({ data: { channel: channel.current, answers: cur.answers, transcript: cur.lines, heardIn: cur.heardIn, files: cur.files } });
+      // Which answers came from a document, and where the customer said something different
+      const docSources = Object.fromEntries(Object.entries(docFacts.current).map(([k, d]) => [k, d!.doc]));
+      const docConflicts = (Object.entries(docFacts.current) as [AnswerKey, { value: string; doc: string }][])
+        .filter(([k, d]) => k !== "what_happened" && said.current[k] && differs(k, said.current[k]!, d.value))
+        .map(([k, d]) => ({ field: k, customer: said.current[k]!, document: d.value, document_name: d.doc }));
+      const res = await submitClaimReport({
+        data: { channel: channel.current, answers: cur.answers, transcript: cur.lines, heardIn: cur.heardIn, files: cur.files, docSources, docConflicts },
+      });
       // Store the documents with the new claim (a failed upload does not undo the claim)
       for (const f of cur.uploads)
-        await uploadClaimFile({ data: { case_id: res.case_id, email: cur.answers.email, plate: cur.answers.plate, kind: f.kind, name: f.name, type: f.type, b64: f.b64 } }).catch(() => undefined);
+        await uploadClaimFile({
+          data: { case_id: res.case_id, email: cur.answers.email, plate: cur.answers.plate, kind: f.kind, name: f.name, type: f.type, b64: f.b64, extracted: [...(f.found ?? []).map((x) => ({ label: x.split(": ")[0], value: x.split(": ").slice(1).join(": ") })), ...(f.details ?? [])], summary: f.summary ?? null },
+        }).catch(() => undefined);
       setResult(res);
       setMode("done");
       window.scrollTo({ top: 0 });
@@ -233,7 +265,7 @@ function ReportPage() {
             conversation={
               <Conversation
                 answers={answers}
-                setAnswers={setAnswers}
+                setAnswers={setAnswersFromCustomer}
                 lines={lines}
                 setLines={setLines}
                 setHeardIn={setHeardIn}
@@ -390,6 +422,19 @@ function Landing({ qs, answers, heardIn, conversation, onForm, uploads }: { qs: 
 
 
 // ------------------------------------------------------------------ layout + checklist
+
+/** Does what the customer said really differ from the document? ("unsure" never counts as a difference) */
+function differs(k: AnswerKey, customer: string, document: string) {
+  const c = customer.trim().toLowerCase();
+  const d = document.trim().toLowerCase();
+  if (!c || c === "unsure" || isUnknownText(c)) return false;
+  if (k === "quote_amount") {
+    const a = parseEuro(c);
+    const b = parseEuro(d);
+    return a !== null && b !== null && Math.abs(a - b) > Math.max(1, b * 0.01);
+  }
+  return c !== d;
+}
 
 function DocsStep({ uploads, count, busy, error, onSend }: { uploads: ReactNode; count: number; busy: boolean; error: string | null; onSend: () => void }) {
   return (

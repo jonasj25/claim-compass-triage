@@ -125,6 +125,7 @@ const EVENT_TEXT: Record<string, string> = {
   call_ended: "Call with the customer ended",
   documents_received: "Documents received",
   file_uploaded: "Customer uploaded a document",
+  evidence_conflict_detected: "Customer statement differs from their document",
   retriaged: "Re-triaged",
   escalated: "Escalated to a reviewer",
   confirmed: "Recommendation confirmed",
@@ -583,6 +584,13 @@ function CaseDetail() {
   const unknownChecks = live.checklist.filter((c) => c.status === "unknown");
   // What the case is about, shown at the top of Overview (same facts as the Evidence checklist)
   const autoLimit = policy.human_review.quote_limit_eur;
+  // Customer statements that differ from their own uploaded document (stored as said, flagged)
+  const docConflicts = ((((data?.claim as Row | undefined)?.raw as Row | undefined)?.doc_conflicts as
+    | { field: string; customer: string; document: string; document_name: string }[]
+    | undefined) ?? []);
+  const conflictText = docConflicts
+    .map((c) => `${FIELD_LABELS[c.field] ?? c.field.replace(/_/g, " ")}: customer said "${c.customer}", ${c.document_name} says "${c.document}"`)
+    .join(" · ");
   const problems: { key: string; label: string; text: string; tone: "action" | "wait" | "info"; Icon: typeof TriangleAlert }[] = [
     ...live.checklist
       .filter((c) => c.status === "fail" && c.stage === "R1")
@@ -595,7 +603,9 @@ function CaseDetail() {
         text:
           c.key === "quote_limit" && autoLimit !== null && autoLimit !== undefined && claim.quote_eur !== null
             ? `quote €${claim.quote_eur.toLocaleString("en-US")}, auto-limit €${autoLimit.toLocaleString("en-US")} (policy ${version})`
-            : "a person has to decide",
+            : /evidence/i.test(c.key + c.field) && conflictText
+              ? `${conflictText}. Possible misstatement or fraud: check before deciding.`
+              : "a person has to decide",
         tone: "action" as const,
         Icon: TriangleAlert,
       })),
@@ -1257,6 +1267,20 @@ function CaseDetail() {
                         </span>
                         {doc.path ? " · stored, click to open" : ""}
                       </p>
+                      {(doc as { summary?: string }).summary && (
+                        <p className="mt-1 text-[11px] text-text-2">{(doc as { summary?: string }).summary}</p>
+                      )}
+                      {((doc as { extracted?: { label: string; value: string }[] }).extracted ?? []).length > 0 && (
+                        <dl className="mt-1.5 space-y-0.5 rounded-[8px] bg-surface-2 px-2 py-1.5">
+                          <p className="label-mono mb-0.5 text-[9.5px]">Read from the document</p>
+                          {(doc as { extracted?: { label: string; value: string }[] }).extracted!.map((x) => (
+                            <div key={x.label + x.value} className="flex justify-between gap-2 text-[11px]">
+                              <dt className="text-text-2">{x.label}</dt>
+                              <dd className="text-right">{x.value}</dd>
+                            </div>
+                          ))}
+                        </dl>
+                      )}
                     </div>
                   </li>
                 ))}

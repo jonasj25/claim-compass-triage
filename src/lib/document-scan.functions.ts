@@ -21,6 +21,9 @@ export interface ScanInput {
 export interface ScanResponse extends ScanResult {
   method: "text" | "ai" | "text+ai" | "none";
   note?: string;
+  /** Further details read by the AI (document number, net/VAT/gross, location ...) for the claims specialist */
+  details?: { label: string; value: string }[];
+  summary?: string | null;
 }
 
 async function readPdfText(bytes: Uint8Array): Promise<string> {
@@ -58,22 +61,24 @@ export const scanDocument = createServerFn({ method: "POST" })
     const result = scanDocumentText(readable ? text : "", data.kind);
     const fromText = Object.keys(result.answers).length;
 
-    // Photos, scans and documents the rules found little in: ask the AI gateway for the rest
+    // The AI reader always reads along when it is available. The fixed rules can pick the wrong line
+    // (a labour subtotal, the document date), so for the incident date and the quote total the AI's
+    // reading counts; for everything else it only fills what the rules left open.
     let usedAi = false;
-    if (!readable || fromText < 2) {
-      const ai = await readDocumentWithAi(data);
-      if (ai.ok) {
-        for (const [k, v] of Object.entries(ai.facts) as [ScanField, string][]) {
-          if (result.findings[k] || !v) continue;
-          const finding: ScanFinding = {
-            value: v,
-            evidence: ai.summary || "Read from the document",
-            source: "ai",
-          };
-          result.findings[k] = finding;
-          (result.answers as Record<string, string>)[k] = v;
-          usedAi = true;
-        }
+    let details: ScanResponse["details"] = [];
+    let summary: string | null = null;
+    const ai = process.env["LOVABLE_API_KEY"] ? await readDocumentWithAi(data) : null;
+    if (ai?.ok) {
+      details = ai.details;
+      summary = ai.summary;
+      for (const [k, v] of Object.entries(ai.facts) as [ScanField, string][]) {
+        if (!v) continue;
+        const preferAi = k === "incident_date" || k === "quote_amount";
+        if (result.findings[k] && !preferAi) continue;
+        if (result.findings[k]?.value === v) continue;
+        result.findings[k] = { value: v, evidence: ai.summary || "Read from the document", source: "ai" };
+        (result.answers as Record<string, string>)[k] = v;
+        usedAi = true;
       }
     }
     const found = Object.keys(result.answers).length;
@@ -87,5 +92,5 @@ export const scanDocument = createServerFn({ method: "POST" })
           : process.env["LOVABLE_API_KEY"]
             ? "We couldn't read this file automatically."
             : "This file has no readable text. Reading photos and scans needs Lovable AI to be enabled.";
-    return { ...result, method, note };
+    return { ...result, method, note, details, summary };
   });

@@ -19,6 +19,8 @@ export interface PendingFile {
   reading?: "reading" | "done" | "failed";
   found?: string[];
   summary?: string | null;
+  /** Further details read from the document, stored with the file for the claims specialist */
+  details?: { label: string; value: string }[];
 }
 
 const MAX = 10 * 1024 * 1024;

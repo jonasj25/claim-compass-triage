@@ -14,6 +14,9 @@ export interface StoredDocument extends Omit<IntakeDocument, "kind"> {
   size?: number;
   type?: string;
   uploaded_at?: string;
+  /** What was read from the document (shown to the claims specialist) */
+  extracted?: { label: string; value: string }[];
+  summary?: string | null;
 }
 
 const BUCKET = "claim-files";
@@ -33,7 +36,12 @@ function fromB64(b64: string): Uint8Array {
 }
 
 export const uploadClaimFile = createServerFn({ method: "POST" })
-  .inputValidator((d: { case_id: string; email?: string; plate?: string; kind: DocKind; name: string; type: string; b64: string }) => ({
+  .inputValidator((d: { case_id: string; email?: string; plate?: string; kind: DocKind; name: string; type: string; b64: string; extracted?: { label: string; value: string }[]; summary?: string | null }) => ({
+    extracted: (Array.isArray(d?.extracted) ? d.extracted : [])
+      .slice(0, 30)
+      .map((x) => ({ label: String(x?.label ?? "").slice(0, 60), value: String(x?.value ?? "").slice(0, 300) }))
+      .filter((x) => x.label && x.value),
+    summary: d?.summary ? String(d.summary).slice(0, 200) : null,
     case_id: String(d?.case_id ?? "").trim().toUpperCase().slice(0, 40),
     email: String(d?.email ?? "").slice(0, 200),
     plate: String(d?.plate ?? "").slice(0, 20),
@@ -56,7 +64,18 @@ export const uploadClaimFile = createServerFn({ method: "POST" })
     const up = await db.storage.from(BUCKET).upload(path, bytes, { contentType: data.type, upsert: false });
     if (up.error) throw new Error(up.error.message);
 
-    const doc: StoredDocument = { name: data.name, kind: data.kind, status: "present", note: KIND_NOTE[data.kind], path, size: bytes.length, type: data.type, uploaded_at: now };
+    const doc: StoredDocument = {
+      name: data.name,
+      kind: data.kind,
+      status: "present",
+      note: KIND_NOTE[data.kind],
+      path,
+      size: bytes.length,
+      type: data.type,
+      uploaded_at: now,
+      ...(data.extracted.length ? { extracted: data.extracted } : {}),
+      ...(data.summary ? { summary: data.summary } : {}),
+    };
     const intake = await db.from("claim_intake").select("documents").eq("case_id", data.case_id).maybeSingle();
     const docs = (((intake.data as { documents?: unknown } | null)?.documents as StoredDocument[] | null) ?? []).slice();
     // Replace the placeholder entry of the same kind (e.g. "incident_report.pdf · missing"), otherwise add

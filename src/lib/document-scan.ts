@@ -119,8 +119,20 @@ export function scanDocumentText(
   const dateLine = lineWith(
     /(date of (the )?(incident|accident|loss)|incident date|accident date|unfalldatum|schadentag|datum des unfalls|occurred on)/i,
   );
-  const d = dateLine ? parseDocDate(dateLine) : null;
-  if (d && dateLine) put("incident_date", d, dateLine);
+  let d = dateLine ? parseDocDate(dateLine) : null;
+  let dateEvidence = dateLine;
+  if (dateLine && !d) {
+    // PDF text often puts the label and its value on separate lines
+    const at = lines.indexOf(dateLine);
+    for (const next of lines.slice(at + 1, at + 3)) {
+      d = parseDocDate(next);
+      if (d) {
+        dateEvidence = `${dateLine} ${next}`;
+        break;
+      }
+    }
+  }
+  if (d && dateEvidence) put("incident_date", d, dateEvidence);
 
   // ---- what happened: a labelled description, continued over the following lines
   const di = lines.findIndex((l) =>
@@ -202,14 +214,15 @@ export function scanDocumentText(
 
   // ---- repair quote: the total, and whether it lists parts and labour
   if (looksLike === "quote" || isQuote) {
-    const totalLine = [...lines]
-      .reverse()
-      .find(
-        (l) =>
-          /\b(grand total|total|gesamt(betrag|summe)?|summe|endbetrag|amount due|to pay)\b/i.test(
-            l,
-          ) && /\d/.test(l),
-      );
+    // The grand total including VAT, never a labour, parts or net subtotal
+    const notTotal = /labou?r|arbeits?(lohn|zeit|wert)|lohn|parts|teile|material|netto|net\b|excl|zzgl|subtotal|zwischensumme/i;
+    const isTotal = (l: string) =>
+      /\b(grand total|total|gesamt(betrag|summe)?|summe|endbetrag|rechnungsbetrag|bruttobetrag|amount due|to pay)\b/i.test(l) &&
+      /\d/.test(l) &&
+      !notTotal.test(l);
+    const gross = /brutto|incl|inkl|including vat|gesamtbetrag|endbetrag|rechnungsbetrag|amount due|grand total/i;
+    const candidates = [...lines].reverse().filter(isTotal);
+    const totalLine = candidates.find((l) => gross.test(l)) ?? candidates[0];
     if (totalLine) {
       const nums =
         totalLine.match(/\d{1,3}(?:[.,\s]\d{3})*(?:[.,]\d{2})?|\d+(?:[.,]\d{2})?/g) ?? [];

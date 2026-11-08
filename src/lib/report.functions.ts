@@ -17,6 +17,17 @@ export interface ReportInput {
   transcript?: { speaker: "agent" | "customer"; text: string }[];
   heardIn?: Partial<Record<AnswerKey, number>>;
   files?: { incident_report?: string; quote?: string };
+  /** Answers read from uploaded documents (the document counts over what was said): field -> document name */
+  docSources?: Partial<Record<AnswerKey, string>>;
+  /** Where the customer said something different from the document; stored as said, flagged for review */
+  docConflicts?: DocConflict[];
+}
+
+export interface DocConflict {
+  field: AnswerKey;
+  customer: string;
+  document: string;
+  document_name: string;
 }
 
 export interface ReportResult {
@@ -48,6 +59,15 @@ function clean(input: ReportInput): ReportInput {
     transcript: (input.transcript ?? []).slice(0, 80).map((l) => ({ speaker: l.speaker === "agent" ? "agent" : "customer", text: clip(l.text, 600) })),
     heardIn: input.heardIn ?? {},
     files: { incident_report: clip(input.files?.incident_report, 120) || undefined, quote: clip(input.files?.quote, 120) || undefined },
+    docSources: Object.fromEntries(
+      Object.entries(input.docSources ?? {})
+        .filter(([k]) => k in EMPTY_ANSWERS)
+        .map(([k, v]) => [k, clip(v, 120)]),
+    ) as Partial<Record<AnswerKey, string>>,
+    docConflicts: (input.docConflicts ?? [])
+      .filter((c) => c && (c.field as string) in EMPTY_ANSWERS)
+      .slice(0, 20)
+      .map((c) => ({ field: c.field, customer: clip(c.customer, 300), document: clip(c.document, 300), document_name: clip(c.document_name, 120) })),
   };
 }
 
@@ -89,7 +109,8 @@ export const submitClaimReport = createServerFn({ method: "POST" })
       case_status: "open",
       policy_active_on_incident: isUnknownText(a.policy_number) ? null : true,
       duplicate_flag: duplicate,
-      evidence_conflict: false,
+      // What the customer said contradicts their own uploaded document: an evidence conflict for a person to look at
+      evidence_conflict: (data.docConflicts?.length ?? 0) > 0,
       ...toClaimFields(a),
     };
     const d = decide(claim, policy);
@@ -124,6 +145,8 @@ export const submitClaimReport = createServerFn({ method: "POST" })
           plate: a.plate,
           plate_key: plateKey,
           files: data.files ?? {},
+          ...(data.docConflicts?.length ? { doc_conflicts: data.docConflicts } : {}),
+          ...(Object.keys(data.docSources ?? {}).length ? { doc_sources: data.docSources } : {}),
         },
       }),
     );
@@ -178,6 +201,15 @@ export const submitClaimReport = createServerFn({ method: "POST" })
       const qi = questions.findIndex((q) => q.key === key);
       const line = data.heardIn?.[key];
       const viaVoice = data.channel === "phone" && line && transcript[line - 1];
+      const doc = data.docSources?.[key as AnswerKey];
+      if (doc && qi >= 0)
+        return {
+          field,
+          source_type: "document" as const,
+          ref: doc,
+          quote: `${questions[qi].label}: ${answerLabel(questions[qi], a) || "(empty)"} (read from the document)`,
+          confidence: value === null || value === undefined ? ("unconfirmed" as const) : ("confirmed" as const),
+        };
       return {
         field,
         source_type: viaVoice ? "transcript" : "form",
@@ -195,7 +227,15 @@ export const submitClaimReport = createServerFn({ method: "POST" })
         confidence: isUnknownText(a.policy_number) ? "unconfirmed" : "confirmed",
       },
       { field: "duplicate_flag", source_type: "system", ref: "duplicate check", quote: duplicate ? "Same plate and incident date already reported" : "No duplicate found", confidence: "confirmed" },
-      { field: "evidence_conflict", source_type: "system", ref: "evidence check", quote: "No conflict found at intake", confidence: "confirmed" },
+      data.docConflicts?.length
+        ? {
+            field: "evidence_conflict",
+            source_type: "document",
+            ref: data.docConflicts[0].document_name,
+            quote: data.docConflicts.map((c) => `${c.field}: customer said "${c.customer}", document says "${c.document}"`).join("; "),
+            confidence: "confirmed",
+          }
+        : { field: "evidence_conflict", source_type: "system", ref: "evidence check", quote: "No conflict found at intake", confidence: "confirmed" },
     );
     must(await db.from("fact_sources").insert(facts.map((f) => ({ case_id, ...f }))));
 
@@ -203,6 +243,7 @@ export const submitClaimReport = createServerFn({ method: "POST" })
     must(
       await db.from("case_events").insert([
         { case_id, type: "received", actor, payload: { channel: data.channel } },
+        ...(data.docConflicts?.length ? [{ case_id, type: "evidence_conflict_detected", actor: "Document check", payload: { conflicts: data.docConflicts } }] : []),
         { case_id, type: "triaged", actor: "Rules engine", payload: { recommendation: d.recommendation, rule_id: d.rule_id, policy_version: policy.version } },
         ...(queue === "waiting_customer" ? [{ case_id, type: "outreach_sent", actor: "Rules engine", payload: { channel: "email", missing_items: d.missing_fields } }] : []),
         ...(second ? [{ case_id, type: "second_check_flagged", actor: "Rules engine", payload: { reason: second, policy_version: policy.version } }] : []),
