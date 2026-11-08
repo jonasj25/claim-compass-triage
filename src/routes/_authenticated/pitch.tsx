@@ -1,15 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import {
-  CartesianGrid,
-  Line,
-  LineChart,
-  ReferenceLine,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
 import { useClaimMix } from "@/lib/claim-mix";
 import {
   breakEvenProbability,
@@ -116,14 +106,8 @@ function ValueRoi() {
   const mo = (m: number | null) => (m === null ? "—" : `${m.toFixed(1)} mo`);
   const positive = e.netPerYear > 0;
 
-  const curve = useMemo(
-    () =>
-      Array.from({ length: 37 }, (_, m) => ({
-        m,
-        v: Math.round(-inputs.implementation + (e.netPerYear / 12) * m),
-      })),
-    [inputs.implementation, e.netPerYear],
-  );
+  const max = Math.max(e.todayCost, e.withCost, 1);
+  const w = (v: number) => `${Math.max(0, (v / max) * 100)}%`;
 
   return (
     <div>
@@ -197,61 +181,60 @@ function ValueRoi() {
       </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[1.4fr_1fr]">
-        {/* Payback curve */}
+        {/* Cost today vs with: readable at first sight */}
         <Card>
-          <div className="flex items-baseline justify-between">
-            <h2 className="section-title">Cumulative net, first 3 years</h2>
-            <span className="num text-[14px] font-semibold" style={{ color: positive ? "var(--ok)" : "var(--action)" }}>
-              {eurCompact(3 * e.netPerYear - inputs.implementation)} after 3 years
-            </span>
-          </div>
-          <div className="mt-3">
-            <ResponsiveContainer width="100%" height={220}>
-              <LineChart data={curve} margin={{ top: 8, right: 12, bottom: 0, left: -4 }}>
-                <CartesianGrid vertical={false} stroke="var(--line)" />
-                <XAxis
-                  dataKey="m"
-                  type="number"
-                  domain={[0, 36]}
-                  ticks={[0, 6, 12, 18, 24, 30, 36]}
-                  tickFormatter={(m) => `${m} mo`}
-                  tickLine={false}
-                  axisLine={false}
-                  tick={{ fontSize: 12, fill: "var(--text-2)" }}
-                />
-                <YAxis
-                  tickFormatter={(v) => eurCompact(Number(v))}
-                  tickLine={false}
-                  axisLine={false}
-                  width={60}
-                  tick={{ fontSize: 12, fill: "var(--text-2)" }}
-                />
-                <ReferenceLine y={0} stroke="var(--text-3)" />
-                {e.paybackMonths !== null && e.paybackMonths <= 36 && (
-                  <ReferenceLine
-                    x={e.paybackMonths}
-                    stroke="var(--ok)"
-                    strokeDasharray="4 4"
-                    label={{
-                      value: `payback ${e.paybackMonths.toFixed(1)} mo`,
-                      position: "insideTopLeft",
-                      fontSize: 12,
-                      fill: "var(--text-2)",
+          <h2 className="text-[18px] font-semibold">Triage cost per year</h2>
+          <div className="mt-6 space-y-7">
+            <div>
+              <div className="mb-2 flex items-baseline justify-between">
+                <span className="text-[15px] text-text-2">Today: every claim read by a person</span>
+                <span className="num text-[22px] font-semibold">{eurCompact(e.todayCost)}</span>
+              </div>
+              <div className="h-9 rounded-lg" style={{ width: w(e.todayCost), background: SERIES.grey }} />
+            </div>
+            <div>
+              <div className="mb-2 flex items-baseline justify-between">
+                <span className="text-[15px] text-text-2">With Clearpath</span>
+                <span className="num text-[22px] font-semibold">{eurCompact(e.withCost)}</span>
+              </div>
+              <div className="flex h-9 gap-1">
+                <div className="rounded-l-lg" style={{ width: w(e.withPeopleCost), background: SERIES.primary }} />
+                <div className="rounded-r-lg" style={{ width: w(inputs.platformPerYear), background: SERIES.light }} />
+                {positive && (
+                  <div
+                    className="num flex items-center justify-center rounded-lg text-[15px] font-semibold"
+                    style={{
+                      width: w(e.netPerYear),
+                      color: "var(--ok)",
+                      border: "2px dashed var(--ok)",
+                      background: "color-mix(in oklab, var(--ok) 8%, var(--surface))",
                     }}
-                  />
+                  >
+                    −{eurCompact(e.netPerYear)}
+                  </div>
                 )}
-                <Tooltip
-                  contentStyle={{ borderRadius: 10, border: "1px solid var(--line)", fontSize: 12 }}
-                  labelFormatter={(m) => `Month ${m}`}
-                  formatter={(v: number) => [eur0(v), "Cumulative net"]}
-                />
-                <Line type="monotone" dataKey="v" stroke={SERIES.ink} strokeWidth={3} dot={false} isAnimationActive />
-              </LineChart>
-            </ResponsiveContainer>
+              </div>
+              <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-[13px] text-text-2">
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="inline-block size-3 rounded-sm" style={{ background: SERIES.primary }} />
+                  Reviewers and requests
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="inline-block size-3 rounded-sm" style={{ background: SERIES.light }} />
+                  Licence
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="inline-block size-3 rounded-sm border-2 border-dashed" style={{ borderColor: "var(--ok)" }} />
+                  Saved
+                </span>
+              </div>
+            </div>
           </div>
-          <p className="mt-2 text-[13px] text-text-2">
-            Break-even at <span className="num font-semibold text-foreground">{breakEvenMin.toFixed(1)} min</span> manual
-            triage per claim
+          <p className="mt-6 text-[16px]">
+            <span className="num font-semibold" style={{ color: positive ? "var(--ok)" : "var(--action)" }}>
+              {positive ? `−${eurCompact(e.netPerYear)} a year` : `+${eurCompact(-e.netPerYear)} a year`}
+            </span>
+            <span className="text-text-2"> · payback {mo(e.paybackMonths)} · break-even at {breakEvenMin.toFixed(1)} min triage</span>
           </p>
         </Card>
 

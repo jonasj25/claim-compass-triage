@@ -12,6 +12,7 @@ import { decide, RECOMMENDATION_LABELS, type Policy, type Recommendation } from 
 import { Card, Kpi, PageHeader, StatusDot } from "@/components/triage/ui";
 import { HBars, REC_COLOR, SERIES, StackedShare } from "@/components/triage/charts";
 import { AssignmentPanel } from "@/components/triage/AssignmentPanel";
+import { ArrowRight, Lock, RefreshCw } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/overview")({
   head: () => ({
@@ -63,7 +64,16 @@ function Overview() {
         sub={`Live from ${s.total} claims in the system · active policy ${policy.version.toUpperCase()}`}
       />
 
-      <div className="kpi-strip grid grid-cols-3 gap-0 lg:grid-cols-5">
+      <FlowMap
+        open={s.open}
+        closed={s.closed}
+        recs={s.recs}
+        second={s.second}
+        recheck={s.recheck.length}
+        version={policy.version.toUpperCase()}
+      />
+
+      <div className="kpi-strip mt-6 grid grid-cols-3 gap-0 lg:grid-cols-5">
         <Kpi label="Open claims" value={s.open} sub={`${s.closed} closed`} />
         <Kpi label={QUEUE_LABELS.on_you} value={s.queue.on_you} sub="need a reviewer" />
         <Kpi label="Second checks" value={s.second} sub="auto-processed, near limit" />
@@ -224,6 +234,83 @@ function Overview() {
         </Card>
       </div>
     </div>
+  );
+}
+
+const TONE: Record<Recommendation, string> = {
+  routine_processing: "var(--ok)",
+  request_information: "var(--wait)",
+  human_review: "var(--action)",
+};
+
+/** One-glance map of how open claims are handled and what a policy change does to them. */
+function FlowMap({
+  open,
+  closed,
+  recs,
+  second,
+  recheck,
+  version,
+}: {
+  open: number;
+  closed: number;
+  recs: Record<Recommendation, number>;
+  second: number;
+  recheck: number;
+  version: string;
+}) {
+  const share = (v: number) => (open ? Math.round((v / open) * 100) : 0);
+  const lanes: { rec: Recommendation; title: string; note: string }[] = [
+    { rec: "routine_processing", title: "Processed automatically", note: second ? `${second} get a quick second check` : "no person needed" },
+    { rec: "request_information", title: "Missing facts requested", note: "waiting for the customer" },
+    { rec: "human_review", title: "Sent to a reviewer", note: "a rule needs a person" },
+  ];
+  return (
+    <Card>
+      <h2 className="text-[18px] font-semibold">How every claim is handled</h2>
+      <div className="mt-5 grid items-stretch gap-4 lg:grid-cols-[180px_28px_1fr]">
+        <div className="flex flex-col justify-center rounded-xl bg-surface-2 p-5 ring-1 ring-line">
+          <span className="num text-[40px] font-semibold leading-none">{open}</span>
+          <span className="mt-2 text-[14px] text-text-2">open claims</span>
+        </div>
+        <div className="hidden items-center justify-center lg:flex">
+          <ArrowRight className="size-6 text-text-3" />
+        </div>
+        <div className="grid gap-3 md:grid-cols-3">
+          {lanes.map((l) => (
+            <div
+              key={l.rec}
+              className="rounded-xl p-5"
+              style={{
+                background: `color-mix(in oklab, ${TONE[l.rec]} 9%, var(--surface))`,
+                boxShadow: `inset 0 0 0 1px color-mix(in oklab, ${TONE[l.rec]} 35%, var(--surface))`,
+              }}
+            >
+              <div className="flex items-baseline justify-between" style={{ color: TONE[l.rec] }}>
+                <span className="num text-[36px] font-semibold leading-none">{recs[l.rec]}</span>
+                <span className="num text-[18px] font-semibold">{share(recs[l.rec])}%</span>
+              </div>
+              <p className="mt-2 text-[15px] font-medium">{l.title}</p>
+              <p className="text-[13px] text-text-2">{l.note}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="mt-4 grid gap-3 md:grid-cols-2">
+        <div className="flex items-center gap-3 rounded-xl bg-surface-2 px-5 py-3 ring-1 ring-line">
+          <RefreshCw className="size-5 shrink-0" style={{ color: "var(--action)" }} />
+          <p className="text-[14.5px]">
+            <span className="num font-semibold">{recheck}</span> open claims rechecked under policy {version}
+          </p>
+        </div>
+        <div className="flex items-center gap-3 rounded-xl bg-surface-2 px-5 py-3 ring-1 ring-line">
+          <Lock className="size-5 shrink-0 text-text-2" />
+          <p className="text-[14.5px]">
+            <span className="num font-semibold">{closed}</span> closed claims keep their original decision
+          </p>
+        </div>
+      </div>
+    </Card>
   );
 }
 
