@@ -2,19 +2,13 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useClaimMix } from "@/lib/claim-mix";
 import {
-  breakEvenProbability,
   defaultInputs,
-  errorCost,
   eur0,
   eurCompact,
   pct,
-  policyChangeCost,
   triageEconomics,
-  unnecessaryReviewCost,
-  wrongRoutineCost,
   type Inputs,
 } from "@/lib/business";
-import { labelledReport } from "@/lib/quality";
 import { Slider } from "@/components/ui/slider";
 import { Card, Kpi, PageHeader } from "@/components/triage/ui";
 import { SERIES } from "@/components/triage/charts";
@@ -80,7 +74,6 @@ function Seg<T extends string | number>({
 function ValueRoi() {
   const { mix } = useClaimMix();
   const second = mix.secondShare;
-  const quality = useMemo(() => labelledReport(), []);
   const base = useMemo(() => defaultInputs(), []);
 
   const [size, setSize] = useState(base.claimsPerYear);
@@ -94,15 +87,11 @@ function ValueRoi() {
   }, [base, on, size, triageMin]);
 
   const e = triageEconomics(inputs, mix, second);
-  const change = policyChangeCost(inputs, mix);
   const n = inputs.claimsPerYear;
   const challenged = on.length > 0 || triageMin !== base.triageMinToday;
 
   const timeCut = e.todayHours > 0 ? (e.todayHours - e.withHours) / e.todayHours : 0;
   const breakEvenMin = ((e.withHours + inputs.platformPerYear / e.hourly) * 60) / n;
-  const errStale = errorCost(inputs, quality.keepV1);
-  const errV2 = errorCost(inputs, quality.v2);
-  const pStar = breakEvenProbability(inputs);
   const mo = (m: number | null) => (m === null ? "—" : `${m.toFixed(1)} mo`);
   const positive = e.netPerYear > 0;
 
@@ -177,10 +166,10 @@ function ValueRoi() {
         <Kpi label="Net saving per claim" value={`€${(e.netPerYear / n).toFixed(2)}`} />
         <Kpi label="Manual triage time" value={`−${pct(timeCut)}`} />
         <Kpi label="Handler capacity freed" value={`${(e.fteToday - e.fteWith).toFixed(1)} FTE`} />
-        <Kpi label="Cost per policy change" value={`${eurCompact(change.today.total)} → ${eurCompact(change.withSystem.total)}`} />
+        <Kpi label="Break-even triage time" value={`${breakEvenMin.toFixed(1)} min`} sub={`today ${inputs.triageMinToday} min`} />
       </div>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-[1.4fr_1fr]">
+      <div className="mt-6">
         {/* Cost today vs with: readable at first sight */}
         <Card>
           <h2 className="text-[18px] font-semibold">Triage cost per year</h2>
@@ -234,34 +223,10 @@ function ValueRoi() {
             <span className="num font-semibold" style={{ color: positive ? "var(--ok)" : "var(--action)" }}>
               {positive ? `−${eurCompact(e.netPerYear)} a year` : `+${eurCompact(-e.netPerYear)} a year`}
             </span>
-            <span className="text-text-2"> · payback {mo(e.paybackMonths)} · break-even at {breakEvenMin.toFixed(1)} min triage</span>
+            <span className="text-text-2"> · payback {mo(e.paybackMonths)}</span>
           </p>
         </Card>
 
-        {/* Cost of errors */}
-        <Card>
-          <h2 className="section-title">Cost of errors</h2>
-          <dl className="mt-3 grid grid-cols-[1fr_auto] gap-x-6 gap-y-2.5 text-[14px]">
-            <dt className="text-text-2">Wrong routine (false approval)</dt>
-            <dd className="num font-semibold">{eur0(wrongRoutineCost(inputs))}</dd>
-            <dt className="text-text-2">Unnecessary escalation</dt>
-            <dd className="num font-semibold">{eur0(unnecessaryReviewCost(inputs))}</dd>
-            <dt className="text-text-2">Escalate above chance of a problem</dt>
-            <dd className="num font-semibold">{pct(pStar, 1)}</dd>
-            <dt className="border-t border-line pt-2.5 text-text-2">Errors / year, rules not updated to V2</dt>
-            <dd className="num border-t border-line pt-2.5 font-semibold" style={{ color: "var(--action)" }}>
-              {eurCompact(errStale.total)}
-            </dd>
-            <dt className="text-text-2">Errors / year with Clearpath on V2</dt>
-            <dd className="num font-semibold" style={{ color: "var(--ok)" }}>
-              {eurCompact(errV2.total)}
-            </dd>
-          </dl>
-          <p className="mt-3 text-[12.5px] text-text-2">
-            Wrong routine: {quality.keepV1.wrongRoutine} of {quality.keepV1.n} open labelled claims without the update,{" "}
-            {quality.v2.wrongRoutine} of {quality.v2.n} with V2.
-          </p>
-        </Card>
       </div>
     </div>
   );
