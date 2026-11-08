@@ -12,6 +12,11 @@ export const DEMO_USERS = [
   { email: "tobias@demo.com", name: "Tobias Brandt", role: "policy_owner" },
   { email: "sofia@demo.com", name: "Sofia Lang", role: "ops_lead" },
 ] as const;
+// The login page lists one account per role (Mara, Tobias, Sofia). The other reviewers still
+// exist, so claims can be assigned to them and they can sign in with email + password.
+export const LOGIN_USERS = DEMO_USERS.filter(
+  (u, i) => DEMO_USERS.findIndex((x) => x.role === u.role) === i,
+);
 export const DEMO_PASSWORD = "demo1234";
 
 export const ensureDemoUsers = createServerFn({ method: "POST" }).handler(async () => {

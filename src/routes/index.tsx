@@ -2,7 +2,12 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Logo } from "@/components/triage/Logo";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { ensureDemoUsers, DEMO_USERS, DEMO_PASSWORD } from "@/lib/demo-users.functions";
+import {
+  ensureDemoUsers,
+  DEMO_USERS,
+  DEMO_PASSWORD,
+  LOGIN_USERS,
+} from "@/lib/demo-users.functions";
 import { ROLE_HOME, ROLE_LABELS, type Role } from "@/lib/role";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -101,7 +106,7 @@ function SignIn() {
         <div className="mt-10">
           <p className="label-mono mb-3">Demo accounts · password demo1234</p>
           <div className="card-quiet divide-y divide-line overflow-hidden">
-            {DEMO_USERS.map((u) => (
+            {LOGIN_USERS.map((u) => (
               <button
                 key={u.email}
                 disabled={busy}
