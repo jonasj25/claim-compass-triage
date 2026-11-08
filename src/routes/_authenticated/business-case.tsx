@@ -200,19 +200,19 @@ function BusinessCase() {
                   {
                     label: "Reviews",
                     value: econ.breakdown.review * econ.hourly,
-                    color: REC_COLOR.human_review,
+                    color: SERIES.primary,
                   },
                   {
                     label: "Info requests",
                     value: econ.breakdown.info * econ.hourly,
-                    color: REC_COLOR.request_information,
+                    color: SERIES.mid,
                   },
                   {
                     label: "Second checks",
                     value: econ.breakdown.checks * econ.hourly,
-                    color: REC_COLOR.routine_processing,
+                    color: SERIES.light,
                   },
-                  { label: "Platform", value: inputs.platformPerYear, color: SERIES.strong },
+                  { label: "Platform", value: inputs.platformPerYear, color: SERIES.grey },
                 ],
               },
             ]}

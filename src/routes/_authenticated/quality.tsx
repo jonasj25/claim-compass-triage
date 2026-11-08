@@ -11,7 +11,7 @@ import { EVAL_CASES, runIntakeEval } from "@/lib/intake-eval";
 import { RECOMMENDATION_LABELS, type Recommendation } from "@/lib/triage";
 import { Button } from "@/components/ui/button";
 import { Card, Kpi, PageHeader, StatusDot, fmtTime } from "@/components/triage/ui";
-import { HBars, HeatGrid, REC_COLOR, SERIES, ShareRow } from "@/components/triage/charts";
+import { HBars, HeatGrid, SERIES, ShareRow } from "@/components/triage/charts";
 
 export const Route = createFileRoute("/_authenticated/quality")({
   head: () => ({
@@ -370,7 +370,7 @@ function QualityPage() {
                     key: x.k,
                     label: RECOMMENDATION_LABELS[x.k],
                     value: x.n,
-                    color: REC_COLOR[x.k],
+                    color: SERIES.primary,
                   }))}
                 empty="No corrections yet."
               />

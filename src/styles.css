@@ -124,11 +124,13 @@
   --ring: var(--link);
 
   /* charts: calm blue-slate scale */
-  --chart-1: oklch(0.32 0.06 262);
-  --chart-2: oklch(0.5 0.1 258);
-  --chart-3: oklch(0.64 0.09 252);
-  --chart-4: oklch(0.77 0.06 248);
-  --chart-5: oklch(0.88 0.03 248);
+  /* charts: one app blue (= --link) and its tints, plus neutral greys.
+     Green / amber / coral only for the three next steps shown side by side. */
+  --chart-1: var(--link);
+  --chart-2: color-mix(in oklch, var(--link) 55%, var(--surface));
+  --chart-3: color-mix(in oklch, var(--link) 28%, var(--surface));
+  --chart-4: oklch(0.88 0.01 255);
+  --chart-5: oklch(0.68 0.015 255);
   --sidebar: var(--background);
   --sidebar-foreground: var(--foreground);
   --sidebar-primary: var(--ink);

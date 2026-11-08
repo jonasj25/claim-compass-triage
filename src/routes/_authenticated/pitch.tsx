@@ -144,10 +144,10 @@ function Pitch() {
   const today = e.todayCost;
   const seg = (v: number) => `${today > 0 ? Math.max(0, (v / today) * 100) : 0}%`;
   const parts = [
-    { label: "Escalated reviews", value: e.breakdown.review * e.hourly, color: REC_COLOR.human_review },
-    { label: "Information requests", value: e.breakdown.info * e.hourly, color: REC_COLOR.request_information },
-    { label: "Second checks", value: e.breakdown.checks * e.hourly, color: SERIES.mid },
-    { label: "Our licence", value: inputs.platformPerYear, color: SERIES.soft },
+    { label: "Escalated reviews", value: e.breakdown.review * e.hourly, color: SERIES.primary },
+    { label: "Information requests", value: e.breakdown.info * e.hourly, color: SERIES.mid },
+    { label: "Second checks", value: e.breakdown.checks * e.hourly, color: SERIES.light },
+    { label: "Our licence", value: inputs.platformPerYear, color: SERIES.grey },
     { label: "Saved", value: Math.max(0, e.netPerYear), color: REC_COLOR.routine_processing },
   ];
 

@@ -118,7 +118,7 @@ function Overview() {
               key: k,
               label: TRIGGER_LABEL[k] ?? k,
               value: v,
-              color: REC_COLOR.human_review,
+              color: SERIES.primary,
             }))}
             empty="No claims are waiting for review."
           />

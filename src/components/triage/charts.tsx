@@ -10,11 +10,15 @@ export const REC_COLOR: Record<Recommendation, string> = {
   request_information: "var(--wait-dot)",
   human_review: "var(--action-dot)",
 };
+/** One blue for every single-series chart; tints of the same blue for parts of one whole;
+ *  greys for baselines and non-people costs. */
 export const SERIES = {
-  primary: "var(--chart-2)",
+  primary: "var(--chart-1)",
   strong: "var(--chart-1)",
+  mid: "var(--chart-2)",
+  light: "var(--chart-3)",
   soft: "var(--chart-4)",
-  mid: "var(--chart-3)",
+  grey: "var(--chart-5)",
 };
 
 export interface BarItem {
@@ -202,7 +206,7 @@ export function HeatGrid({
                     )}
                     style={{
                       background: v
-                        ? `color-mix(in oklch, var(--chart-2) ${Math.round(12 + a * 58)}%, var(--surface))`
+                        ? `color-mix(in oklch, var(--chart-1) ${Math.round(12 + a * 58)}%, var(--surface))`
                         : "var(--surface-2)",
                       color: a > 0.6 ? "white" : undefined,
                     }}
@@ -221,7 +225,7 @@ export function HeatGrid({
 
 export function KindBadge({ kind }: { kind: "sourced" | "measured" | "assumption" }) {
   const map = {
-    sourced: "bg-[oklch(0.95_0.03_258)] text-[oklch(0.42_0.12_260)]",
+    sourced: "bg-link/10 text-link",
     measured: "bg-[oklch(0.95_0.04_152)] text-ok",
     assumption: "bg-surface-2 text-text-2 ring-1 ring-line",
   } as const;
