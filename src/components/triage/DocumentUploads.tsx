@@ -80,6 +80,7 @@ export function DocumentUploads({
 }) {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState<UploadKind | null>(null);
+  const [over, setOver] = useState<UploadKind | null>(null);
   const inputs = useRef<Partial<Record<UploadKind, HTMLInputElement | null>>>({});
 
   const addOwn = async (slot: (typeof UPLOAD_SLOTS)[number], file?: File) => {
@@ -121,13 +122,31 @@ export function DocumentUploads({
           const f = files.find((x) => x.kind === slot.kind);
           const Icon = slot.icon;
           return (
-            <li key={slot.kind} className={cn("rounded-[10px] px-3 py-2.5 ring-1", f ? "bg-link/5 ring-link/30" : "bg-surface ring-line")}>
+            <li
+              key={slot.kind}
+              onDragOver={(e) => {
+                if (f) return;
+                e.preventDefault();
+                setOver(slot.kind);
+              }}
+              onDragLeave={() => setOver((k) => (k === slot.kind ? null : k))}
+              onDrop={(e) => {
+                if (f) return;
+                e.preventDefault();
+                setOver(null);
+                void addOwn(slot, e.dataTransfer.files?.[0]);
+              }}
+              className={cn(
+                "rounded-[10px] px-3 py-2.5 ring-1 transition-colors",
+                f ? "bg-link/5 ring-link/30" : over === slot.kind ? "bg-link/10 ring-2 ring-link" : "bg-surface ring-line",
+              )}
+            >
               <div className="flex items-center gap-2.5">
                 <Icon className={cn("size-4 shrink-0", f ? "text-link" : "text-text-3")} />
                 <div className="min-w-0 flex-1">
                   <p className="text-[13px] font-medium leading-tight">{slot.label}</p>
                   <p className="truncate text-[11.5px] text-text-3">
-                    {f ? `${f.name}${f.demo ? " · demo file" : ""}` : loading === slot.kind ? "Adding…" : slot.hint}
+                    {f ? `${f.name}${f.demo ? " · demo file" : ""}` : loading === slot.kind ? "Adding…" : over === slot.kind ? "Drop the file here" : `${slot.hint} · or drag a file here`}
                   </p>
                 </div>
                 {f ? (
