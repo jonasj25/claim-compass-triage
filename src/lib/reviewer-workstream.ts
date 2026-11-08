@@ -1,4 +1,5 @@
 import type { CaseRow } from "./data";
+import { effectiveRec } from "./effective";
 import { isClosed } from "./csv";
 import { buildChecklist, FIELD_LABELS, RECOMMENDATION_LABELS, type Policy } from "./triage";
 import { secondCheckReason } from "./second-check";
@@ -91,12 +92,16 @@ export function buildWorkstream(cases: CaseRow[], policy: Policy, events: WorkEv
       continue;
     }
 
-    const near = secondCheckReason(claim, policy, decision.recommendation);
+    // A reviewer's override decides how the claim is handled; it also settles a pending recheck
+    const rec = effectiveRec(row) ?? decision.recommendation;
+    const overridden = !!row.override;
+    const recheck = decision.needs_recheck && !overridden;
+    const near = secondCheckReason(claim, policy, rec);
     // Do not create QA samples here: random selection is persisted by the existing workflow.
     const qa = workflow.queue === "auto_processed" && workflow.qa_sample && !near;
-    const needsHuman = decision.recommendation === "human_review";
-    if (decision.recommendation === "request_information") continue;
-    if (!needsHuman && !decision.needs_recheck && !near && !qa) continue;
+    const needsHuman = rec === "human_review";
+    if (rec === "request_information") continue;
+    if (!needsHuman && !recheck && !near && !qa) continue;
 
     const reply = last(["message_received", "documents_received"]);
     const rerun = last(["retriaged"]);
@@ -120,15 +125,16 @@ export function buildWorkstream(cases: CaseRow[], policy: Policy, events: WorkEv
     const after = label(p?.after);
     const policyWhy = before && after && typeof p?.from_version === "string" && typeof p?.to_version === "string"
       ? `${p.from_version}: ${before} → ${p.to_version}: ${after}`
-      : `Now ${RECOMMENDATION_LABELS[decision.recommendation]} under ${decision.policy_version}`;
+      : `Now ${RECOMMENDATION_LABELS[rec]} under ${decision.policy_version}`;
     const limit = policy.human_review.quote_limit_eur;
     const nearLimit = near && limit !== null && claim.quote_eur !== null ? limitNote(claim.quote_eur, limit) : null;
 
-    const group: GroupKey = replied ? "decision" : decision.needs_recheck ? "policy_change" :
+    const group: GroupKey = replied ? "decision" : recheck ? "policy_change" :
       flagged.length ? "decision" : near || qa ? "double_check" : "decision";
     const why = group === "policy_change" ? [policyWhy, riskWhy].filter(Boolean).join(" · ") :
       group === "double_check" ? nearLimit ?? "Picked at random to check the rules still work." :
       replied ? `Customer replied · ${riskWhy || "New information needs your decision"}` :
+      overridden && row.override ? `Changed by ${row.override.reviewer ?? "a reviewer"}: ${RECOMMENDATION_LABELS[(row.override.original_recommendation ?? decision.recommendation) as keyof typeof RECOMMENDATION_LABELS] ?? row.override.original_recommendation} → ${RECOMMENDATION_LABELS[rec]}${row.override.reason_text ? ` · ${row.override.reason_text}` : ""}` :
       riskWhy || humanize(decision.explanation)?.replace(/\bV?\d*\.?R[123]\b/gi, "").trim() || "A person needs to check this claim";
     items.push({ row, group, why, nearLimit, qa, replied, reminders: 0 });
   }
@@ -153,7 +159,7 @@ export function claimStatuses(cases: CaseRow[], workIds: Set<string>): Map<strin
   for (const row of cases) {
     const id = row.claim.case_id;
     out.set(id, isDone(row) ? "done" : workIds.has(id) ? "to_review" :
-      row.workflow?.queue === "waiting_customer" || row.decision?.recommendation === "request_information" ? "waiting_customer" :
+      row.workflow?.queue === "waiting_customer" || effectiveRec(row) === "request_information" ? "waiting_customer" :
       row.workflow?.queue === "on_you" ? "to_review" : "auto_processed");
   }
   return out;

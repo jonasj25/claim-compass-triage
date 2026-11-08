@@ -1,5 +1,6 @@
 import { queryOptions } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { overrideFor, type OverrideRow } from "./effective";
 import type { Claim, Policy, Recommendation } from "./triage";
 import type { Queue } from "./lifecycle";
 
@@ -16,6 +17,8 @@ export interface CaseRow {
   } | null;
   workflow: { queue: Queue; assignee: string | null; qa_sample: boolean; sla_due_at: string | null } | null;
   intake: { channel: string; customer_name: string | null; plate: string | null } | null;
+  /** The reviewer's latest override of the current decision, if any (see effectiveRec) */
+  override?: OverrideRow | null;
 }
 
 async function fetchAll<T>(table: string, select: string, filter?: (q: any) => any): Promise<T[]> {
@@ -34,12 +37,15 @@ async function fetchAll<T>(table: string, select: string, filter?: (q: any) => a
 export const casesQuery = queryOptions({
   queryKey: ["cases"],
   queryFn: async (): Promise<CaseRow[]> => {
-    const [claims, decisions, workflow, intake] = await Promise.all([
+    const [claims, decisions, workflow, intake, overrides] = await Promise.all([
       fetchAll<any>("claims", "*"),
       fetchAll<any>("decisions", "id,case_id,policy_version,recommendation,rule_id,explanation,missing_fields,needs_recheck", (q) => q.eq("is_current", true)),
       fetchAll<any>("case_workflow", "case_id,queue,assignee,qa_sample,sla_due_at"),
       fetchAll<any>("claim_intake", "case_id,channel,customer_name,plate"),
+      fetchAll<OverrideRow>("overrides", "case_id,decision_id,original_recommendation,new_recommendation,reviewer,reason_code,reason_text,created_at", (q) => q.order("created_at")),
     ]);
+    const ov = new Map<string, OverrideRow[]>();
+    for (const o of overrides) ov.set(o.case_id, [...(ov.get(o.case_id) ?? []), o]);
     const by = <T extends { case_id: string }>(rows: T[]) => new Map(rows.map((r) => [r.case_id, r]));
     const d = by(decisions), w = by(workflow), i = by(intake);
     return claims
@@ -48,6 +54,7 @@ export const casesQuery = queryOptions({
         decision: d.get(c.case_id) ?? null,
         workflow: w.get(c.case_id) ?? null,
         intake: i.get(c.case_id) ?? null,
+        override: overrideFor(d.get(c.case_id)?.id ?? null, ov.get(c.case_id) ?? []),
       }))
       .sort((a, b) => a.claim.case_id.localeCompare(b.claim.case_id));
   },

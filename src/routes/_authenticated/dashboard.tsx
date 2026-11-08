@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { effectiveRec } from "@/lib/effective";
 import { useQuery, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { assignCases } from "@/lib/assignment";
@@ -267,7 +268,7 @@ function Dashboard() {
   const total = work.ordered.length;
   const openRows = data.filter((r) => r.decision && !isDone(r));
   const autoShare = openRows.length
-    ? openRows.filter((r) => r.decision?.recommendation !== "human_review").length / openRows.length
+    ? openRows.filter((r) => effectiveRec(r) !== "human_review").length / openRows.length
     : 0;
   const reviewVolume = work.ordered.reduce((n, i) => n + (i.row.claim.quote_eur ?? 0), 0);
   const largest = work.ordered.reduce<WorkItem | null>(

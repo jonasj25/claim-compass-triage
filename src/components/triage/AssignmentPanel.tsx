@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { effectiveRec } from "@/lib/effective";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Users } from "lucide-react";
@@ -138,7 +139,7 @@ export function AssignmentPanel({ cases }: { cases: CaseRow[] }) {
                   </span>
                   {c.decision && (
                     <StatusDot
-                      rec={c.decision.recommendation}
+                      rec={effectiveRec(c) ?? c.decision.recommendation}
                       plain
                       className="hidden sm:inline-flex"
                     />

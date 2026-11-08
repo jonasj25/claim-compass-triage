@@ -6,6 +6,7 @@ import {
   useNavigate,
   useRouterState,
 } from "@tanstack/react-router";
+import { effectiveRec } from "@/lib/effective";
 import { Logo } from "@/components/triage/Logo";
 import { NotificationsBell } from "@/components/triage/NotificationsBell";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -242,7 +243,9 @@ function SideNav({ expanded, onToggle }: { expanded: boolean; onToggle: () => vo
     const rows = (cases.data ?? []).map((c) => ({
       case_id: c.claim.case_id,
       case_status: c.claim.case_status ?? "open",
-      recommendation: c.decision?.recommendation,
+      recommendation: effectiveRec(c) ?? undefined,
+      system_recommendation: c.decision?.recommendation,
+      overridden_by: c.override?.reviewer ?? "",
       rule_id: c.decision?.rule_id,
       policy_version: c.decision?.policy_version,
       missing_fields: c.decision?.missing_fields,

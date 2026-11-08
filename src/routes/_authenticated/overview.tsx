@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { effectiveRec } from "@/lib/effective";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
@@ -210,7 +211,7 @@ function Overview() {
                     {c.claim.case_id}
                   </Link>
                   <span className="truncate text-text-2">{c.claim.claim_summary}</span>
-                  {c.decision && <StatusDot rec={c.decision.recommendation} />}
+                  {c.decision && <StatusDot rec={effectiveRec(c) ?? c.decision.recommendation} />}
                 </li>
               ))}
             </ul>
@@ -255,7 +256,7 @@ function stats(cases: CaseRow[], policy: Policy) {
   for (const c of open) {
     const q = c.workflow?.queue;
     if (q) queue[q] = (queue[q] ?? 0) + 1;
-    if (c.decision) recs[c.decision.recommendation]++;
+    if (c.decision) recs[effectiveRec(c) ?? c.decision.recommendation]++;
     const needsPerson = q === "on_you" || (c.workflow?.qa_sample && q !== "done");
     if (needsPerson)
       load.set(
@@ -265,7 +266,7 @@ function stats(cases: CaseRow[], policy: Policy) {
     if (
       c.workflow?.qa_sample &&
       c.decision &&
-      secondCheckReason(c.claim, policy, c.decision.recommendation)
+      secondCheckReason(c.claim, policy, effectiveRec(c) ?? c.decision.recommendation)
     )
       second++;
     if (q === "on_you")

@@ -46,6 +46,7 @@ import {
 } from "@/lib/triage";
 import { isClosed } from "@/lib/csv";
 import { reopenReasonLabel, sinceReopen } from "@/lib/reopen";
+import { overrideFor } from "@/lib/effective";
 import { ReopenDialog } from "@/components/triage/ReopenDialog";
 import { queueFor } from "@/lib/lifecycle";
 import { useRole } from "@/lib/role";
@@ -234,7 +235,8 @@ function CaseDetail() {
   const workflow = data.workflow as Row | null;
   const overrides = (data.overrides ?? []) as Row[];
   const comments = (data.comments ?? []) as Row[];
-  const lastOverride = overrides[overrides.length - 1] as Row | undefined;
+  // The reviewer's override of the current decision (one made before a policy change or reopening no longer applies)
+  const lastOverride = (overrideFor(decision?.id as string | undefined, overrides) ?? undefined) as Row | undefined;
   const systemRec = (decision?.recommendation ?? live.recommendation) as Recommendation;
   const rec = (lastOverride?.new_recommendation ?? systemRec) as Recommendation;
   const version = (decision?.policy_version ?? policy.version) as string;

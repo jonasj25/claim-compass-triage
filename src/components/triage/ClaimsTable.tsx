@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { effectiveRec } from "@/lib/effective";
 import { Chip, StatusDot, Unknown, fmtEur } from "./ui";
 import { useQuery } from "@tanstack/react-query";
 import { activePolicyQuery, type CaseRow } from "@/lib/data";
@@ -24,7 +25,7 @@ const ageLabel = (iso: string | null) => {
 };
 
 const nearLimit = (c: CaseRow, policy?: Policy) =>
-  !!(policy && c.workflow?.qa_sample && c.decision && secondCheckReason(c.claim, policy, c.decision.recommendation));
+  !!(policy && c.workflow?.qa_sample && c.decision && secondCheckReason(c.claim, policy, effectiveRec(c) ?? c.decision.recommendation));
 
 export function contextLine(c: CaseRow, policy?: Policy) {
   const q = c.workflow?.queue;
@@ -79,7 +80,14 @@ export function ClaimsTable({ rows, navLabel = "Claims", statuses }: { rows: Cas
                 {statuses && (() => { const st = statuses.get(c.claim.case_id); return (
                   <td className="whitespace-nowrap px-3">{st && <span className="inline-flex items-center gap-1.5"><span className={cn("size-2 rounded-full", STATUS_DOT[st])} />{CLAIM_STATUS_LABEL[st]}</span>}</td>
                 ); })()}
-                <td className="px-3">{c.decision && <StatusDot rec={c.decision.recommendation} closed={closed} />}</td>
+                <td className="px-3">
+                  {c.decision && (
+                    <span className="inline-flex items-center gap-1.5" title={c.override ? `Changed by ${c.override.reviewer ?? "a reviewer"}${c.override.reason_text ? `: ${c.override.reason_text}` : ""}` : undefined}>
+                      <StatusDot rec={effectiveRec(c) ?? c.decision.recommendation} closed={closed} />
+                      {c.override && <span className="label-mono text-[9.5px] text-text-3">Reviewer</span>}
+                    </span>
+                  )}
+                </td>
                 <td className="px-3 font-mono text-[11px] uppercase text-text-2">{c.decision?.rule_id}</td>
                 <td className="max-w-[220px] truncate px-3 text-text-2">{contextLine(c, policy)}</td>
                 <td className="num px-3 text-right">{c.claim.quote_eur === null ? <Unknown /> : fmtEur(c.claim.quote_eur)}</td>
