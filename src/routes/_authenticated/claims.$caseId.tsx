@@ -45,6 +45,8 @@ import {
   type Recommendation,
 } from "@/lib/triage";
 import { isClosed } from "@/lib/csv";
+import { reopenReasonLabel, sinceReopen } from "@/lib/reopen";
+import { ReopenDialog } from "@/components/triage/ReopenDialog";
 import { queueFor } from "@/lib/lifecycle";
 import { useRole } from "@/lib/role";
 import { Card, Chip, Mono, StatusDot, Unknown, fmtEur, fmtTime } from "@/components/triage/ui";
@@ -104,6 +106,7 @@ const HUMAN_EVENTS = new Set([
   "assigned",
   "reminder_sent",
   "qa_confirmed",
+  "reopened",
 ]);
 const RECS: Recommendation[] = ["routine_processing", "request_information", "human_review"];
 const REASONS: [string, string][] = [
@@ -136,6 +139,7 @@ const EVENT_TEXT: Record<string, string> = {
   qa_sampled: "Picked as random QA sample",
   second_check_flagged: "Flagged for a second check (close to the limit)",
   closed: "Claim closed",
+  reopened: "Claim reopened",
   message_sent: "Message sent to customer",
   message_received: "Customer replied",
 };
@@ -238,7 +242,8 @@ function CaseDetail() {
   const qa = !!workflow?.qa_sample;
   const nearLimit = qa ? secondCheckReason(claim, policy, systemRec) : null;
   const recheck = !!decision?.needs_recheck;
-  const confirmed = (data.events as Row[]).some(
+  // Only what happened since the claim was last reopened counts as done
+  const confirmed = sinceReopen(data.events as Row[]).some(
     (e) => e.type === "confirmed" || e.type === "qa_confirmed",
   );
   const needsUser = !closed && (queue === "on_you" || qa);
@@ -1363,6 +1368,20 @@ function CaseDetail() {
                                 {reasonLabel(pl.reason_code)} · “{pl.reason_text}”
                               </span>
                             )}
+                            {e.type === "reopened" && (
+                              <span className="text-text-2">
+                                {" "}
+                                · {String(pl.reason_label ?? reopenReasonLabel(String(pl.reason ?? "")))}
+                                {pl.previous_recommendation && pl.recommendation && (
+                                  <>
+                                    {" "}
+                                    · {recLabel(pl.previous_recommendation)} <ArrowRight className="inline size-3" />{" "}
+                                    {String(pl.policy_version ?? "").toUpperCase()}: {recLabel(pl.recommendation)}
+                                  </>
+                                )}
+                                {pl.note && <> · “{String(pl.note)}”</>}
+                              </span>
+                            )}
                             {e.type === "triaged" && decision && (
                               <span className="text-text-2">
                                 {" "}
@@ -1392,7 +1411,22 @@ function CaseDetail() {
                 <Lock className="size-4 shrink-0" />
                 Closed – decision frozen under policy {version}
               </p>
-            ) : (
+            ) : null}
+            {(closed || queue === "done") && (
+              <ReopenDialog
+                caseId={caseId}
+                claim={claim}
+                policy={policy}
+                current={rec}
+                actor={me.name}
+                previousAssignee={(workflow?.assignee as string | null) ?? null}
+                disabled={busy}
+                onDone={(msg) => {
+                  void refresh().then(() => toast(msg));
+                }}
+              />
+            )}
+            {closed ? null : (
               <DecisionPanel
                 mode={
                   queue === "done" || confirmed

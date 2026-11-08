@@ -3,7 +3,7 @@
 //   Rejected            - a reviewer denied the claim (recorded outcome "denied")
 //   Accepted            - a reviewer accepted it, it was auto-processed, or it was closed without a rejection
 //   Information needed  - we are waiting for the customer to send something
-//   In review           - a reviewer has to decide
+//   In review           - a reviewer has to decide (also after a claim is reopened)
 import type { Recommendation } from "./triage";
 
 export type CustomerStatus = "in_review" | "information_needed" | "accepted" | "rejected";
@@ -39,9 +39,9 @@ export function customerStatus({
   recommendation,
   outcome,
 }: StatusInput): CustomerStatus {
-  if (outcome === "denied") return "rejected";
-  if (outcome === "accepted") return "accepted";
-  if ((caseStatus ?? "").trim().toLowerCase() === "closed" || queue === "done") return "accepted";
+  // A recorded outcome only counts while the claim is finished; a reopened claim is in review again
+  const finished = (caseStatus ?? "").trim().toLowerCase() === "closed" || queue === "done";
+  if (finished) return outcome === "denied" ? "rejected" : "accepted";
   if (queue === "waiting_customer" || (!queue && recommendation === "request_information"))
     return "information_needed";
   if (queue === "on_you" || (!queue && recommendation === "human_review")) return "in_review";

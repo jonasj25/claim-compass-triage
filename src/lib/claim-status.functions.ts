@@ -200,6 +200,7 @@ function portalEvents(events: { type: string; payload: Record<string, unknown> |
       : e.type === "escalated" || e.type === "second_check_flagged" ? { text: "A claims specialist takes a second look", kind: "us" as const }
       : e.type === "confirmed" || e.type === "qa_confirmed" ? { text: "A claims specialist reviewed your claim", kind: "us" as const }
       : e.type === "closed" ? { text: "Your claim was closed", kind: "us" as const }
+      : e.type === "reopened" ? { text: "Your claim was reopened and is being checked again", kind: "us" as const }
       : null;
     if (t) out.push({ at: e.created_at, ...t });
   }
