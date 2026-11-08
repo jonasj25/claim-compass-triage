@@ -21,6 +21,7 @@ import { Route as AuthenticatedImpactRouteImport } from './routes/_authenticated
 import { Route as AuthenticatedImportRouteImport } from './routes/_authenticated/import'
 import { Route as AuthenticatedOverviewRouteImport } from './routes/_authenticated/overview'
 import { Route as AuthenticatedPhoneIntakeRouteImport } from './routes/_authenticated/phone-intake'
+import { Route as AuthenticatedPitchRouteImport } from './routes/_authenticated/pitch'
 import { Route as AuthenticatedPolicyRouteImport } from './routes/_authenticated/policy'
 import { Route as AuthenticatedQualityRouteImport } from './routes/_authenticated/quality'
 import { Route as AuthenticatedVersionsRouteImport } from './routes/_authenticated/versions'
@@ -89,6 +90,11 @@ const AuthenticatedPhoneIntakeRoute =
     path: '/phone-intake',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedPitchRoute = AuthenticatedPitchRouteImport.update({
+  id: '/pitch',
+  path: '/pitch',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedPolicyRoute = AuthenticatedPolicyRouteImport.update({
   id: '/policy',
   path: '/policy',
@@ -134,6 +140,7 @@ export interface FileRoutesByFullPath {
   '/import': typeof AuthenticatedImportRoute
   '/overview': typeof AuthenticatedOverviewRoute
   '/phone-intake': typeof AuthenticatedPhoneIntakeRoute
+  '/pitch': typeof AuthenticatedPitchRoute
   '/policy': typeof AuthenticatedPolicyRoute
   '/quality': typeof AuthenticatedQualityRoute
   '/versions': typeof AuthenticatedVersionsRoute
@@ -153,6 +160,7 @@ export interface FileRoutesByTo {
   '/import': typeof AuthenticatedImportRoute
   '/overview': typeof AuthenticatedOverviewRoute
   '/phone-intake': typeof AuthenticatedPhoneIntakeRoute
+  '/pitch': typeof AuthenticatedPitchRoute
   '/policy': typeof AuthenticatedPolicyRoute
   '/quality': typeof AuthenticatedQualityRoute
   '/versions': typeof AuthenticatedVersionsRoute
@@ -174,6 +182,7 @@ export interface FileRoutesById {
   '/_authenticated/import': typeof AuthenticatedImportRoute
   '/_authenticated/overview': typeof AuthenticatedOverviewRoute
   '/_authenticated/phone-intake': typeof AuthenticatedPhoneIntakeRoute
+  '/_authenticated/pitch': typeof AuthenticatedPitchRoute
   '/_authenticated/policy': typeof AuthenticatedPolicyRoute
   '/_authenticated/quality': typeof AuthenticatedQualityRoute
   '/_authenticated/versions': typeof AuthenticatedVersionsRoute
@@ -195,6 +204,7 @@ export interface FileRouteTypes {
     | '/import'
     | '/overview'
     | '/phone-intake'
+    | '/pitch'
     | '/policy'
     | '/quality'
     | '/versions'
@@ -214,6 +224,7 @@ export interface FileRouteTypes {
     | '/import'
     | '/overview'
     | '/phone-intake'
+    | '/pitch'
     | '/policy'
     | '/quality'
     | '/versions'
@@ -234,6 +245,7 @@ export interface FileRouteTypes {
     | '/_authenticated/import'
     | '/_authenticated/overview'
     | '/_authenticated/phone-intake'
+    | '/_authenticated/pitch'
     | '/_authenticated/policy'
     | '/_authenticated/quality'
     | '/_authenticated/versions'
@@ -337,6 +349,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedPhoneIntakeRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/pitch': {
+      id: '/_authenticated/pitch'
+      path: '/pitch'
+      fullPath: '/pitch'
+      preLoaderRoute: typeof AuthenticatedPitchRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/policy': {
       id: '/_authenticated/policy'
       path: '/policy'
@@ -390,6 +409,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedImportRoute: typeof AuthenticatedImportRoute
   AuthenticatedOverviewRoute: typeof AuthenticatedOverviewRoute
   AuthenticatedPhoneIntakeRoute: typeof AuthenticatedPhoneIntakeRoute
+  AuthenticatedPitchRoute: typeof AuthenticatedPitchRoute
   AuthenticatedPolicyRoute: typeof AuthenticatedPolicyRoute
   AuthenticatedQualityRoute: typeof AuthenticatedQualityRoute
   AuthenticatedVersionsRoute: typeof AuthenticatedVersionsRoute
@@ -405,6 +425,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedImportRoute: AuthenticatedImportRoute,
   AuthenticatedOverviewRoute: AuthenticatedOverviewRoute,
   AuthenticatedPhoneIntakeRoute: AuthenticatedPhoneIntakeRoute,
+  AuthenticatedPitchRoute: AuthenticatedPitchRoute,
   AuthenticatedPolicyRoute: AuthenticatedPolicyRoute,
   AuthenticatedQualityRoute: AuthenticatedQualityRoute,
   AuthenticatedVersionsRoute: AuthenticatedVersionsRoute,

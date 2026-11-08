@@ -31,6 +31,7 @@ export const ROLE_NAV: Record<Role, NavItem[]> = {
     { to: "/overview", label: "Workload & flow" },
     { to: "/quality", label: "Quality" },
     { to: "/business-case", label: "Business case" },
+    { to: "/pitch", label: "Investor view" },
   ],
 };
 
