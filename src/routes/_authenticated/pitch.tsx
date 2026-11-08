@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useClaimMix } from "@/lib/claim-mix";
 import { useMemo, useState } from "react";
 import { ExternalLink } from "lucide-react";
 import { BATCH_POLICY_V1, BATCH_POLICY_V2 } from "@/lib/batch";
@@ -89,15 +90,6 @@ const SCENARIOS: {
 
 const srcById = Object.fromEntries(SOURCES.map((s) => [s.id, s]));
 
-function secondShare(claims: Claim[], policy: Policy) {
-  const open = claims.filter((c) => !isClosed(c.case_status));
-  if (!open.length) return 0;
-  return (
-    open.filter((c) => secondCheckReason(c, policy, decide(c, policy).recommendation)).length /
-    open.length
-  );
-}
-
 function fmtVal(a: Assumption, v: number) {
   if (a.unit === "€/year") return `${eur0(v)} / year`;
   if (a.unit === "€/day") return `${eur0(v)} / day`;
@@ -109,8 +101,9 @@ function fmtVal(a: Assumption, v: number) {
 
 function Pitch() {
   const [scenario, setScenario] = useState<ScenarioKey>("base");
-  const mix = useMemo(() => volumeMix(BATCH_POLICY_V2, BATCH_POLICY_V1, VOLUME_CLAIMS), []);
-  const second = useMemo(() => secondShare(VOLUME_CLAIMS, BATCH_POLICY_V2), []);
+  // Same claims and counts as Workload & flow and the Business case (live claims, active policy)
+  const { mix, policy: active, source } = useClaimMix();
+  const second = mix.secondShare;
 
   const all = useMemo(() => {
     const out = {} as Record<ScenarioKey, { inputs: Inputs; e: ReturnType<typeof triageEconomics> }>;
@@ -230,8 +223,9 @@ function Pitch() {
         <p className="mt-1 text-[13px] text-text-2">
           Today every claim is read by a person: {eur0(today)} a year. With the system people only
           handle claims that need them: {pct(mix.share.human_review)} go to review and{" "}
-          {pct(mix.share.request_information)} need missing information. Both shares are measured by
-          replaying policy {BATCH_POLICY_V2.version.toUpperCase()} on {mix.open} open claims.
+          {pct(mix.share.request_information)} need missing information. Both shares are measured on
+          the {mix.open} open claims {source === "live" ? "in the system" : "of the demo set"} under policy{" "}
+          {active.version.toUpperCase()}.
         </p>
         <div className="mt-4 flex h-9 w-full overflow-hidden rounded-md ring-1 ring-line">
           {parts.map((p) => (
@@ -352,11 +346,11 @@ function Pitch() {
             </span>
           </li>
           <li>
-            <span className="font-medium">The claim mix comes from synthetic data.</span>{" "}
+            <span className="font-medium">The claim mix comes from demo data.</span>{" "}
             <span className="text-text-2">
-              {pct(mix.share.routine_processing)} auto-processed comes from replaying the policy on{" "}
-              {VOLUME_CLAIMS.length} generated claims. A real insurer's claims and its own policy set the
-              ceiling for the saving.
+              {pct(mix.share.routine_processing)} auto-processed is measured on the {mix.open} open claims{" "}
+              {source === "live" ? "in the system, which were generated for the demo" : `of ${VOLUME_CLAIMS.length} generated claims`}.
+              A real insurer's claims and its own policy set the ceiling for the saving.
             </span>
           </li>
         </ul>
@@ -392,8 +386,8 @@ function Pitch() {
                   <KindBadge kind="measured" />
                 </td>
                 <td className="py-2 text-text-2">
-                  Our engine applied to {mix.open} open claims under policy{" "}
-                  {BATCH_POLICY_V2.version.toUpperCase()}.
+                  The {mix.open} open claims {source === "live" ? "in the system" : "of the demo set"} under policy{" "}
+                  {active.version.toUpperCase()}, counted like Workload &amp; flow.
                 </td>
               </tr>
               <tr className="border-t border-line align-top">

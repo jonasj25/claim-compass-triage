@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { caseMix } from "@/lib/claim-mix";
 import { effectiveRec } from "@/lib/effective";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
@@ -256,19 +257,12 @@ function stats(cases: CaseRow[], policy: Policy) {
   for (const c of open) {
     const q = c.workflow?.queue;
     if (q) queue[q] = (queue[q] ?? 0) + 1;
-    if (c.decision) recs[effectiveRec(c) ?? c.decision.recommendation]++;
     const needsPerson = q === "on_you" || (c.workflow?.qa_sample && q !== "done");
     if (needsPerson)
       load.set(
         c.workflow?.assignee ?? "Unassigned",
         (load.get(c.workflow?.assignee ?? "Unassigned") ?? 0) + 1,
       );
-    if (
-      c.workflow?.qa_sample &&
-      c.decision &&
-      secondCheckReason(c.claim, policy, effectiveRec(c) ?? c.decision.recommendation)
-    )
-      second++;
     if (q === "on_you")
       for (const ch of decide(c.claim, policy).checklist)
         if (ch.stage === "R1" && ch.status === "fail")
@@ -290,6 +284,10 @@ function stats(cases: CaseRow[], policy: Policy) {
       if (d) d.count++;
     }
 
+  // Counts shared with the Business case and Investor view (one definition, same numbers)
+  const mix = caseMix(cases, policy);
+  Object.assign(recs, mix.counts);
+  second = mix.second;
   const openN = open.length || 1;
   return {
     total: cases.length,

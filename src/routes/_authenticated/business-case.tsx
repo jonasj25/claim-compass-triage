@@ -12,7 +12,6 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { casesQuery } from "@/lib/data";
 import { BATCH_POLICY_V1, BATCH_POLICY_V2 } from "@/lib/batch";
 import { isClosed } from "@/lib/csv";
 import {
@@ -31,7 +30,8 @@ import {
   type Assumption,
   type Inputs,
 } from "@/lib/business";
-import { labelledReport, volumeMix, VOLUME_CLAIMS } from "@/lib/quality";
+import { labelledReport, VOLUME_CLAIMS } from "@/lib/quality";
+import { caseMix, claimListMix, useClaimMix, type MixSource } from "@/lib/claim-mix";
 import { secondCheckReason } from "@/lib/second-check";
 import { decide, RECOMMENDATION_LABELS, type Claim, type Policy } from "@/lib/triage";
 import { Input } from "@/components/ui/input";
@@ -64,25 +64,15 @@ const P2 = BATCH_POLICY_V2;
 const srcById = Object.fromEntries(SOURCES.map((s) => [s.id, s]));
 const GROUPS = [...new Set(DEFAULT_ASSUMPTIONS.map((a) => a.group))];
 
-function secondShare(claims: Claim[], policy: Policy) {
-  const open = claims.filter((c) => !isClosed(c.case_status));
-  if (!open.length) return 0;
-  return (
-    open.filter((c) => secondCheckReason(c, policy, decide(c, policy).recommendation)).length /
-    open.length
-  );
-}
-
 function BusinessCase() {
   const [inputs, setInputs] = useState<Inputs>(defaultInputs);
-  const [source, setSource] = useState<"synthetic" | "live">("synthetic");
-  const [limit, setLimit] = useState<number>(P2.human_review.quote_limit_eur ?? 1200);
-  const { data: cases = [] } = useQuery(casesQuery);
-  const liveClaims = useMemo(() => cases.map((c) => c.claim), [cases]);
-  const claims = source === "live" && liveClaims.length ? liveClaims : VOLUME_CLAIMS;
-
-  const mix = useMemo(() => volumeMix(P2, P1, claims), [claims]);
-  const second = useMemo(() => secondShare(claims, P2), [claims]);
+  // Same claims and counts as Workload & flow and the Investor view (live claims, active policy)
+  const [picked, setSource] = useState<MixSource>("live");
+  const { mix, policy: active, source, hasLive, cases, liveCount } = useClaimMix(picked);
+  const currentLimit = active.human_review.quote_limit_eur ?? 1200;
+  const [limitPick, setLimit] = useState<number | null>(null);
+  const limit = limitPick ?? currentLimit;
+  const second = mix.secondShare;
   const quality = useMemo(() => labelledReport(), []);
   const econ = triageEconomics(inputs, mix, second);
   const change = policyChangeCost(inputs, mix);
@@ -93,10 +83,12 @@ function BusinessCase() {
   const be = breakEvenProbability(inputs);
 
   const explore = useMemo(() => {
-    const pol: Policy = { ...P2, human_review: { ...P2.human_review, quote_limit_eur: limit } };
-    const m = volumeMix(pol, P2, claims);
-    return { mix: m, econ: triageEconomics(inputs, m, secondShare(claims, pol)) };
-  }, [limit, claims, inputs]);
+    // At today's limit this is exactly today's mix; other limits re-decide the claims nobody overrode
+    if (limit === currentLimit) return { mix, econ: triageEconomics(inputs, mix, mix.secondShare) };
+    const pol: Policy = { ...active, human_review: { ...active.human_review, quote_limit_eur: limit } };
+    const m = source === "live" ? caseMix(cases, active, active, pol) : claimListMix(VOLUME_CLAIMS, pol, active);
+    return { mix: m, econ: triageEconomics(inputs, m, m.secondShare) };
+  }, [limit, currentLimit, mix, source, cases, active, inputs]);
 
   const curve = useMemo(() => {
     const W = wrongRoutineCost(inputs);
@@ -137,14 +129,14 @@ function BusinessCase() {
         <div className="flex items-center gap-1 rounded-full bg-surface-2 p-0.5 text-[12px] ring-1 ring-line">
           {(
             [
-              ["synthetic", `${VOLUME_CLAIMS.length} synthetic claims`],
-              ["live", `Live claims (${liveClaims.length})`],
+              ["live", `Live claims (${liveCount})`],
+              ["demo", `Demo set (${VOLUME_CLAIMS.length} synthetic)`],
             ] as const
           ).map(([k, label]) => (
             <button
               key={k}
               type="button"
-              disabled={k === "live" && !liveClaims.length}
+              disabled={k === "live" && !hasLive}
               onClick={() => setSource(k)}
               className={cn(
                 "rounded-full px-3 py-1",
@@ -176,7 +168,7 @@ function BusinessCase() {
         <Kpi
           label="Handled without a reviewer"
           value={pct(econ.automation)}
-          sub={`measured on ${mix.open} open claims under ${P2.version.toUpperCase()}`}
+          sub={`${mix.open} open claims under ${active.version.toUpperCase()} · same as Workload & flow`}
         />
       </div>
 
@@ -219,7 +211,7 @@ function BusinessCase() {
           />
           <div className="mt-5">
             <p className="mb-2 text-[13px] text-text-2">
-              Claim mix this is based on ({P2.version.toUpperCase()}, open claims)
+              Claim mix this is based on ({active.version.toUpperCase()}, open claims)
             </p>
             <StackedShare
               segments={(
@@ -377,7 +369,7 @@ function BusinessCase() {
           <h2 className="section-title">Quote limit explorer</h2>
           <p className="mt-1 text-[13px] text-text-2">
             What a different routine limit would mean for workload, on the same claims (the policy
-            itself sets {eur0(P2.human_review.quote_limit_eur ?? 0)}).
+            itself sets {eur0(currentLimit)}).
           </p>
           <div className="mt-6 flex items-center gap-4">
             <Slider
@@ -396,12 +388,12 @@ function BusinessCase() {
               [
                 "Auto-processed",
                 pct(explore.mix.share.routine_processing),
-                `${pct(mix.share.routine_processing)} at ${eur0(P2.human_review.quote_limit_eur ?? 0)}`,
+                `${pct(mix.share.routine_processing)} at ${eur0(currentLimit)}`,
               ],
               [
                 "Sent to a person",
                 pct(explore.mix.share.human_review),
-                `${pct(mix.share.human_review)} at ${eur0(P2.human_review.quote_limit_eur ?? 0)}`,
+                `${pct(mix.share.human_review)} at ${eur0(currentLimit)}`,
               ],
               [
                 "People on triage",
