@@ -162,7 +162,7 @@ export function NotificationsBell() {
           <Bell className="size-4" />
           {unread > 0 && (
             <span className="absolute right-0.5 top-0.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-action-dot px-1 text-[9px] font-semibold leading-none text-white">
-              {unread > 9 ? "9+" : unread}
+              {unread > 5 ? "5+" : unread}
             </span>
           )}
         </Button>
