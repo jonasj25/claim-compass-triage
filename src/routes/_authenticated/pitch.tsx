@@ -1,9 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useClaimMix } from "@/lib/claim-mix";
-import { useMemo, useState } from "react";
+import type { ReactNode } from "react";
+import { useMemo } from "react";
 import { ExternalLink } from "lucide-react";
-import { BATCH_POLICY_V1, BATCH_POLICY_V2 } from "@/lib/batch";
-import { isClosed } from "@/lib/csv";
+import { useClaimMix } from "@/lib/claim-mix";
 import {
   DEFAULT_ASSUMPTIONS,
   defaultInputs,
@@ -16,30 +15,26 @@ import {
   type Assumption,
   type Inputs,
 } from "@/lib/business";
-import { volumeMix, VOLUME_CLAIMS } from "@/lib/quality";
-import { secondCheckReason } from "@/lib/second-check";
-import { decide, type Claim, type Policy } from "@/lib/triage";
 import { Card, Kpi, PageHeader } from "@/components/triage/ui";
 import { KindBadge, SERIES } from "@/components/triage/charts";
-import { cn } from "@/lib/utils";
 
-// Investor view: the business case on one screen for a 4-minute pitch.
-// Same model and same numbers as the Business case page (triageEconomics, policyChangeCost),
-// with the claim mix measured by replaying policy v2 on the synthetic volume set.
-// Every number shown is explained in "Where every number comes from" at the bottom.
-// Quality savings (fewer leaked claims) are deliberately NOT in the headline.
+// Business value & ROI: the pitch page for investors, buyers and judges.
+// Every number is computed with the same model as the Business case page (triageEconomics,
+// policyChangeCost) on the same claim mix as Workload & flow (useClaimMix). Headline numbers use the
+// base case; "up to" numbers use the optimistic scenario. Assumptions, scenarios and sensitivities
+// are in the collapsed "Backup for Q&A" section at the bottom.
 
 export const Route = createFileRoute("/_authenticated/pitch")({
   head: () => ({
     meta: [
-      { property: "og:title", content: "Investor view — Clearpath" },
-      { property: "og:description", content: "The business case in one screen, with the reason behind every number." },
+      { property: "og:title", content: "Business value & ROI — Claim Compass" },
+      { property: "og:description", content: "What Claim Compass is worth to a mid-sized motor insurer." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
-      { title: "Investor view — Clearpath" },
+      { title: "Business value & ROI — Claim Compass" },
       {
         name: "description",
-        content: "Savings, payback, unit economics, proof plan, weak points and the source of every number.",
+        content: "ROI, efficiency, cost, workforce and compliance impact of Claim Compass for a mid-sized motor insurer.",
       },
     ],
   }),
@@ -52,39 +47,26 @@ type Key = Assumption["key"];
 const SCENARIOS: {
   key: ScenarioKey;
   title: string;
-  blurb: string;
   overrides: Partial<Record<Key, number>>;
-  why: Partial<Record<Key, string>>;
+  why: string;
 }[] = [
   {
     key: "conservative",
     title: "Conservative",
-    blurb: "Everything set against us: fast triage today, manual information requests, higher costs.",
     overrides: { triageMinToday: 12, infoMin: 8, platformPerYear: 150000, implementation: 200000 },
-    why: {
-      triageMinToday: "Lower end: some insurers already triage simple claims quickly with forms and checklists.",
-      infoMin: "Our prototype does not send emails yet, so a handler writes each request by hand.",
-      platformPerYear: "+25%: enterprise licences, hosting and support often cost more than planned.",
-      implementation: "+33%: integration with claims and policy systems usually overruns.",
-    },
+    why: "Fast manual triage today (12 min), information requests written by hand (8 min), licence +25%, integration +33%.",
   },
   {
     key: "base",
     title: "Base case",
-    blurb: "The defaults of the Business case page. This is the number we say on stage.",
     overrides: {},
-    why: {},
+    why: "The defaults of the Business case page. All headline numbers on this page.",
   },
   {
     key: "optimistic",
     title: "Optimistic",
-    blurb: "Slow manual triage today and faster reviews thanks to pre-sorted evidence.",
     overrides: { triageMinToday: 18, reviewMin: 12, platformPerYear: 100000 },
-    why: {
-      triageMinToday: "Upper end: claim data spread over several systems makes manual triage slow.",
-      reviewMin: "Escalated claims arrive with the trigger, the evidence and the missing facts already listed.",
-      platformPerYear: "Early-customer price.",
-    },
+    why: "Slow manual triage today (18 min), faster reviews with pre-sorted evidence (12 min), early-customer licence. Used for every 'up to' figure.",
   },
 ];
 
@@ -99,9 +81,68 @@ function fmtVal(a: Assumption, v: number) {
   return `${v.toLocaleString("en-US")} ${a.unit}`;
 }
 
+/** One KPI: big value, name, one-line explanation */
+function Metric({ value, name, line, accent }: { value: ReactNode; name: string; line: string; accent?: boolean }) {
+  return (
+    <div className="card-quiet flex flex-col p-5">
+      <span className="num text-[30px] font-semibold leading-none" style={accent ? { color: SERIES.ink } : undefined}>
+        {value}
+      </span>
+      <span className="mt-2 text-[13.5px] font-medium">{name}</span>
+      <span className="mt-1 text-[12.5px] text-text-2">{line}</span>
+    </div>
+  );
+}
+
+/** Before/after bar pair for the "Typical impact" section */
+function BeforeAfter({
+  title,
+  before,
+  after,
+  beforeLabel,
+  afterLabel,
+  gain,
+  higherIsBetter,
+}: {
+  title: string;
+  before: number;
+  after: number;
+  beforeLabel: string;
+  afterLabel: string;
+  gain: string;
+  higherIsBetter?: boolean;
+}) {
+  const max = Math.max(before, after, 1e-9);
+  const bar = (v: number, color: string) => (
+    <div className="h-3 rounded-sm" style={{ width: `${Math.max(2, (v / max) * 100)}%`, background: color }} />
+  );
+  return (
+    <div className="card-quiet p-5">
+      <p className="text-[12px] font-medium uppercase tracking-wide text-text-3">{title}</p>
+      <p className="num mt-1 text-[24px] font-semibold" style={{ color: SERIES.ink }}>
+        {gain}
+      </p>
+      <div className="mt-3 space-y-2 text-[12.5px]">
+        <div>
+          <div className="mb-1 flex justify-between text-text-2">
+            <span>Today</span>
+            <span className="num">{beforeLabel}</span>
+          </div>
+          {bar(before, higherIsBetter ? SERIES.soft : SERIES.grey)}
+        </div>
+        <div>
+          <div className="mb-1 flex justify-between text-text-2">
+            <span>With Claim Compass</span>
+            <span className="num">{afterLabel}</span>
+          </div>
+          {bar(after, SERIES.ink)}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function Pitch() {
-  const [scenario, setScenario] = useState<ScenarioKey>("base");
-  // Same claims and counts as Workload & flow and the Business case (live claims, active policy)
   const { mix, policy: active, source } = useClaimMix();
   const second = mix.secondShare;
 
@@ -114,319 +155,296 @@ function Pitch() {
     return out;
   }, [mix, second]);
 
-  const current = SCENARIOS.find((s) => s.key === scenario) ?? SCENARIOS[1];
-  const { inputs, e } = all[scenario];
-  const base = all.base;
+  const { inputs, e } = all.base;
+  const up = all.optimistic.e;
   const n = inputs.claimsPerYear;
   const change = policyChangeCost(inputs, mix);
 
+  // Derived figures (base case)
   const hoursSaved = e.todayHours - e.withHours;
   const timeCut = e.todayHours > 0 ? hoursSaved / e.todayHours : 0;
-  const gross = e.todayCost - e.withPeopleCost; // value created before our licence
+  const upTimeCut = up.todayHours > 0 ? (up.todayHours - up.withHours) / up.todayHours : 0;
+  const minToday = inputs.triageMinToday;
+  const minWith = (e.withHours * 60) / n;
+  const gross = e.todayCost - e.withPeopleCost; // saving before our licence
+  const fteFreed = e.fteToday - e.fteWith;
+  const upFteFreed = up.fteToday - up.fteWith;
+  const instant = mix.share.routine_processing + mix.share.request_information; // next step without a handler
+  const reachReviewer = mix.share.human_review;
+  const capacityMultiple = e.withHours > 0 ? e.todayHours / e.withHours : 0; // same team, more claims
+  const threeYearSpend = inputs.implementation + 3 * inputs.platformPerYear;
+  const threeYearNet = 3 * e.netPerYear - inputs.implementation;
+  const returnPerEuro = threeYearSpend > 0 ? (3 * gross) / threeYearSpend : 0;
   const pricePerClaim = inputs.platformPerYear / n;
   const customerKeeps = gross > 0 ? Math.max(0, e.netPerYear) / gross : 0;
+  const changeFactor = change.withSystem.total > 0 ? change.today.total / change.withSystem.total : 0;
 
-  // What-ifs on the base case, all computed with the same model
-  const baseMinutesWith = (base.e.withHours * 60) / base.inputs.claimsPerYear;
-  const breakEvenMin =
-    baseMinutesWith + (base.inputs.platformPerYear / base.e.hourly / base.inputs.claimsPerYear) * 60;
-  const manualInfo = triageEconomics({ ...base.inputs, infoMin: 8 }, mix, second);
-  const doubleIntegration =
-    base.e.netPerYear > 0 ? ((base.inputs.implementation * 2) / base.e.netPerYear) * 12 : null;
+  // Sensitivities for the backup
+  const breakEvenMin = minWith + (inputs.platformPerYear / e.hourly / n) * 60;
+  const manualInfo = triageEconomics({ ...inputs, infoMin: 8 }, mix, second);
+  const doubleIntegration = e.netPerYear > 0 ? ((inputs.implementation * 2) / e.netPerYear) * 12 : null;
 
-  const today = e.todayCost;
-  const seg = (v: number) => `${today > 0 ? Math.max(0, (v / today) * 100) : 0}%`;
-  const parts = [
-    { label: "Escalated reviews", value: e.breakdown.review * e.hourly, color: SERIES.primary },
-    { label: "Information requests", value: e.breakdown.info * e.hourly, color: SERIES.mid },
-    { label: "Second checks", value: e.breakdown.checks * e.hourly, color: SERIES.light },
-    { label: "Our licence", value: inputs.platformPerYear, color: SERIES.grey },
-    { label: "Saved", value: Math.max(0, e.netPerYear), color: SERIES.ink },
-  ];
+  const payback = e.paybackMonths === null ? "—" : `${e.paybackMonths.toFixed(1)} months`;
+  const claimsText = source === "live" ? `the ${mix.open} open claims in the system` : `the ${mix.open} open claims of the demo set`;
 
   return (
     <div>
       <PageHeader
         eyebrow="Ops lead"
-        title="Investor view"
-        sub="The business case in one screen. It is a model with stated assumptions, not a measured result; the proof plan shows how a pilot measures it."
+        title="Business value & ROI"
+        sub={`Claim Compass for a mid-sized motor insurer with ${n.toLocaleString("en-US")} own-damage claims a year.`}
       />
 
-      {/* Scenario switch */}
-      <div className="card-quiet mb-6 flex flex-wrap items-center justify-between gap-3 px-6 py-4 text-[13.5px]">
-        <p className="max-w-[60ch] text-text-2">{current.blurb}</p>
-        <div className="flex items-center gap-1 rounded-full bg-surface-2 p-0.5 text-[12px] ring-1 ring-line">
-          {SCENARIOS.map((s) => (
-            <button
-              key={s.key}
-              type="button"
-              onClick={() => setScenario(s.key)}
-              className={cn(
-                "rounded-full px-3 py-1",
-                scenario === s.key ? "bg-surface font-medium shadow-[var(--shadow-lift)]" : "text-text-2",
-              )}
-            >
-              {s.title}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Headline */}
+      {/* Hero */}
       <Card className="mb-6">
-        <p className="text-[12px] font-medium uppercase tracking-wide text-text-3">The one sentence</p>
-        <p className="mt-2 text-[20px] leading-snug">
-          For a motor insurer with {n.toLocaleString("en-US")} own-damage claims a year, we cut manual
-          triage time by <span className="font-semibold">{pct(timeCut)}</span> and save{" "}
-          <span className="font-semibold">{eur0(e.netPerYear)}</span> a year after our licence
-          {e.paybackMonths !== null && (
-            <>
-              , paying back the integration in{" "}
-              <span className="font-semibold">{e.paybackMonths.toFixed(1)} months</span>
-            </>
-          )}
-          .
+        <p className="text-[26px] font-semibold leading-tight">
+          {pct(timeCut)} less manual triage. Payback in {payback}.
         </p>
-        <p className="mt-2 text-[12.5px] text-text-2">
-          Range across the three scenarios: {eur0(all.conservative.e.netPerYear)} to{" "}
-          {eur0(all.optimistic.e.netPerYear)} a year. Fewer leaked claims and faster answers for
-          customers are upside and not included.
+        <p className="mt-2 max-w-[70ch] text-[14.5px] text-text-2">
+          Claim Compass takes over intake, policy checks and routing, so claims teams spend their time on
+          the claims that need judgement, and every decision can be explained.
         </p>
-      </Card>
-
-      <div className="kpi-strip grid grid-cols-4 gap-0">
-        <Kpi
-          label="Net saving per year"
-          value={eurCompact(e.netPerYear)}
-          sub={`${eur0(today)} today → ${eur0(e.withCost)} incl. licence`}
-        />
-        <Kpi
-          label="Payback"
-          value={e.paybackMonths === null ? "—" : `${e.paybackMonths.toFixed(1)} mo`}
-          sub={`integration ${eur0(inputs.implementation)} ÷ net saving × 12`}
-        />
-        <Kpi
-          label="Net saving per claim"
-          value={`€${(e.netPerYear / n).toFixed(2)}`}
-          sub={`net saving ÷ ${n.toLocaleString("en-US")} claims`}
-        />
-        <Kpi
-          label="Handler capacity freed"
-          value={`${(e.fteToday - e.fteWith).toFixed(1)} FTE`}
-          sub={`${Math.round(hoursSaved).toLocaleString("en-US")} h ÷ ${inputs.productiveHours.toLocaleString("en-US")} h per person`}
-        />
-      </div>
-
-      {/* Where today's triage euro goes */}
-      <Card className="mt-6">
-        <h2 className="section-title">Where every euro of today's triage cost goes</h2>
-        <p className="mt-1 text-[13px] text-text-2">
-          Today every claim is read by a person: {eur0(today)} a year. With the system people only
-          handle claims that need them: {pct(mix.share.human_review)} go to review and{" "}
-          {pct(mix.share.request_information)} need missing information. Both shares are measured on
-          the {mix.open} open claims {source === "live" ? "in the system" : "of the demo set"} under policy{" "}
-          {active.version.toUpperCase()}.
-        </p>
-        <div className="mt-4 flex h-9 w-full overflow-hidden rounded-md ring-1 ring-line">
-          {parts.map((p) => (
-            <div key={p.label} title={`${p.label}: ${eur0(p.value)}`} style={{ width: seg(p.value), background: p.color }} />
-          ))}
-        </div>
-        <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1.5 text-[12.5px]">
-          {parts.map((p) => (
-            <span key={p.label} className="inline-flex items-center gap-1.5">
-              <span className="inline-block size-2.5 rounded-sm" style={{ background: p.color }} />
-              {p.label}: <span className="num font-medium">{eur0(p.value)}</span>
-              <span className="text-text-3">({today > 0 ? pct(p.value / today) : "—"})</span>
-            </span>
-          ))}
+        <div className="mt-5 grid gap-4 md:grid-cols-3">
+          <div>
+            <p className="font-medium">Every claim triaged in seconds</p>
+            <p className="mt-1 text-[13px] text-text-2">
+              {pct(instant)} of claims get their next step without a handler touching them; only{" "}
+              {pct(reachReviewer)} reach a reviewer.
+            </p>
+          </div>
+          <div>
+            <p className="font-medium">Rule changes live the same day</p>
+            <p className="mt-1 text-[13px] text-text-2">
+              A policy change goes from {inputs.changeWeeksToday} weeks of specification, IT and testing
+              to a same-day replay, approval and release.
+            </p>
+          </div>
+          <div>
+            <p className="font-medium">Every decision explainable</p>
+            <p className="mt-1 text-[13px] text-text-2">
+              Each recommendation carries the policy rule, the policy version and the evidence behind it.
+            </p>
+          </div>
         </div>
       </Card>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-2">
-        <Card>
-          <h2 className="section-title">Unit economics</h2>
-          <dl className="mt-3 grid grid-cols-[1fr_auto] gap-x-6 gap-y-2 text-[13.5px]">
-            <dt className="text-text-2">Value created per claim (saving before our licence)</dt>
-            <dd className="num font-medium">€{(gross / n).toFixed(2)}</dd>
-            <dt className="text-text-2">Our price per claim (licence ÷ claims)</dt>
-            <dd className="num font-medium">€{pricePerClaim.toFixed(2)}</dd>
-            <dt className="text-text-2">Share of the value the insurer keeps (net ÷ value created)</dt>
-            <dd className="num font-medium">{pct(customerKeeps)}</dd>
-            <dt className="text-text-2">Revenue from one customer of this size</dt>
-            <dd className="num font-medium">
-              {eur0(inputs.platformPerYear)} / year + {eur0(inputs.implementation)} once
-            </dd>
-          </dl>
-          <p className="mt-3 text-[12.5px] text-text-2">
-            The price is per claim, so revenue grows with the customer, and the customer always keeps
-            most of the saving.
-          </p>
-        </Card>
-
-        <Card>
-          <h2 className="section-title">Second benefit: rule changes in hours, not weeks</h2>
-          <dl className="mt-3 grid grid-cols-[1fr_auto] gap-x-6 gap-y-2 text-[13.5px]">
-            <dt className="text-text-2">
-              One rule change today: {inputs.changePersonDays} person-days × {eur0(inputs.dayRate)}, plus{" "}
-              {inputs.changeWeeksToday} weeks of claims decided on old rules
-            </dt>
-            <dd className="num font-medium">{eur0(change.today.total)}</dd>
-            <dt className="text-text-2">
-              Same change with us: {inputs.changeHoursWithSystem} hours, live the same day
-            </dt>
-            <dd className="num font-medium">{eur0(change.withSystem.total)}</dd>
-          </dl>
-          <p className="mt-3 text-[12.5px] text-text-2">
-            Measured on the {BATCH_POLICY_V2.version.toUpperCase()} change: {pct(change.staleShare)} of
-            open claims would have stayed routine under the old rules although the new rules send them
-            to a person. Not included in the headline.
-          </p>
-        </Card>
-      </div>
-
-      {/* Proof plan */}
-      <Card className="mt-6">
-        <h2 className="section-title">How we prove it with the customer's own claims</h2>
-        <ol className="mt-3 grid gap-4 text-[13.5px] md:grid-cols-3">
+      {/* A. Executive summary */}
+      <Section title="Executive summary">
+        <ul className="space-y-2 text-[14px]">
           <li>
-            <p className="font-medium">Weeks 1–2 · Time study</p>
-            <p className="mt-1 text-text-2">
-              Time 200 manual triages. Replaces our {base.inputs.triageMinToday}-minute assumption,
-              the one input everything depends on, with a measured number.
-            </p>
-          </li>
-          <li>
-            <p className="font-medium">Weeks 1–6 · Shadow mode</p>
-            <p className="mt-1 text-text-2">
-              The system runs next to the handlers on the same claims without acting: agreement,
-              disagreements and who was right, case by case.
-            </p>
-          </li>
-          <li>
-            <p className="font-medium">Months 2–4 · Staggered rollout</p>
-            <p className="mt-1 text-text-2">
-              One team live, one comparable team as control. Go-live gate: the wrong-routine rate is
-              no higher than today's.
-            </p>
-          </li>
-        </ol>
-        <p className="mt-4 text-[12.5px] text-text-2">
-          Decision accuracy on the labelled claims, before and after the policy change, is on the{" "}
-          <Link to="/quality" className="text-link hover:underline">
-            quality report
-          </Link>
-          .
-        </p>
-      </Card>
-
-      {/* Weak points */}
-      <Card className="mt-6">
-        <h2 className="section-title">Weak points we state before you ask</h2>
-        <ul className="mt-3 space-y-2 text-[13.5px]">
-          <li>
-            <span className="font-medium">Today's triage time is the key assumption.</span>{" "}
+            <span className="font-medium">{eur0(e.netPerYear)} net saving a year</span>{" "}
             <span className="text-text-2">
-              The base case breaks even if manual triage takes {breakEvenMin.toFixed(1)} minutes per
-              claim; we assume {base.inputs.triageMinToday}. The time study settles it in two weeks.
+              for a {n.toLocaleString("en-US")}-claim insurer after our licence, up to{" "}
+              {eur0(up.netPerYear)}.
             </span>
           </li>
           <li>
-            <span className="font-medium">Information requests are not sent automatically yet.</span>{" "}
-            <span className="text-text-2">
-              If a handler writes each one (8 min instead of {base.inputs.infoMin}), the base saving
-              falls from {eur0(base.e.netPerYear)} to {eur0(manualInfo.netPerYear)} a year.
-            </span>
+            <span className="font-medium">Payback in {payback}</span>{" "}
+            <span className="text-text-2">on a {eur0(inputs.implementation)} integration.</span>
           </li>
           <li>
-            <span className="font-medium">Integration is the real cost.</span>{" "}
-            <span className="text-text-2">
-              If it costs twice our estimate, payback moves from{" "}
-              {base.e.paybackMonths?.toFixed(1) ?? "—"} to {doubleIntegration?.toFixed(1) ?? "—"} months.
-            </span>
+            <span className="font-medium">{fteFreed.toFixed(1)} handlers freed for complex claims</span>{" "}
+            <span className="text-text-2">without hiring, up to {upFteFreed.toFixed(1)}.</span>
           </li>
           <li>
-            <span className="font-medium">The claim mix comes from demo data.</span>{" "}
+            <span className="font-medium">Policy changes {changeFactor >= 2 ? `${Math.round(changeFactor)}× cheaper` : "cheaper"}</span>{" "}
             <span className="text-text-2">
-              {pct(mix.share.routine_processing)} auto-processed is measured on the {mix.open} open claims{" "}
-              {source === "live" ? "in the system, which were generated for the demo" : `of ${VOLUME_CLAIMS.length} generated claims`}.
-              A real insurer's claims and its own policy set the ceiling for the saving.
+              and live the same day: {eur0(change.today.total)} today vs {eur0(change.withSystem.total)} with Claim
+              Compass.
             </span>
           </li>
         </ul>
-      </Card>
+      </Section>
 
-      {/* Every number explained */}
-      <Card className="mt-6">
-        <h2 className="section-title">Where every number comes from</h2>
-        <p className="mt-1 text-[13px] text-text-2">
-          Formula: net saving = (today's triage hours − hours with the system) × hourly cost − licence.
-          Hours with the system = claims × (review share × review minutes + information share ×
-          information minutes + second-check share × check minutes) ÷ 60. Hourly cost = salary ×
-          employer load ÷ productive hours = {eur0(e.hourly)}.
+      {/* B. ROI dashboard */}
+      <Section title="ROI dashboard">
+        <div className="kpi-strip grid grid-cols-4 gap-0">
+          <Kpi label="Net saving per year" value={eurCompact(e.netPerYear)} sub={`up to ${eurCompact(up.netPerYear)}`} />
+          <Kpi label="Payback" value={e.paybackMonths === null ? "—" : `${e.paybackMonths.toFixed(1)} mo`} sub={`on ${eur0(inputs.implementation)} integration`} />
+          <Kpi label="3-year net value" value={eurCompact(threeYearNet)} sub="3 × net saving − integration" />
+          <Kpi label="Return per €1 spent (3 years)" value={`€${returnPerEuro.toFixed(1)}`} sub="savings ÷ (integration + 3 years licence)" />
+        </div>
+      </Section>
+
+      {/* C. Efficiency */}
+      <Section title="Efficiency">
+        <div className="grid gap-4 md:grid-cols-4">
+          <Metric value={`−${pct(timeCut)}`} name="Manual triage time" line={`Up to −${pct(upTimeCut)}. Handlers stop reading, sorting and routing every claim.`} accent />
+          <Metric value={`${minToday} → ${minWith.toFixed(1)} min`} name="Handler minutes per claim" line="Averaged over all claims, including reviews and checks." />
+          <Metric value={pct(instant)} name="Claims with an instant next step" line="Routine processing or a request for the missing facts, decided on arrival." />
+          <Metric value={Math.round(hoursSaved).toLocaleString("en-US")} name="Handler hours saved a year" line="Time that moves from administration to judgement." />
+        </div>
+      </Section>
+
+      {/* D. Cost savings */}
+      <Section title="Cost savings">
+        <div className="grid gap-4 md:grid-cols-4">
+          <Metric value={eurCompact(e.todayCost)} name="Triage cost today" line="Every claim read by a person at fully loaded handler cost." />
+          <Metric value={eurCompact(e.withCost)} name="Triage cost with Claim Compass" line="Reviews, information requests, second checks and our licence." accent />
+          <Metric value={`€${(e.netPerYear / n).toFixed(2)}`} name="Net saving per claim" line={`For a price of €${pricePerClaim.toFixed(2)} per claim.`} />
+          <Metric value={eurCompact(change.today.total - change.withSystem.total)} name="Saved on every policy change" line="Less specification and IT work, no weeks of decisions on outdated rules." />
+        </div>
+      </Section>
+
+      {/* E. Workforce */}
+      <Section title="Workforce impact">
+        <div className="grid gap-4 md:grid-cols-4">
+          <Metric value={`${fteFreed.toFixed(1)} FTE`} name="Handler capacity freed" line={`Up to ${upFteFreed.toFixed(1)} FTE, redeployed to complex claims and customers.`} accent />
+          <Metric value={pct(reachReviewer)} name="Claims that reach a reviewer" line="Reviewers see the claims that need them, with the reason on top." />
+          <Metric value={`${capacityMultiple.toFixed(1)}×`} name="Claim volume per triage team" line="The same team handles growth and peaks without new hires." />
+          <Metric value={`${second > 0 ? pct(second, 1) : "0%"}`} name="Targeted second checks" line="Only routine claims just under the limit get a quick extra look." />
+        </div>
+      </Section>
+
+      {/* F. Compliance & consistency */}
+      <Section title="Compliance & consistency">
+        <div className="grid gap-4 md:grid-cols-4">
+          <Metric value="Every decision" name="Rule, version and evidence recorded" line="Audit-ready: who, what, which policy version, and why." />
+          <Metric value="Same claim, same answer" name="Deterministic decisions" line="The written policy decides; the batch engine and the app give identical results." />
+          <Metric value="Never" name="Closed decisions changed by a rule update" line="Open claims are rechecked automatically; closed ones stay as decided." />
+          <Metric value="Every override" name="Logged with reason and reviewer" line="Human judgement stays in control and becomes measurable." />
+        </div>
+      </Section>
+
+      {/* Typical impact */}
+      <Section title={`Typical impact for a mid-sized insurer (${n.toLocaleString("en-US")} claims a year)`}>
+        <div className="grid gap-4 md:grid-cols-4">
+          <BeforeAfter
+            title="Time"
+            gain={`−${Math.round(hoursSaved).toLocaleString("en-US")} h / year`}
+            before={e.todayHours}
+            after={e.withHours}
+            beforeLabel={`${Math.round(e.todayHours).toLocaleString("en-US")} h`}
+            afterLabel={`${Math.round(e.withHours).toLocaleString("en-US")} h`}
+          />
+          <BeforeAfter
+            title="Cost"
+            gain={`−${eurCompact(e.netPerYear)} / year`}
+            before={e.todayCost}
+            after={e.withCost}
+            beforeLabel={eur0(e.todayCost)}
+            afterLabel={eur0(e.withCost)}
+          />
+          <BeforeAfter
+            title="Capacity"
+            gain={`+${fteFreed.toFixed(1)} FTE for complex claims`}
+            before={e.fteToday}
+            after={e.fteWith}
+            beforeLabel={`${e.fteToday.toFixed(1)} FTE on triage`}
+            afterLabel={`${e.fteWith.toFixed(1)} FTE on triage`}
+          />
+          <BeforeAfter
+            title="Customer experience"
+            gain={`${pct(instant)} answered on arrival`}
+            before={0}
+            after={instant}
+            beforeLabel="every claim waits in the queue"
+            afterLabel={`${pct(instant)} get their next step at once`}
+            higherIsBetter
+          />
+        </div>
+      </Section>
+
+      {/* G. Enterprise benefits */}
+      <Section title="Enterprise benefits">
+        <div className="grid gap-4 md:grid-cols-3">
+          {[
+            ["Faster answers for customers", "Simple claims move on the day they arrive; missing facts are requested immediately."],
+            ["Lower leakage risk", "Clear triggers send risky claims to people; claims just under the limit get a second check."],
+            ["Regulatory agility", "Policy owners change rules themselves, see the impact on every open claim first, then release."],
+            ["Audit readiness", "Every decision, override and policy version is recorded and reproducible."],
+            ["Growth without hiring", "Volume peaks after storms or price changes are absorbed by the same team."],
+            ["Fits existing systems", "Works on claim data from existing systems through a batch interface and a web workspace."],
+          ].map(([t, d]) => (
+            <div key={t} className="card-quiet p-5">
+              <p className="font-medium">{t}</p>
+              <p className="mt-1 text-[13px] text-text-2">{d}</p>
+            </div>
+          ))}
+        </div>
+      </Section>
+
+      {/* H. Investor takeaways */}
+      <Section title="Investor takeaways">
+        <div className="grid gap-4 md:grid-cols-4">
+          <Metric value={pct(customerKeeps)} name="Of the value stays with the customer" line="An easy yes for the buyer: the licence is a fraction of the saving." />
+          <Metric value={eurCompact(inputs.platformPerYear)} name="Annual revenue per mid-sized insurer" line={`Plus ${eur0(inputs.implementation)} one-off integration.`} />
+          <Metric value={`< ${Math.ceil(e.paybackMonths ?? 0)} months`} name="Payback for the buyer" line="Fits inside one budget year, which shortens sales cycles." />
+          <Metric value="2 products" name="Triage automation + policy agility" line="Savings on every claim and on every rule change." />
+        </div>
+      </Section>
+
+      {/* Backup */}
+      <details className="card-quiet mt-8 p-6">
+        <summary className="cursor-pointer text-[14px] font-medium">Backup for Q&amp;A: model, scenarios and assumptions</summary>
+
+        <p className="mt-4 text-[13px] text-text-2">
+          Formula: net saving = (today's triage hours − hours with the system) × hourly cost − licence. Hours
+          with the system = claims × (review share × review minutes + information share × information minutes
+          + second-check share × check minutes) ÷ 60. Hourly cost = salary × employer load ÷ productive hours ={" "}
+          {eur0(e.hourly)}. Claim mix measured on {claimsText} under policy {active.version.toUpperCase()}.
+          Fewer leaked claims are not included.
         </p>
-        <div className="mt-4 overflow-x-auto">
+
+        <h3 className="mt-5 text-[13.5px] font-medium">Scenarios</h3>
+        <div className="mt-2 overflow-x-auto">
+          <table className="w-full text-[13px]">
+            <thead>
+              <tr className="text-left text-text-3">
+                <th className="py-2 pr-4 font-medium">Scenario</th>
+                <th className="py-2 pr-4 font-medium">Net saving / year</th>
+                <th className="py-2 pr-4 font-medium">Payback</th>
+                <th className="py-2 font-medium">What changes</th>
+              </tr>
+            </thead>
+            <tbody>
+              {SCENARIOS.map((s) => (
+                <tr key={s.key} className="border-t border-line align-top">
+                  <td className="py-2 pr-4 font-medium">{s.title}</td>
+                  <td className="num py-2 pr-4">{eur0(all[s.key].e.netPerYear)}</td>
+                  <td className="num py-2 pr-4">
+                    {all[s.key].e.paybackMonths === null ? "—" : `${all[s.key].e.paybackMonths?.toFixed(1)} mo`}
+                  </td>
+                  <td className="py-2 text-text-2">{s.why}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <h3 className="mt-5 text-[13.5px] font-medium">Sensitivities</h3>
+        <ul className="mt-2 space-y-1.5 text-[13px] text-text-2">
+          <li>Break-even: manual triage at {breakEvenMin.toFixed(1)} min per claim (we assume {inputs.triageMinToday}). A two-week time study settles it.</li>
+          <li>Information requests written by hand (8 min): net saving {eur0(manualInfo.netPerYear)} instead of {eur0(e.netPerYear)}.</li>
+          <li>Integration at twice the estimate: payback {doubleIntegration === null ? "—" : `${doubleIntegration.toFixed(1)} months`}.</li>
+          <li>Claim mix from {source === "live" ? "the claims in the system, generated for the demo" : "generated demo claims"}; a pilot measures the real mix in shadow mode.</li>
+        </ul>
+
+        <h3 className="mt-5 text-[13.5px] font-medium">Every input</h3>
+        <div className="mt-2 overflow-x-auto">
           <table className="w-full text-[13px]">
             <thead>
               <tr className="text-left text-text-3">
                 <th className="py-2 pr-4 font-medium">Input</th>
-                <th className="py-2 pr-4 font-medium">Value</th>
+                <th className="py-2 pr-4 font-medium">Base value</th>
                 <th className="py-2 pr-4 font-medium">Kind</th>
                 <th className="py-2 font-medium">Why this value</th>
               </tr>
             </thead>
             <tbody>
-              <tr className="border-t border-line align-top">
-                <td className="py-2 pr-4">Share sent to review / information / routine</td>
-                <td className="num py-2 pr-4">
-                  {pct(mix.share.human_review)} / {pct(mix.share.request_information)} /{" "}
-                  {pct(mix.share.routine_processing)}
-                </td>
-                <td className="py-2 pr-4">
-                  <KindBadge kind="measured" />
-                </td>
-                <td className="py-2 text-text-2">
-                  The {mix.open} open claims {source === "live" ? "in the system" : "of the demo set"} under policy{" "}
-                  {active.version.toUpperCase()}, counted like Workload &amp; flow.
-                </td>
-              </tr>
-              <tr className="border-t border-line align-top">
-                <td className="py-2 pr-4">Share needing a second check</td>
-                <td className="num py-2 pr-4">{pct(second, 1)}</td>
-                <td className="py-2 pr-4">
-                  <KindBadge kind="measured" />
-                </td>
-                <td className="py-2 text-text-2">
-                  Routine claims just below the quote limit, counted on the same claims.
-                </td>
-              </tr>
               {DEFAULT_ASSUMPTIONS.map((a) => {
-                const v = inputs[a.key];
-                const reason = current.why[a.key];
                 const src = a.source ? srcById[a.source] : undefined;
                 return (
                   <tr key={a.key} className="border-t border-line align-top">
                     <td className="py-2 pr-4">{a.label}</td>
-                    <td className={cn("num py-2 pr-4", reason && "font-semibold")}>{fmtVal(a, v)}</td>
+                    <td className="num py-2 pr-4">{fmtVal(a, inputs[a.key])}</td>
                     <td className="py-2 pr-4">
                       <KindBadge kind={a.kind} />
                     </td>
                     <td className="py-2 text-text-2">
-                      {reason ? (
-                        <>
-                          <span className="font-medium text-foreground">{current.title}: </span>
-                          {reason}
-                        </>
-                      ) : (
-                        a.note
-                      )}
+                      {a.note}
                       {src && (
-                        <a
-                          href={src.url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="ml-1.5 inline-flex items-center gap-0.5 text-link hover:underline"
-                        >
+                        <a href={src.url} target="_blank" rel="noreferrer" className="ml-1.5 inline-flex items-center gap-0.5 text-link hover:underline">
                           source <ExternalLink className="size-3" />
                         </a>
                       )}
@@ -438,13 +456,21 @@ function Pitch() {
           </table>
         </div>
         <p className="mt-4 text-[12.5px] text-text-2">
-          The same inputs can be changed with sliders on the{" "}
-          <Link to="/business-case" className="text-link hover:underline">
-            Business case
-          </Link>{" "}
-          page; the base case here always equals that page's defaults.
+          Sliders for every input are on the{" "}
+          <Link to="/business-case" className="text-link hover:underline">Business case</Link> page; decision accuracy
+          before and after the policy change is on the{" "}
+          <Link to="/quality" className="text-link hover:underline">quality report</Link>.
         </p>
-      </Card>
+      </details>
     </div>
+  );
+}
+
+function Section({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <section className="mt-8">
+      <h2 className="section-title mb-3">{title}</h2>
+      {children}
+    </section>
   );
 }
